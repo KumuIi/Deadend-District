@@ -6,15 +6,15 @@ public class PlayerMovement : MonoBehaviour
     public float speed = 5f;
     public float jumpHeight = 2f;
     public float gravity = -9.81f;
-    
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float groundDistance = 0.4f;
-    public LayerMask groundMask;
 
+    [Header("Ground Detection")]
+    public Transform groundCheck; // Assign your GroundCheck empty GameObject here
+    public float groundCheckDistance = 0.2f;
+    
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
+
     void Start()
     {
         controller = GetComponent<CharacterController>();
@@ -22,6 +22,9 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        // Raycast ground check
+        CheckGround();
+        
         // Get input
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
@@ -31,7 +34,7 @@ public class PlayerMovement : MonoBehaviour
         controller.Move(move * speed * Time.deltaTime);
 
         // Ground check - reset velocity when grounded
-        if (controller.isGrounded)
+        if (isGrounded)
         {
             // Jump
             if (Input.GetButtonDown("Jump"))
@@ -42,13 +45,22 @@ public class PlayerMovement : MonoBehaviour
             {
                 velocity.y = -2f;
             }
-
         }
 
-        // Apply gravity ONCE
+        // Apply gravity
         velocity.y += gravity * Time.deltaTime;
     
         // Apply vertical movement
         controller.Move(velocity * Time.deltaTime);
+    }
+
+    void CheckGround()
+    {
+        // Cast raycast from the GroundCheck position
+        RaycastHit hit;
+        isGrounded = Physics.Raycast(groundCheck.position, Vector3.down, out hit, groundCheckDistance, ~0, QueryTriggerInteraction.Ignore);
+        
+        // Debug visualization (green when grounded, red when not)
+        Debug.DrawRay(groundCheck.position, Vector3.down * groundCheckDistance, isGrounded ? Color.green : Color.red);
     }
 }
