@@ -7,12 +7,13 @@ public class CameraController : MonoBehaviour
     public Transform playerBody;
 
     private float xRotation = 0f;
+    private float yRotation = 0f;
 
     void Start()
     {
-        // Lock and hide cursor
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+        yRotation = playerBody.eulerAngles.y;
     }
 
     void Update()
@@ -21,12 +22,15 @@ public class CameraController : MonoBehaviour
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-        // Rotate camera up/down (X-axis rotation)
+        // Apply mouse input to base rotation
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f); // Prevent over-rotation
-        transform.localEulerAngles = Vector3.right * xRotation;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+        yRotation += mouseX;
 
-        // Rotate player body left/right (Y-axis rotation)
-        playerBody.Rotate(Vector3.up * mouseX);
+        // Apply base rotation + recoil to camera
+        transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+
+        // Rotate player body for horizontal look
+        playerBody.rotation = Quaternion.Euler(0f, yRotation, 0f);
     }
 }

@@ -8,12 +8,12 @@ public class PlayerMovement : MonoBehaviour
     public float gravity = -9.81f;
 
     [Header("Ground Detection")]
-    public Transform groundCheck; // Assign your GroundCheck empty GameObject here
+    public Transform groundCheck;
     public float groundCheckDistance = 0.2f;
     
     private CharacterController controller;
-    private Vector3 velocity;
-    private bool isGrounded;
+    [SerializeField] private Vector3 velocity;
+    [SerializeField] private bool isGrounded;
 
     void Start()
     {
