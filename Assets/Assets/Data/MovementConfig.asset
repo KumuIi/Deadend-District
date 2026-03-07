@@ -12,27 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75f19c5f5d945724eba2bc8eead906f2, type: 3}
   m_Name: MovementConfig
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovementConfig
+  inputEnabled: 1
   walkSpeed: 4
   sprintSpeed: 7
   crouchSpeed: 2
-  acceleration: 50
-  deceleration: 40
-  airAcceleration: 8
-  jumpForce: 7
-  coyoteTime: 0.12
-  jumpBufferTime: 0.1
-  gravity: 20
-  maxFallSpeed: 30
-  fallMultiplier: 1.5
-  maxWalkableAngle: 46
-  slopeSlideSpeed: 8
-  maxStepHeight: 0.35
-  stepCheckDepth: 0.4
-  standHeight: 1.8
-  crouchHeight: 1
-  capsuleRadius: 0.3
-  groundCheckDistance: 0.08
-  groundSnapDistance: 0.3
+  jumpForce: 8
+  gravity: 28
   groundMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 128
+  mouseSensitivity: 2
+  verticalLookLimit: 85

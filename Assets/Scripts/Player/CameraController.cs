@@ -2,50 +2,28 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
-    [Header("Camera Settings")]
-    public float mouseSensitivity = 2f;
+    [SerializeField] private PlayerMovementConfig config;
 
-    [Header("Height Smoothing")]
-    [SerializeField] private float cameraSmoothing = 15f;
-
-    private Transform _playerBody;
-    private PlayerMotor _motor;
-    private float _xRotation;
-    private float _yRotation;
-    private float _currentCameraY;
+    private float _pitch;
+    private float _fovRatio;
 
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        _playerBody = transform.parent;
-        _motor = GetComponentInParent<PlayerMotor>();
-        _yRotation = _playerBody.eulerAngles.y;
-        _currentCameraY = _motor != null ? _motor.CurrentHeight - 0.2f : transform.localPosition.y;
+        // tan(vFOV/2) / tan(hFOV/2) simplifies to 1/aspect
+        // e.g. 16:9 → 9/16 = 0.5625, so Y is always 56.25% of X on a 16:9 screen
+        _fovRatio = 1f / GetComponent<Camera>().aspect;
     }
 
     void LateUpdate()
     {
-        // Get mouse input (raw delta from Input System comes through Pointer/delta)
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        float mouseY = Input.GetAxisRaw("Mouse Y") * config.mouseSensitivity * _fovRatio;
 
-        // Apply mouse input to rotation
-        _xRotation -= mouseY;
-        _xRotation = Mathf.Clamp(_xRotation, -90f, 90f);
-        _yRotation += mouseX;
+        _pitch -= mouseY;
+        _pitch = Mathf.Clamp(_pitch, -config.verticalLookLimit, config.verticalLookLimit);
 
-        // Apply rotations
-        transform.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);
-        _playerBody.rotation = Quaternion.Euler(0f, _yRotation, 0f);
-
-        // Smooth camera height for crouch/step transitions
-        if (_motor != null)
-        {
-            float targetY = _motor.CurrentHeight - 0.2f;
-            _currentCameraY = Mathf.Lerp(_currentCameraY, targetY, cameraSmoothing * Time.deltaTime);
-            transform.localPosition = new Vector3(0f, _currentCameraY, 0f);
-        }
+        transform.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
     }
 }
