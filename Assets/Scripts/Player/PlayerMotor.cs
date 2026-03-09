@@ -4,20 +4,26 @@ public class PlayerMotor : MonoBehaviour
 {
     [SerializeField] private PlayerMovementConfig config;
 
-    private Rigidbody   _rb;
-    private PlayerInput _input;
-    private Vector3     _velocity;
-    private bool        _grounded;
-    private RaycastHit  _groundHit;
+    private Rigidbody       _rb;
+    private PlayerInput     _input;
+    private CapsuleCollider _capsule;
+    private Vector3         _velocity;
+    private bool            _grounded;
+    private RaycastHit      _groundHit;
 
-    // Capsule: height 1.8, radius 0.3 → half-height = 0.9
+    private readonly Collider[] _overlapBuffer = new Collider[8];
+    private readonly Vector3[]  _pushNormals   = new Vector3[8];
+
     private const float CapsuleHalfHeight = 0.9f;
-    private const float GroundCheckDist   = 0.1f;   // how far below feet to look
+    private const float CapsuleRadius     = 0.3f;
+    private const float GroundCheckDist   = 0.2f;
+    private const float SkinWidth         = 0.01f;
 
     void Awake()
     {
-        _rb    = GetComponent<Rigidbody>();
-        _input = GetComponent<PlayerInput>();
+        _rb      = GetComponent<Rigidbody>();
+        _input   = GetComponent<PlayerInput>();
+        _capsule = GetComponent<CapsuleCollider>();
     }
 
     void FixedUpdate()
@@ -29,10 +35,8 @@ public class PlayerMotor : MonoBehaviour
 
         Vector3 target = _rb.position + _velocity * Time.fixedDeltaTime;
 
-        // Snap to ground — kinematic body has no collision resolution,
-        // so we pin the player to the surface ourselves
-        if (_grounded && _velocity.y <= 0f)
-            target.y = _groundHit.point.y + CapsuleHalfHeight;
+        ResolveCollisions(ref target);
+        SnapToGround(ref target);
 
         _rb.MovePosition(target);
     }
@@ -47,12 +51,26 @@ public class PlayerMotor : MonoBehaviour
 
     void CheckGround()
     {
-        // Raycast from capsule center straight down
-        // Max distance = half-height + tolerance → hits ground under our feet
         _grounded = Physics.Raycast(
             _rb.position, Vector3.down, out _groundHit,
             CapsuleHalfHeight + GroundCheckDist,
             config.groundMask, QueryTriggerInteraction.Ignore);
+    }
+
+    void SnapToGround(ref Vector3 target)
+    {
+        // Don't snap while jumping or airborne
+        if (!_grounded || _velocity.y > 0f) return;
+
+        // Cast from TARGET — find the ground under where we're actually going,
+        // not where we were. This is what keeps us on ramps and edges.
+        if (Physics.Raycast(target, Vector3.down, out RaycastHit hit,
+                CapsuleHalfHeight + GroundCheckDist,
+                config.groundMask, QueryTriggerInteraction.Ignore))
+        {
+            target.y    = hit.point.y + CapsuleHalfHeight;
+            _velocity.y = 0f;
+        }
     }
 
     // ─── Gravity ─────────────────────────────────────────────────────────────
@@ -96,6 +114,77 @@ public class PlayerMotor : MonoBehaviour
         _velocity.z = horizontal.z * speed;
     }
 
+    // ─── Collision resolution ────────────────────────────────────────────────
+
+    void ResolveCollisions(ref Vector3 position)
+    {
+        int normalCount = 0;
+
+        // Phase 1 — settle position: push out of every overlapping surface,
+        // re-check, repeat until clean or we hit the iteration cap.
+        for (int iter = 0; iter < 3; iter++)
+        {
+            Vector3 bottom = position + Vector3.down * (CapsuleHalfHeight - CapsuleRadius);
+            Vector3 top    = position + Vector3.up   * (CapsuleHalfHeight - CapsuleRadius);
+
+            int count = Physics.OverlapCapsuleNonAlloc(
+                bottom, top, CapsuleRadius,
+                _overlapBuffer, config.collisionMask, QueryTriggerInteraction.Ignore);
+
+            bool pushed = false;
+            for (int i = 0; i < count; i++)
+            {
+                Collider other = _overlapBuffer[i];
+                if (other == _capsule) continue;
+
+                if (!Physics.ComputePenetration(
+                        _capsule, position,              transform.rotation,
+                        other,    other.transform.position, other.transform.rotation,
+                        out Vector3 dir, out float dist))
+                    continue;
+
+                position += dir * (dist + SkinWidth);
+                pushed = true;
+
+                // Remember surface normal for the velocity pass
+                if (normalCount < _pushNormals.Length)
+                    _pushNormals[normalCount++] = dir;
+            }
+
+            if (!pushed) break;
+        }
+
+        // Phase 2 — clip velocity: for each surface we touched, remove only
+        // the velocity component pressing INTO it. Parallel motion is kept.
+        for (int i = 0; i < normalCount; i++)
+        {
+            Vector3 pushDir = _pushNormals[i];
+
+            if (_grounded)
+            {
+                // Ground owns Y — only cancel horizontal velocity into the surface.
+                Vector3 flatDir = new Vector3(pushDir.x, 0f, pushDir.z);
+                if (flatDir.sqrMagnitude > 0.001f)
+                {
+                    flatDir.Normalize();
+                    float velInto = _velocity.x * flatDir.x + _velocity.z * flatDir.z;
+                    if (velInto < 0f)
+                    {
+                        _velocity.x -= velInto * flatDir.x;
+                        _velocity.z -= velInto * flatDir.z;
+                    }
+                }
+            }
+            else
+            {
+                // Airborne — full 3D correction handles ceilings and walls in air
+                float velInto = Vector3.Dot(_velocity, pushDir);
+                if (velInto < 0f)
+                    _velocity -= velInto * pushDir;
+            }
+        }
+    }
+
     // ─── Debug ───────────────────────────────────────────────────────────────
 
     void OnDrawGizmosSelected()
@@ -103,11 +192,9 @@ public class PlayerMotor : MonoBehaviour
         Vector3 origin = Application.isPlaying ? _rb.position : transform.position;
         float   length = CapsuleHalfHeight + GroundCheckDist;
 
-        // Ray line
         Gizmos.color = Application.isPlaying && _grounded ? Color.green : Color.red;
         Gizmos.DrawLine(origin, origin + Vector3.down * length);
 
-        // Hit point marker
         if (Application.isPlaying && _grounded)
         {
             Gizmos.color = Color.green;

@@ -20,6 +20,9 @@ MonoBehaviour:
   gravity: 28
   groundMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 129
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 1
   mouseSensitivity: 2
   verticalLookLimit: 85

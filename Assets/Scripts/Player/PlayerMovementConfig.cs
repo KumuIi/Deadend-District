@@ -15,6 +15,7 @@ public class PlayerMovementConfig : ScriptableObject
     public float jumpForce  = 6f;
     public float gravity    = 25f;
     public LayerMask groundMask;
+    public LayerMask collisionMask;
 
     [Header("Camera")]
     public float mouseSensitivity = 2f;
