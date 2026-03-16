@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git -C \"G:\\\\Unity\\\\Deadend-District\" log --oneline)",
       "Bash(git -C \"G:\\\\Unity\\\\Deadend-District\" diff HEAD)",
-      "Bash(git -C \"G:\\\\Unity\\\\Deadend-District\" log --format=\"%H %s\")"
+      "Bash(git -C \"G:\\\\Unity\\\\Deadend-District\" log --format=\"%H %s\")",
+      "Bash(find /g/Unity/Deadend-District/Assets/Scripts -name *.cs -type f)"
     ]
   }
 }

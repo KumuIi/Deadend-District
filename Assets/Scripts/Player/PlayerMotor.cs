@@ -9,7 +9,19 @@ public class PlayerMotor : MonoBehaviour
     private CapsuleCollider _capsule;
     private Vector3         _velocity;
     private bool            _grounded;
+    private bool            _steepGround;
+    private float           _groundAngle;
     private RaycastHit      _groundHit;
+    private bool            _hitCeiling;
+
+    // Coyote time
+    private float           _coyoteTimer;   // time since last grounded, allows late jumps
+
+    // Slope mode state
+    private bool            _inSlopeMode;   // steep slope has taken over movement
+    private bool            _isSliding;     // sub-state: speed drained, now sliding downhill
+    private float           _slopeSpeed;    // draining speed during slope mode (starts at walk/sprint)
+    private float           _slideSpeed;    // accelerating speed while sliding down
 
     private readonly Collider[] _overlapBuffer = new Collider[8];
     private readonly Vector3[]  _pushNormals   = new Vector3[8];
@@ -18,6 +30,7 @@ public class PlayerMotor : MonoBehaviour
     private const float CapsuleRadius     = 0.3f;
     private const float GroundCheckDist   = 0.2f;
     private const float SkinWidth         = 0.01f;
+    private const float SlideMaxSpeed     = 10f;
 
     void Awake()
     {
@@ -31,6 +44,7 @@ public class PlayerMotor : MonoBehaviour
         CheckGround();
         HandleGravity();
         HandleJump();
+        HandleSteepSlope();
         HandleMovement();
 
         Vector3 target = _rb.position + _velocity * Time.fixedDeltaTime;
@@ -51,19 +65,26 @@ public class PlayerMotor : MonoBehaviour
 
     void CheckGround()
     {
-        _grounded = Physics.Raycast(
+        bool hit = Physics.Raycast(
             _rb.position, Vector3.down, out _groundHit,
             CapsuleHalfHeight + GroundCheckDist,
             config.groundMask, QueryTriggerInteraction.Ignore);
+
+        _groundAngle = hit ? Vector3.Angle(_groundHit.normal, Vector3.up) : 0f;
+        _steepGround = hit && _groundAngle >= config.maxSlopeAngle;
+        _grounded    = hit && !_steepGround;
+
+        // Coyote timer: reset while grounded, tick up while airborne
+        if (_grounded)
+            _coyoteTimer = 0f;
+        else
+            _coyoteTimer += Time.fixedDeltaTime;
     }
 
     void SnapToGround(ref Vector3 target)
     {
-        // Don't snap while jumping or airborne
         if (!_grounded || _velocity.y > 0f) return;
 
-        // Cast from TARGET — find the ground under where we're actually going,
-        // not where we were. This is what keeps us on ramps and edges.
         if (Physics.Raycast(target, Vector3.down, out RaycastHit hit,
                 CapsuleHalfHeight + GroundCheckDist,
                 config.groundMask, QueryTriggerInteraction.Ignore))
@@ -89,17 +110,26 @@ public class PlayerMotor : MonoBehaviour
     {
         if (_input.JumpPressed)
         {
-            if (_grounded)
-                _velocity.y = config.jumpForce;
+            bool canJump = (_grounded || _coyoteTimer <= config.coyoteTime)
+                        && !_inSlopeMode && !_hitCeiling && !_steepGround;
+
+            if (canJump)
+            {
+                _velocity.y  = config.jumpForce;
+                _coyoteTimer = config.coyoteTime + 1f; // expire so you can't double-jump
+            }
 
             _input.ConsumeJump();
         }
     }
 
-    // ─── Horizontal movement ─────────────────────────────────────────────────
+    // ─── Normal movement — only when NOT in slope mode ───────────────────────
 
     void HandleMovement()
     {
+        // Slope mode completely owns movement — normal movement is locked out
+        if (_inSlopeMode) return;
+
         Vector2 move      = _input.MoveInput;
         bool    sprinting = _input.SprintHeld && move.y > 0f;
         float   speed     = sprinting ? config.sprintSpeed : config.walkSpeed;
@@ -114,14 +144,108 @@ public class PlayerMotor : MonoBehaviour
         _velocity.z = horizontal.z * speed;
     }
 
+    // ─── Steep slope — separate movement system ──────────────────────────────
+
+    void HandleSteepSlope()
+    {
+        if (_steepGround)
+        {
+            // --- ENTER slope mode ---
+            if (!_inSlopeMode)
+            {
+                _inSlopeMode = true;
+                _isSliding   = false;
+                _slideSpeed  = 0f;
+                // Capture current horizontal speed as starting slope speed
+                _slopeSpeed  = Mathf.Sqrt(_velocity.x * _velocity.x + _velocity.z * _velocity.z);
+            }
+
+            float steepness = Mathf.InverseLerp(config.maxSlopeAngle, 90f, _groundAngle);
+
+            // --- DRAIN phase: player can still move but speed is diminishing ---
+            if (!_isSliding)
+            {
+                // Steeper = faster drain
+                float drain = Mathf.Lerp(2f, 20f, steepness) * Time.fixedDeltaTime;
+                _slopeSpeed = Mathf.Max(0f, _slopeSpeed - drain);
+
+                // Same input controls as normal movement, but using the draining speed
+                Vector2 move    = _input.MoveInput;
+                Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+                Vector3 right   = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
+                Vector3 dir     = forward * move.y + right * move.x;
+                if (dir.sqrMagnitude > 1f) dir.Normalize();
+
+                _velocity.x = dir.x * _slopeSpeed;
+                _velocity.z = dir.z * _slopeSpeed;
+
+                // Speed bottomed out → start sliding
+                if (_slopeSpeed <= 0.1f)
+                {
+                    _isSliding  = true;
+                    _slideSpeed = 0.5f;
+                }
+            }
+
+            // --- SLIDE phase: accelerate down the slope face like ice ---
+            if (_isSliding)
+            {
+                _slideSpeed = Mathf.Min(SlideMaxSpeed, _slideSpeed + 3f * Time.fixedDeltaTime);
+
+                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized;
+                _velocity.x = slideDir.x * _slideSpeed;
+                _velocity.z = slideDir.z * _slideSpeed;
+
+                // Allow small left/right wiggle so player can steer off the slope
+                float strafe = _input.MoveInput.x;
+                if (Mathf.Abs(strafe) > 0.1f)
+                {
+                    Vector3 wiggleDir = Vector3.ProjectOnPlane(transform.right, _groundHit.normal).normalized;
+                    _velocity.x += wiggleDir.x * strafe * config.slideWiggleSpeed;
+                    _velocity.z += wiggleDir.z * strafe * config.slideWiggleSpeed;
+                }
+            }
+        }
+        else if (_inSlopeMode)
+        {
+            // --- LEFT the steep slope ---
+            // On gentle ground (≤ slideStopAngle): exit immediately, carry momentum
+            // Between slideStopAngle and maxSlopeAngle: keep decelerating
+            if (_grounded && _groundAngle <= config.slideStopAngle)
+            {
+                // Exit slope mode — velocity stays as-is so momentum carries through
+                _inSlopeMode = false;
+                _isSliding   = false;
+                _slideSpeed  = 0f;
+                _slopeSpeed  = 0f;
+            }
+            else if (_grounded && _isSliding)
+            {
+                // Mid-range slope (30–45°): decelerate but keep sliding
+                _slideSpeed = Mathf.Max(0f, _slideSpeed - 8f * Time.fixedDeltaTime);
+
+                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized;
+                _velocity.x = slideDir.x * _slideSpeed;
+                _velocity.z = slideDir.z * _slideSpeed;
+            }
+            else if (!_grounded && !_steepGround)
+            {
+                // Went airborne (walked off edge) — exit, let gravity + momentum handle it
+                _inSlopeMode = false;
+                _isSliding   = false;
+                _slideSpeed  = 0f;
+                _slopeSpeed  = 0f;
+            }
+        }
+    }
+
     // ─── Collision resolution ────────────────────────────────────────────────
 
     void ResolveCollisions(ref Vector3 position)
     {
+        _hitCeiling  = false;
         int normalCount = 0;
 
-        // Phase 1 — settle position: push out of every overlapping surface,
-        // re-check, repeat until clean or we hit the iteration cap.
         for (int iter = 0; iter < 3; iter++)
         {
             Vector3 bottom = position + Vector3.down * (CapsuleHalfHeight - CapsuleRadius);
@@ -138,15 +262,27 @@ public class PlayerMotor : MonoBehaviour
                 if (other == _capsule) continue;
 
                 if (!Physics.ComputePenetration(
-                        _capsule, position,              transform.rotation,
+                        _capsule, position,               transform.rotation,
                         other,    other.transform.position, other.transform.rotation,
                         out Vector3 dir, out float dist))
                     continue;
 
-                position += dir * (dist + SkinWidth);
+                // On walkable ground, ground-like pushes go straight up only
+                // to prevent horizontal drift down slopes
+                if (_grounded && dir.y > 0.5f)
+                    position.y += dist + SkinWidth;
+                else
+                    position += dir * (dist + SkinWidth);
+
                 pushed = true;
 
-                // Remember surface normal for the velocity pass
+                if (dir.y < -0.1f)
+                {
+                    _hitCeiling = true;
+                    if (_velocity.y > 0f)
+                        _velocity.y = 0f;
+                }
+
                 if (normalCount < _pushNormals.Length)
                     _pushNormals[normalCount++] = dir;
             }
@@ -154,15 +290,12 @@ public class PlayerMotor : MonoBehaviour
             if (!pushed) break;
         }
 
-        // Phase 2 — clip velocity: for each surface we touched, remove only
-        // the velocity component pressing INTO it. Parallel motion is kept.
         for (int i = 0; i < normalCount; i++)
         {
             Vector3 pushDir = _pushNormals[i];
 
             if (_grounded)
             {
-                // Ground owns Y — only cancel horizontal velocity into the surface.
                 Vector3 flatDir = new Vector3(pushDir.x, 0f, pushDir.z);
                 if (flatDir.sqrMagnitude > 0.001f)
                 {
@@ -177,7 +310,6 @@ public class PlayerMotor : MonoBehaviour
             }
             else
             {
-                // Airborne — full 3D correction handles ceilings and walls in air
                 float velInto = Vector3.Dot(_velocity, pushDir);
                 if (velInto < 0f)
                     _velocity -= velInto * pushDir;
@@ -192,13 +324,21 @@ public class PlayerMotor : MonoBehaviour
         Vector3 origin = Application.isPlaying ? _rb.position : transform.position;
         float   length = CapsuleHalfHeight + GroundCheckDist;
 
-        Gizmos.color = Application.isPlaying && _grounded ? Color.green : Color.red;
+        Gizmos.color = Application.isPlaying && _grounded ? Color.green
+                     : (_steepGround ? Color.yellow : Color.red);
         Gizmos.DrawLine(origin, origin + Vector3.down * length);
 
-        if (Application.isPlaying && _grounded)
+        if (!Application.isPlaying || (!_grounded && !_steepGround)) return;
+
+        Gizmos.color = _steepGround ? Color.red : Color.green;
+        Gizmos.DrawWireSphere(_groundHit.point, 0.05f);
+        Gizmos.DrawRay(_groundHit.point, _groundHit.normal * 0.5f);
+
+        if (_isSliding)
         {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(_groundHit.point, 0.05f);
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawRay(_groundHit.point,
+                Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized * 0.7f);
         }
     }
 }
