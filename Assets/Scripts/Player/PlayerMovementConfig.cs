@@ -15,6 +15,7 @@ public class PlayerMovementConfig : ScriptableObject
     public float jumpForce  = 6f;
     public float gravity    = 25f;
     public float coyoteTime = 0.12f;
+    public float jumpBufferTime = 0.15f;
     public LayerMask groundMask;
     public LayerMask collisionMask;
 

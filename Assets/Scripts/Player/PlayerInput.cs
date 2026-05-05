@@ -14,4 +14,7 @@ public class PlayerInput : MonoBehaviour
     }
 
     public void ConsumeJump() => JumpPressed = false;
+    
+    
+    
 }

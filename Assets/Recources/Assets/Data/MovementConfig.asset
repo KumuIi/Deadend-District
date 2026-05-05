@@ -18,11 +18,16 @@ MonoBehaviour:
   crouchSpeed: 2
   jumpForce: 8
   gravity: 28
+  coyoteTime: 0.12
   groundMask:
     serializedVersion: 2
     m_Bits: 129
   collisionMask:
     serializedVersion: 2
     m_Bits: 1
+  maxSlopeAngle: 35
+  slideStopAngle: 20
+  slideWiggleSpeed: 1.5
+  slideSpeed: 8
   mouseSensitivity: 2
   verticalLookLimit: 85
