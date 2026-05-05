@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe2e29bddc494546992978dfe2fd2fa, type: 3}
+  m_Name: Pistol_Weapon
+  m_EditorClassIdentifier: Assembly-CSharp::FracturedProtocol.Combat.Items.WeaponSO
+  itemId: b938b770-26dd-434f-b68a-dcb81778951f
+  displayName: Pistol
+  icon: {fileID: 0}
+  worldPrefab: {fileID: 0}
+  weight: 0
+  gridSize: {x: 2, y: 1}
+  fireRate: 400
+  baseSpread: 1.5
+  bloomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0.2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 10
+      value: 3
+      inSlope: 0.2
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  recoilPattern: {x: 0.3, y: 1.2}
+  acceptedMagazines:
+  - {fileID: 11400000, guid: 37e223a6de195a441b90a0ff8d914838, type: 2}
+  attachmentSlots: []
+  fireBehavior: {fileID: 11400000, guid: af926b4eb93411b4a90110eb51bc9806, type: 2}
+  animatorOverride: {fileID: 22100000, guid: 722ea0d83e866a841b4600a8dc7128d1, type: 2}

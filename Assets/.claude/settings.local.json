@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Get-Content *)"
+      "Bash(Get-Content *)",
+      "Bash(Get-ChildItem -Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(Sort-Object Name)",
+      "Bash(Remove-Item -Recurse -Force \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\FracturedProtocol\")"
     ]
   }
 }

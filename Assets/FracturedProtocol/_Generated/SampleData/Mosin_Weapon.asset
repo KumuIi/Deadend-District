@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfe2e29bddc494546992978dfe2fd2fa, type: 3}
+  m_Name: Mosin_Weapon
+  m_EditorClassIdentifier: Assembly-CSharp::FracturedProtocol.Combat.Items.WeaponSO
+  itemId: ee1cf144-e12c-4443-8a05-6863ed1bc4a2
+  displayName: Mosin-Nagant
+  icon: {fileID: 0}
+  worldPrefab: {fileID: 0}
+  weight: 0
+  gridSize: {x: 4, y: 1}
+  fireRate: 30
+  baseSpread: 0.5
+  bloomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0.2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 10
+      value: 3
+      inSlope: 0.2
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  recoilPattern: {x: 0.5, y: 2.5}
+  acceptedMagazines:
+  - {fileID: 11400000, guid: d204c049a05d1dc4fbd20ce6c35d1b1e, type: 2}
+  attachmentSlots:
+  - slotType: 0
+    compatibleAttachments:
+    - {fileID: 11400000, guid: d410ecf5e21be8740af402c149382e6e, type: 2}
+  fireBehavior: {fileID: 11400000, guid: af926b4eb93411b4a90110eb51bc9806, type: 2}
+  animatorOverride: {fileID: 22100000, guid: 9cc918ef797bd1443be5751308136ab4, type: 2}
