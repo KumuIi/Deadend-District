@@ -22,10 +22,10 @@ MonoBehaviour:
   jumpBufferTime: 0.15
   groundMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   collisionMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 4294967295
   maxSlopeAngle: 45
   slideStopAngle: 30
   slideWiggleSpeed: 1.5
