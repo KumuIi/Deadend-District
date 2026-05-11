@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: ca0297ce82011db4eb8e634aa527c6a3
+timeCreated: 1526228399
+licenseType: Store
+AudioImporter:
+  serializedVersion: 6
+  defaultSettings:
+    loadType: 0
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 1
+    quality: 1
+    conversionMode: 0
+  platformSettingOverrides: {}
+  forceToMono: 0
+  normalize: 1
+  preloadAudioData: 1
+  loadInBackground: 0
+  3D: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/SFX/Ambient/Source/Dog_once_v3.wav
+  uploadId: 247219

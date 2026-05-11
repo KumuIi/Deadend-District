@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 521b97605d8faca41b65fe19d0652458
+timeCreated: 1525599133
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/Models/Light_props/Source/Beacon_fire_v1.mat
+  uploadId: 247219

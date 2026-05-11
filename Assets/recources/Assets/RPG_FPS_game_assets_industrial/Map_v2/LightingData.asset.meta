@@ -1,15 +1,16 @@
 fileFormatVersion: 2
-guid: e99e831b8dbffae45b1da15e3ac4ed4e
+guid: de3daea6566e9214a84f728072eaddce
+timeCreated: 1526802551
+licenseType: Store
 NativeFormatImporter:
-  externalObjects: {}
-  mainObjectFileID: 112000000
+  mainObjectFileID: 25800000
   userData: 
   assetBundleName: 
   assetBundleVariant: 
 AssetOrigin:
   serializedVersion: 1
-  productId: 101429
-  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v3.0)
-  packageVersion: 3.0
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
   assetPath: Assets/RPG_FPS_game_assets_industrial/Map_v2/LightingData.asset
-  uploadId: 642814
+  uploadId: 247219

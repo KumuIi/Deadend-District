@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 74829541662ce714f8e08b6e968643ad
+timeCreated: 1526316148
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/VFX/Particles/Steam/Steam_v3.prefab
+  uploadId: 247219

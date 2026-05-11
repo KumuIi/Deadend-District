@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 4b3309126dc751441b6e4caaa09bd0a0
+timeCreated: 1525605858
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/Models/Light_props/Illumstik_v1.prefab
+  uploadId: 247219

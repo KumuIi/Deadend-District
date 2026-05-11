@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 14128b2a49a65864e9d1fd8014a6d159
+timeCreated: 1525009113
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/Models/Roads/Road_sets/Road_set_v1/Road_set_v1_b_crossroad_2.prefab
+  uploadId: 247219
