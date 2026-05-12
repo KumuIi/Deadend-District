@@ -92,6 +92,13 @@ public class PlayerMotor : MonoBehaviour
     private const float StrafeDeadzone      = 0.1f;
 
     // ─────────────────────────────────────────────────────────────────────
+    
+    public bool  IsGrounded   => _grounded;
+    public bool  IsSprinting  => _input.SprintHeld && _input.MoveInput.y > 0f;
+    public bool  IsMoving     => new Vector3(_velocity.x, 0f, _velocity.z).sqrMagnitude > 0.01f;
+    public float VerticalVelocity => _velocity.y;
+    public Vector3 HorizontalVelocity => new Vector3(_velocity.x, 0f, _velocity.z);
+// ─────────────────────────────────────────────────────────────────────────────
 
     void Awake()
     {
