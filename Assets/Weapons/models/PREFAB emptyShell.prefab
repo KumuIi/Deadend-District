@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 8210684750232100471}
   - component: {fileID: 2149918172377551285}
   m_Layer: 0
-  m_Name: empty shell
+  m_Name: PREFAB emptyShell
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

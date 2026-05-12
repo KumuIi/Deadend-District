@@ -1,64 +1,56 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Holds all player-level references once and manages equip/unequip lifecycle.
-/// Instantiates gun prefabs lazily (first equip), caches them, and toggles
-/// SetActive instead of destroying so state (ammo, bolt pos) is preserved.
-///
-/// Weapon input / switching lives in WeaponSwitcher — this script is purely
-/// state + lifecycle.
+/// Holds all player-level references and manages equip/unequip.
+/// Guns are pre-placed in the scene hierarchy (disabled). Awake() initializes
+/// them all while they're still inactive, so Start() on each gun always runs
+/// with valid refs when it's first enabled.
 /// </summary>
 public class WeaponManager : MonoBehaviour
 {
     [Header("=== Player References ===")]
-    [Tooltip("The camera transform — passed to every gun on equip")]
-    public Transform playerCam;
-    [Tooltip("CameraController on the camera — used for lean data")]
+    public Transform        playerCam;
     public CameraController cameraController;
-    [Tooltip("PlayerMotor on the player root — used for movement-driven sway")]
-    public PlayerMotor playerMotor;
+    public PlayerMotor      playerMotor;
 
-    [Header("=== Weapon Socket ===")]
-    [Tooltip("Transform under which gun instances are spawned and parented")]
-    public Transform weaponSocket;
+    [Header("=== Weapons ===")]
+    [Tooltip("Drag in the gun GameObjects already placed under the player — all start disabled")]
+    public GunController[] weapons;
 
-    // ── Public properties read by Weapon.Initialize ───────────────────────
-    public Transform        PlayerCam          => playerCam;
-    public CameraController CameraController   => cameraController;
-    public PlayerMotor      PlayerMotor        => playerMotor;
+    public Transform        PlayerCam        => playerCam;
+    public CameraController CameraController => cameraController;
+    public PlayerMotor      PlayerMotor      => playerMotor;
 
-    public Weapon CurrentWeapon { get; private set; }
+    public GunController CurrentWeapon { get; private set; }
 
-    // Prefab → live instance cache
-    private readonly Dictionary<Weapon, Weapon> _instances = new();
-
-    // ── API ───────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Equip the weapon that corresponds to <paramref name="prefab"/>.
-    /// First call instantiates and initialises; subsequent calls just toggle active.
-    /// </summary>
-    public void Equip(Weapon prefab)
+    void Awake()
     {
-        if (prefab == null) return;
+        foreach (GunController gun in weapons)
+        {
+            if (gun == null) { Debug.LogWarning("WeaponManager: null entry in weapons[]", this); continue; }
+            gun.gameObject.SetActive(false);
+            gun.Initialize(this);
+        }
+    }
+
+    void Start()
+    {
+        Debug.Log($"WeaponManager.Start — weapons count: {weapons.Length}");
+        if (weapons.Length > 0)
+            Equip(0);
+    }
+
+    public void Equip(int index)
+    {
+        if (index < 0 || index >= weapons.Length) return;
 
         if (CurrentWeapon != null)
             CurrentWeapon.gameObject.SetActive(false);
 
-        if (!_instances.TryGetValue(prefab, out Weapon instance))
-        {
-            instance = Instantiate(prefab, weaponSocket);
-            instance.gameObject.SetActive(false); // keep disabled until initialized
-            instance.Initialize(this);
-            _instances[prefab] = instance;
-        }
-
-        instance.gameObject.SetActive(true);
-        CurrentWeapon = instance;
+        CurrentWeapon = weapons[index];
+        CurrentWeapon.gameObject.SetActive(true);
     }
 
-    /// <summary>Holster the current weapon without equipping another.</summary>
     public void Holster()
     {
         if (CurrentWeapon == null) return;

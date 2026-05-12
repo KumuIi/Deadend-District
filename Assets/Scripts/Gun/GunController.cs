@@ -1,16 +1,23 @@
 using UnityEngine;
 
 /// <summary>
-/// GunController — handles ADS pivot, firing, bolt, trigger, and casing ejection.
+/// GunController — entry point for weapon initialization, plus ADS pivot,
+/// firing, bolt, trigger, and casing ejection.
 ///
-/// Gun-internal refs (bones, sockets, FX) are serialized in the prefab Inspector.
-/// Player-level refs (gunPivot, playerCam) are injected by Weapon.Initialize()
-/// before this object is enabled, so Start() always has valid refs.
+/// Gun-internal refs (gunPivot, bones, sockets, FX) are serialized in the prefab
+/// Inspector once. Player-level refs (playerCam, motor, cameraController) are
+/// injected by WeaponManager.Equip() before this object is enabled, so Start()
+/// always has valid refs.
 /// </summary>
 [DefaultExecutionOrder(10000)]
 [RequireComponent(typeof(AudioSource))]
+[RequireComponent(typeof(GunSway))]
 public class GunController : MonoBehaviour
 {
+    [Header("=== Gun Pivot ===")]
+    [Tooltip("The GunPivot empty child — shared with GunSway")]
+    public Transform gunPivot;
+
     [Header("=== Bone References ===")]
     [Tooltip("Drag the 'top' bone (slider/bolt) from the Hierarchy")]
     public Transform topBone;
@@ -71,9 +78,10 @@ public class GunController : MonoBehaviour
     /// 0 = hip, 1 = full ADS
     public float AdsWeight  { get; private set; }
 
-    // ── Injected player refs (set by Weapon.Initialize before Start) ──────
-    private Transform _gunPivot;
+    // ── Injected player refs (set by WeaponManager.Equip before Start) ─────
     private Transform _playerCam;
+
+    private GunSway _sway;
 
     // ── Private state ─────────────────────────────────────────────────────
     private float        _nextFireTime;
@@ -102,20 +110,24 @@ public class GunController : MonoBehaviour
 
     // ── Injection ─────────────────────────────────────────────────────────
 
-    /// <summary>Called by Weapon.Initialize while the object is disabled.</summary>
-    public void Initialize(Transform gunPivot, Transform playerCam)
+    /// <summary>
+    /// Called by WeaponManager while the object is disabled.
+    /// Injects all player-level refs into this script and GunSway.
+    /// </summary>
+    public void Initialize(WeaponManager mgr)
     {
-        _gunPivot   = gunPivot;
-        _playerCam  = playerCam;
+        _playerCam = mgr.PlayerCam;
+        _sway      = GetComponent<GunSway>();
+        _sway.Initialize(gunPivot, mgr.PlayerMotor, mgr.PlayerCam, mgr.CameraController, this);
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
     void Start()
     {
-        if (topBone)     _boltRestPos    = topBone.localPosition;
+        if (topBone)    _boltRestPos    = topBone.localPosition;
         if (triggerBone) _triggerRestRot = triggerBone.localRotation;
-        if (_gunPivot)   _hipPosition    = _gunPivot.localPosition;
+        if (gunPivot)    _hipPosition    = gunPivot.localPosition;
 
         _audio = GetComponent<AudioSource>();
 
@@ -191,16 +203,16 @@ public class GunController : MonoBehaviour
 
     void ApplyAdsPivot()
     {
-        if (!_gunPivot || !aimSocket || !_playerCam || _adsWeight <= 0.001f) return;
+        if (!gunPivot || !aimSocket || !_playerCam || _adsWeight <= 0.001f) return;
 
-        Vector3 socketToGunPivot = _gunPivot.position - aimSocket.position;
+        Vector3 socketToGunPivot = gunPivot.position - aimSocket.position;
         Vector3 adsWorldPos      = _playerCam.position + socketToGunPivot;
-        Vector3 adsLocalPos      = _gunPivot.parent
-            ? _gunPivot.parent.InverseTransformPoint(adsWorldPos)
+        Vector3 adsLocalPos      = gunPivot.parent
+            ? gunPivot.parent.InverseTransformPoint(adsWorldPos)
             : adsWorldPos;
 
-        _gunPivot.localPosition = Vector3.Lerp(
-            _gunPivot.localPosition, adsLocalPos, _adsWeight);
+        gunPivot.localPosition = Vector3.Lerp(
+            gunPivot.localPosition, adsLocalPos, _adsWeight);
     }
 
     // ── Fire ──────────────────────────────────────────────────────────────
