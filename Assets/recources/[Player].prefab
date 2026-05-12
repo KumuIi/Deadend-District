@@ -600,6 +600,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1094736368720247776}
+  - component: {fileID: 4227657300526545024}
+  - component: {fileID: 446781272328360578}
+  - component: {fileID: 8518931408747988635}
   m_Layer: 0
   m_Name: makarov128pxDone
   m_TagString: Untagged
@@ -623,8 +626,187 @@ Transform:
   - {fileID: 5231636852573174135}
   - {fileID: 1760470854029840249}
   - {fileID: 5957222006757675472}
+  - {fileID: 7380429997419178615}
   m_Father: {fileID: 2299208198941187968}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
+--- !u!114 &4227657300526545024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2375902450690658990}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9ee8665e4eca2e478aa221f6f7775af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GunController
+  topBone: {fileID: 3514451433758029811}
+  triggerBone: {fileID: 5322407339747915361}
+  muzzlePoint: {fileID: 7380429997419178615}
+  muzzleFlashPrefab: {fileID: 0}
+  gunshotClip: {fileID: 8300000, guid: 2a8a853b1be954c499cc8a83851d7000, type: 3}
+  casingPrefab: {fileID: 0}
+  casingEjectPoint: {fileID: 0}
+  casingEjectForce: 3
+  casingEjectSpread: 1.5
+  casingTorque: 8
+  casingLifetime: 4
+  aimSocket: {fileID: 0}
+  adsInTime: 0.15
+  adsOutTime: 0.12
+  adsFirerateMultiplier: 0.75
+  fireRate: 100
+  damage: 25
+  range: 100
+  hitLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  boltTravelDistance: 0.0005
+  boltBackTime: 0.0005
+  boltForwardTime: 0.07
+  triggerRotationAngle: 45
+  triggerPullTime: 0.1
+  triggerReleaseTime: 0.1
+  holdOpenKey: 104
+--- !u!114 &446781272328360578
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2375902450690658990}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5055565512c4f1d478a1144572f42d7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GunSway
+  swayAmount: 0.04
+  swaySmooth: 8
+  swayMaxDelta: 0.06
+  tiltAmount: 4
+  tiltSmooth: 8
+  adsTiltMultiplier: 0.2
+  leanGunTiltAmount: 5
+  breatheAmplitudeY: 0.0015
+  breatheAmplitudeX: 0.0008
+  breatheFrequency: 0.8
+  walkBobSpeedThreshold: 2
+  walkBobFrequency: 1
+  walkBobAmplitudeY: 0.01
+  walkBobAmplitudeX: 0.01
+  sprintBobFrequency: 1.7
+  sprintBobAmplitudeY: 0.012
+  sprintBobAmplitudeX: 0.02
+  sprintTiltZ: 20
+  sprintTiltSmooth: 6
+  airborneRiseAmount: 0.04
+  airborneRiseSmooth: 0.15
+  airborneReturnSmooth: 0.08
+  landSlamAmount: 0.05
+  landRecoverSmooth: 0
+  landVelocityThresh: -3
+  stepNudgeAmount: 0.006
+  stepNudgeSmooth: 10
+  masterIntensity: 1
+  returnSmooth: 12
+--- !u!82 &8518931408747988635
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2375902450690658990}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &2503806444055675931
 GameObject:
   m_ObjectHideFlags: 0
@@ -666,7 +848,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2299208198941187968}
   m_Layer: 6
-  m_Name: GunPivot
+  m_Name: '[Makarov]Pivot'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -680,13 +862,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2549015222869388544}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1094736368720247776}
-  m_Father: {fileID: 7681915681699475355}
+  m_Father: {fileID: 6514903454602418858}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2572629926051020115
 GameObject:
@@ -2023,6 +2205,37 @@ SkinnedMeshRenderer:
     m_Center: {x: -2.3283064e-10, y: -0.0016703422, z: 0.0001673635}
     m_Extent: {x: 0.0055167396, y: 0.0035143571, z: 0.0008431875}
   m_DirtyAABB: 0
+--- !u!1 &5953397187001596249
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7380429997419178615}
+  m_Layer: 0
+  m_Name: muzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7380429997419178615
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5953397187001596249}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.0909, y: 0.0472, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1094736368720247776}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6441400592114132357
 GameObject:
   m_ObjectHideFlags: 0
@@ -2068,6 +2281,7 @@ GameObject:
   - component: {fileID: 6576121701542909435}
   - component: {fileID: 3513889191098211496}
   - component: {fileID: 6115976582632229670}
+  - component: {fileID: 6033725508184216472}
   m_Layer: 6
   m_Name: '[Player]'
   m_TagString: Untagged
@@ -2167,6 +2381,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7256bbb7df9890c45a021512c11601da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInput
+--- !u!114 &6033725508184216472
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5308dc130a29e6b44b1bf82ab052d115, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponManager
+  playerCam: {fileID: 6052119987546144178}
+  cameraController: {fileID: 1468809247145183220}
+  playerMotor: {fileID: 3513889191098211496}
+  weaponSocket: {fileID: 7681915681699475355}
 --- !u!1 &6609069515782801019
 GameObject:
   m_ObjectHideFlags: 0
@@ -2231,6 +2461,38 @@ Transform:
   - {fileID: 2791598366712046385}
   m_Father: {fileID: 2453415590157969839}
   m_LocalEulerAnglesHint: {x: 59.589, y: 2.257, z: -10.557}
+--- !u!1 &6772170184165551465
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6514903454602418858}
+  m_Layer: 6
+  m_Name: Guns
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6514903454602418858
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6772170184165551465}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2299208198941187968}
+  m_Father: {fileID: 7681915681699475355}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6829691150663005136
 GameObject:
   m_ObjectHideFlags: 0
@@ -2403,6 +2665,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraController
   config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
+  playerInput: {fileID: 0}
+  leanAngle: 15
+  leanSideOffset: 0.15
+  leanSmooth: 10
 --- !u!114 &4640568856907054883
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3068,7 +3334,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7057505606382906845}
-  - {fileID: 2299208198941187968}
+  - {fileID: 6514903454602418858}
   m_Father: {fileID: 6052119987546144178}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6617269260189376774
