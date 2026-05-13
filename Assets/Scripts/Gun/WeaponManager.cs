@@ -35,7 +35,6 @@ public class WeaponManager : MonoBehaviour
 
     void Start()
     {
-        Debug.Log($"WeaponManager.Start — weapons count: {weapons.Length}");
         if (weapons.Length > 0)
             Equip(0);
     }

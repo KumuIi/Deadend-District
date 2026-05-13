@@ -1676,7 +1676,7 @@ MonoBehaviour:
   playerCam: {fileID: 6052119987546144178}
   cameraController: {fileID: 1468809247145183220}
   playerMotor: {fileID: 3513889191098211496}
-  weaponSocket: {fileID: 6514903454602418858}
+  weapons: []
 --- !u!114 &3272549334419077199
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1690,8 +1690,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSwitcher
   weaponManager: {fileID: 6033725508184216472}
-  weapons:
-  - {fileID: 4227657300526545024}
 --- !u!1 &6631947371988985609
 GameObject:
   m_ObjectHideFlags: 0
@@ -2715,8 +2713,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6514903454602418858}
   - {fileID: 6854219515366814736}
+  - {fileID: 6514903454602418858}
   m_Father: {fileID: 6052119987546144178}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6617269260189376774
@@ -3093,17 +3091,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4843076458699083795, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
   m_PrefabInstance: {fileID: 6691924420008529811}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &4227657300526545024 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7383047027659536147, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
-  m_PrefabInstance: {fileID: 6691924420008529811}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d9ee8665e4eca2e478aa221f6f7775af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GunController
 --- !u!4 &5957222006757675472 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1040947342551850563, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
