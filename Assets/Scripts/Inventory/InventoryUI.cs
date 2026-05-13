@@ -26,9 +26,10 @@ public class InventoryUI : MonoBehaviour
     public float cellSize   = 64f;
 
     [Header("=== Colours ===")]
-    public Color cellNormal    = new Color(0.18f, 0.18f, 0.24f, 1f);
-    public Color cellHighlight = new Color(0.15f, 0.65f, 0.15f, 1f);
-    public Color cellBlocked   = new Color(0.65f, 0.1f,  0.1f,  1f);
+    [Tooltip("Keep alpha low (0.15–0.3) so 3D models are visible behind the cells.")]
+    public Color cellNormal    = new Color(0.18f, 0.18f, 0.24f, 0.2f);
+    public Color cellHighlight = new Color(0.15f, 0.65f, 0.15f, 0.7f);
+    public Color cellBlocked   = new Color(0.65f, 0.1f,  0.1f,  0.7f);
 
     [Header("=== Position ===")]
     [Tooltip("Pixel gap between the panel's top-right corner and the screen's top-right corner")]
@@ -45,8 +46,8 @@ public class InventoryUI : MonoBehaviour
     public float tiltY = -8f;
 
     [Header("=== 3D Models ===")]
-    [Tooltip("Layer index for inventory item models. Create a layer named 'InventoryItems' in " +
-             "Project Settings → Tags and Layers, then enter its index here.")]
+    [Tooltip("Layer used exclusively for inventory models. Create a layer named " +
+             "'InventoryItems' in Project Settings → Tags and Layers.")]
     public int modelLayer = 31;
 
     [Header("=== Prefabs (optional) ===")]
@@ -63,7 +64,6 @@ public class InventoryUI : MonoBehaviour
     private RectTransform _panel;       // toggled on/off — NOT this.gameObject
     private RectTransform _itemsLayer;
     private RectTransform _dragLayer;
-    private Camera        _overlayCamera; // depth-only camera that draws 3D models on top
     private Canvas        _canvas;        // cached root canvas
 
     private InventoryItemView _draggedView;
@@ -86,91 +86,28 @@ public class InventoryUI : MonoBehaviour
 
         _canvas = GetComponentInParent<Canvas>();
 
+        if (_canvas == null)
+            Debug.LogError($"InventoryUI on '{gameObject.name}': no Canvas found in parents. " +
+                           "This component must be placed inside a Canvas hierarchy — " +
+                           "create a Canvas in the scene and make this a child of it.");
+
         // Scene-setup guards: drag/click requires both of these in the scene.
         if (_canvas != null && !_canvas.GetComponent<GraphicRaycaster>())
             Debug.LogWarning("InventoryUI: Canvas is missing a GraphicRaycaster — drag/click won't work.");
         if (!FindObjectOfType<EventSystem>())
             Debug.LogWarning("InventoryUI: No EventSystem in scene — drag/click won't work. Add one via GameObject > UI > Event System.");
 
-        // 3D model overlay requires the canvas to be in Screen Space – Camera mode.
-        // In Screen Space Overlay the canvas renders AFTER every camera, so world-space
-        // models are always hidden behind it. Switch Canvas > Render Mode to Screen Space – Camera.
         if (_canvas != null && _canvas.renderMode == RenderMode.ScreenSpaceOverlay)
-            Debug.LogError("InventoryUI: Canvas is Screen Space Overlay — 3D item models will be invisible. " +
-                           "Change the Canvas Render Mode to Screen Space – Camera and assign your player camera.");
+            Debug.LogWarning("InventoryUI: Canvas is Screen Space Overlay — the 3D tilt effect won't look correct. " +
+                             "Screen Space – Camera is recommended.");
 
         Grid = new InventoryGrid(gridWidth, gridHeight);
 
         SetupRootTransform();
         BuildPanel(GetComponent<RectTransform>());
-        CreateOverlayCamera();
 
         _panel.localEulerAngles = new Vector3(tiltX, tiltY, 0f);
         _panel.gameObject.SetActive(false); // hide panel, NOT this GO — Update() must keep running
-    }
-
-    void CreateOverlayCamera()
-    {
-        if (modelLayer < 0 || modelLayer > 31)
-        {
-            Debug.LogWarning("InventoryUI: modelLayer must be 0-31. 3D item models won't render.");
-            return;
-        }
-
-        // Not parented to the canvas — must live in scene world space so its transform
-        // can be synced to Camera.main each frame. Parenting to a RectTransform puts it
-        // at a corner of the panel, looking the wrong direction.
-        var go = new GameObject("InventoryModelOverlay");
-        _overlayCamera = go.AddComponent<Camera>();
-        _overlayCamera.cullingMask = 1 << modelLayer;
-        _overlayCamera.enabled     = false;
-
-        if (!TryConfigureAsURPOverlay())
-        {
-            // Built-In render pipeline: depth-only clear composites on top of everything.
-            _overlayCamera.clearFlags = CameraClearFlags.Depth;
-            _overlayCamera.depth      = 50;
-        }
-    }
-
-    // ── URP overlay camera wiring ─────────────────────────────────────────
-    // Stored so SetOpen can add/remove the overlay from the URP camera stack.
-    private System.Type   _urpDataType;    // UniversalAdditionalCameraData type, null = Built-In
-    private System.Object _urpMainData;   // main camera's URP data component
-
-    /// <summary>
-    /// Scans all loaded assemblies for URP types (no hard package dependency).
-    /// Configures the overlay camera as CameraRenderType.Overlay and suppresses
-    /// post-processing so it never re-blurs the scene.
-    /// Returns true if URP was found and configured; false = Built-In pipeline.
-    /// </summary>
-    bool TryConfigureAsURPOverlay()
-    {
-        if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline == null)
-            return false;
-
-        // Scan all assemblies — avoids fragile hardcoded assembly name
-        System.Type dataType = null;
-        foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
-        {
-            dataType = asm.GetType("UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
-            if (dataType != null) break;
-        }
-        if (dataType == null) return false;
-
-        var overlayData = _overlayCamera.GetComponent(dataType)
-                       ?? _overlayCamera.gameObject.AddComponent(dataType);
-
-        // renderType must be set as the actual enum value, not a bare int
-        var renderTypeProp = dataType.GetProperty("renderType");
-        if (renderTypeProp != null)
-            renderTypeProp.SetValue(overlayData,
-                System.Enum.ToObject(renderTypeProp.PropertyType, 1)); // 1 = Overlay
-
-        dataType.GetProperty("renderPostProcessing")?.SetValue(overlayData, false);
-
-        _urpDataType = dataType;
-        return true;
     }
 
     void Start()
@@ -182,48 +119,19 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        // Hide modelLayer from the main camera so only the overlay camera sees the models
-        mainCam.cullingMask &= ~(1 << modelLayer);
+        // Models are real scene objects now; main camera must render their layer.
+        mainCam.cullingMask |= 1 << modelLayer;
 
-        if (_urpDataType != null)
-            _urpMainData = mainCam.GetComponent(_urpDataType);
+        if (_canvas != null && _canvas.renderMode == RenderMode.ScreenSpaceCamera
+            && _canvas.worldCamera == null)
+            Debug.LogWarning("InventoryUI: Canvas Render Camera is not assigned — " +
+                             "set it to your player camera in the Canvas Inspector.");
     }
 
     void OnDestroy()
     {
         if (_panel != null && _panel.gameObject.activeSelf)
             GameInputState.Unblock();
-
-        if (_overlayCamera != null)
-        {
-            RemoveFromURPStack();
-            Destroy(_overlayCamera.gameObject);
-        }
-    }
-
-    // Adds/removes the overlay camera from the URP stack and enables/disables it.
-    // In URP, add+enable on open and remove+disable on close is the safest cross-version approach.
-    void SetURPStackActive(bool active)
-    {
-        if (_urpMainData == null) return;
-        var stack = _urpDataType.GetProperty("cameraStack")?.GetValue(_urpMainData)
-                    as System.Collections.IList;
-        if (stack == null) return;
-
-        if (active && !stack.Contains(_overlayCamera))
-            stack.Add(_overlayCamera);
-        else if (!active)
-            stack.Remove(_overlayCamera);
-
-        _overlayCamera.enabled = active;
-    }
-
-    void RemoveFromURPStack()
-    {
-        if (_urpDataType == null || _urpMainData == null) return;
-        var stack = _urpDataType.GetProperty("cameraStack")?.GetValue(_urpMainData)
-                    as System.Collections.IList;
-        stack?.Remove(_overlayCamera);
     }
 
     /// <summary>
@@ -269,40 +177,15 @@ public class InventoryUI : MonoBehaviour
 
     public void SetHovered(InventoryItemView view) => _hoveredView = view;
 
-    // Overlay camera must match the scene camera every frame so models project onto
-    // their correct screen positions and the "facing north" rotation issue is avoided.
-    void LateUpdate()
-    {
-        if (_overlayCamera == null || !_overlayCamera.enabled) return;
-        Camera src = GetRenderCamera();
-        if (src == null) return;
-        _overlayCamera.transform.SetPositionAndRotation(src.transform.position, src.transform.rotation);
-        _overlayCamera.fieldOfView    = src.fieldOfView;
-        _overlayCamera.nearClipPlane  = src.nearClipPlane;
-        _overlayCamera.farClipPlane   = src.farClipPlane;
-        _overlayCamera.aspect         = src.aspect;
-    }
-
-    // Use the canvas's assigned render camera; fall back to Camera.main.
-    Camera GetRenderCamera()
-    {
-        if (_canvas != null && _canvas.worldCamera != null) return _canvas.worldCamera;
-        return Camera.main;
-    }
-
     void SetOpen(bool open)
     {
         _panel.gameObject.SetActive(open);
 
-        if (_overlayCamera)
-        {
-            if (_urpDataType != null) SetURPStackActive(open);
-            else                      _overlayCamera.enabled = open;
-        }
-
-        // Show/hide 3D models — they live in world space so the camera alone isn't enough
         foreach (var view in _views.Values)
+        {
+            if (open) view.PlaceModel(); // re-snap model to current canvas position
             view.SetModelVisible(open);
+        }
 
         if (open) GameInputState.Block();
         else      GameInputState.Unblock();
@@ -325,9 +208,10 @@ public class InventoryUI : MonoBehaviour
         _panel.anchoredPosition = Vector2.zero;
         _panel.sizeDelta    = new Vector2(gridPixelW, gridPixelH);
 
-        // Dark background
+        // Transparent background — 3D models in the scene show through the canvas.
+        // A faint tint from cellNormal's low alpha gives the grid its visual structure.
         var bg   = _panel.gameObject.AddComponent<Image>();
-        bg.color = new Color(0.05f, 0.05f, 0.08f, 0.95f);
+        bg.color = new Color(0f, 0f, 0f, 0f);
 
         BuildLayers(_panel, gridPixelW, gridPixelH);
     }

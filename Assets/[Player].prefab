@@ -228,8 +228,10 @@ GameObject:
   - component: {fileID: 6160974312123930727}
   - component: {fileID: 2249200740542372055}
   - component: {fileID: 8371605008115463076}
-  m_Layer: 6
-  m_Name: Panel
+  - component: {fileID: 7540430925693762199}
+  - component: {fileID: 4456151400688467550}
+  m_Layer: 7
+  m_Name: InventoryUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -306,14 +308,59 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InventoryUI
   gridWidth: 5
   gridHeight: 10
-  cellSize: 64
+  cellSize: 25
   cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.9}
   cellHighlight: {r: 0.15, g: 0.65, b: 0.15, a: 0.9}
   cellBlocked: {r: 0.65, g: 0.1, b: 0.1, a: 0.9}
-  cellBorder: {r: 0.25, g: 0.25, b: 0.3, a: 0.5}
+  paddingRight: 20
+  paddingTop: 20
+  tiltX: 0
+  tiltY: 25
+  modelLayer: 31
   cellPrefab: {fileID: 0}
   itemViewPrefab: {fileID: 0}
   openKey: 9
+  rotateKey: 114
+--- !u!223 &7540430925693762199
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626063122134828695}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 0
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 0
+  m_TargetDisplay: 0
+--- !u!114 &4456151400688467550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626063122134828695}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.GraphicRaycaster
+  m_IgnoreReversedGraphics: 1
+  m_BlockingObjects: 0
+  m_BlockingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &1979208203826863827
 GameObject:
   m_ObjectHideFlags: 0
@@ -524,7 +571,7 @@ GameObject:
   - component: {fileID: 2856363764570276122}
   - component: {fileID: 5119149563980311176}
   - component: {fileID: 5225043522839316477}
-  m_Layer: 6
+  m_Layer: 7
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -560,9 +607,9 @@ Canvas:
   m_GameObject: {fileID: 2414894659310627983}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
-  m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
+  m_RenderMode: 1
+  m_Camera: {fileID: 8539914166893846076}
+  m_PlaneDistance: 1
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
   m_OverrideSorting: 0
@@ -1927,7 +1974,7 @@ GameObject:
   - component: {fileID: 4640568856907054883}
   m_Layer: 6
   m_Name: '[Camera]'
-  m_TagString: Untagged
+  m_TagString: MainCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1987,7 +2034,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 55
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0

@@ -3,9 +3,9 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Invisible hit-test surface in the UI grid that owns a real world-space 3D model.
-/// The model is spawned in world space on a dedicated layer and positioned every
-/// LateUpdate to match this rect's world corners, so it visually sits on the grid.
+/// Hit-test surface in the inventory grid. The item's 3D model prefab is instantiated as a
+/// normal scene object and physically placed at the cell's world-space position so it appears
+/// to lie flat on the inventory panel. No RenderTexture or per-item camera involved.
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 [RequireComponent(typeof(RawImage))]
@@ -20,17 +20,10 @@ public class InventoryItemView : MonoBehaviour,
     private RectTransform _rect;
     private RawImage      _image;
     private CanvasGroup   _group;
+    private bool          _isDragging;
+    private GameObject    _model;
 
-    // Real 3D model displayed in world space above the grid cell(s)
-    private GameObject _model;
-    private Vector3    _modelScale = Vector3.one;
-    private bool       _scaleDirty = true;
-    private bool       _isDragging;
-
-    // Nice isometric-ish display angle
-    private static readonly Quaternion DisplayRotation = Quaternion.Euler(25f, 35f, 0f);
-
-    // ── Initialisation ─────────────────────────────────────────────────────
+    // ── Initialisation ─────────────────────────────────────────────────────────
 
     public void Initialize(ItemInstance item, InventoryUI owner, int modelLayer, float cellSize)
     {
@@ -41,29 +34,69 @@ public class InventoryItemView : MonoBehaviour,
         _image = GetComponent<RawImage>();
         _group = GetComponent<CanvasGroup>();
 
-        // Invisible hit surface — 3D model provides all visuals.
-        // We need a tiny non-zero alpha so UGUI still registers this as a valid raycast target.
-        _image.color         = new Color(1f, 1f, 1f, 0.004f);
+        // RawImage is fully transparent — it exists only to receive pointer/drag events.
+        _image.color         = new Color(0f, 0f, 0f, 0f);
         _image.raycastTarget = true;
 
         RefreshLayout(cellSize);
 
-        if (item.data.modelPrefab != null)
+        if (item.data.modelPrefab == null) return;
+
+        _model = Instantiate(item.data.modelPrefab);
+        _model.SetActive(false); // hidden until inventory is opened
+        SetLayerRecursive(_model, modelLayer);
+
+        PlaceModel();
+    }
+
+    // ── 3D placement ───────────────────────────────────────────────────────────
+
+    // Positions and scales the model so it physically occupies its grid cells.
+    // Forcing canvas layout update ensures GetWorldCorners returns valid positions
+    // even when called in the same frame the item is spawned.
+    public void PlaceModel()
+    {
+        if (_model == null) return;
+
+        Canvas.ForceUpdateCanvases();
+
+        var corners = new Vector3[4];
+        _rect.GetWorldCorners(corners);
+        // corners: [0]=BL  [1]=TL  [2]=TR  [3]=BR
+
+        Vector3 center = (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
+
+        // World-space size of one grid unit so multi-cell items scale correctly.
+        float worldW   = Vector3.Distance(corners[0], corners[3]);
+        float worldH   = Vector3.Distance(corners[0], corners[1]);
+        float cellUnit = Mathf.Min(worldW / Item.CurrentSize.x, worldH / Item.CurrentSize.y);
+
+        // Lie flat on the panel surface:
+        //   _rect.rotation encodes the panel tilt (e.g. tiltX=35, tiltY=-8).
+        //   Euler(-90, …, 0) in that local space rotates the model so its top
+        //   faces the viewer instead of its front — "lying on its back" on the panel.
+        float yawOffset = Item.isRotated ? 90f : 0f;
+        _model.transform.rotation = _rect.rotation * Quaternion.Euler(-90f, yawOffset, 0f);
+
+        // Offset slightly toward the camera so the model is in front of the panel quad,
+        // preventing z-fighting with the canvas background image.
+        _model.transform.position = center - _rect.forward * 0.004f;
+
+        // Scale to fill ~75 % of one cell unit (leaves a visible margin).
+        _model.transform.localScale = Vector3.one;
+        var b = new Bounds(_model.transform.position, Vector3.zero);
+        foreach (var r in _model.GetComponentsInChildren<Renderer>(true))
+            b.Encapsulate(r.bounds);
+
+        if (b.extents != Vector3.zero)
         {
-            _model = Instantiate(item.data.modelPrefab);
-            SetLayerRecursive(_model, modelLayer);
-            _model.SetActive(false); // hidden until inventory opens
+            float diameter = b.extents.magnitude * 2f;
+            _model.transform.localScale = Vector3.one * (cellUnit * 0.75f / diameter);
         }
     }
 
-    public void SetModelVisible(bool visible)
-    {
-        if (_model != null) _model.SetActive(visible);
-    }
+    // ── Public API ─────────────────────────────────────────────────────────────
 
-    // ── Layout ─────────────────────────────────────────────────────────────
-
-    /// <summary>Snaps the rect to the item's current grid position and marks scale dirty.</summary>
     public void RefreshLayout(float cellSize)
     {
         Vector2Int sz = Item.CurrentSize;
@@ -71,75 +104,32 @@ public class InventoryItemView : MonoBehaviour,
         _rect.anchoredPosition = new Vector2(
              Item.gridPosition.x * cellSize,
             -Item.gridPosition.y * cellSize);
-        _scaleDirty = true; // world size may have changed (e.g. after rotation)
+
+        PlaceModel();
     }
 
-    // ── Drag state ─────────────────────────────────────────────────────────
+    public void SetModelVisible(bool visible)
+    {
+        if (_model != null) _model.SetActive(visible);
+    }
 
     public void SetDragging(bool dragging)
     {
         _isDragging           = dragging;
-        _group.blocksRaycasts = !dragging; // must be false so drag layer doesn't eat events
+        _group.blocksRaycasts = !dragging;
+
+        // Hide the physical model while the ghost is being dragged; show on drop.
+        if (_model != null) _model.SetActive(!dragging);
     }
 
-    // ── 3D model sync ──────────────────────────────────────────────────────
-
-    void LateUpdate()
-    {
-        if (_model == null) return;
-
-        var corners = new Vector3[4];
-        _rect.GetWorldCorners(corners);
-        // corners: 0=BL, 1=TL, 2=TR, 3=BR
-        Vector3 center = (corners[0] + corners[2]) * 0.5f;
-
-        if (_scaleDirty)
-        {
-            float worldW = (corners[3] - corners[0]).magnitude;
-            float worldH = (corners[1] - corners[0]).magnitude;
-            if (worldW > 0.0001f)
-            {
-                _modelScale = ComputeFitScale(worldW, worldH);
-                _scaleDirty = false;
-            }
-        }
-
-        // Place model slightly in front of the canvas plane so the overlay camera sees it.
-        // _rect.forward points INTO the screen; negating it points toward the viewer.
-        _model.transform.position = center - _rect.forward * 0.1f;
-
-        // Rotation is camera-relative so the isometric display angle is constant regardless
-        // of which direction the player faces (the overlay camera always matches Camera.main).
-        Camera cam = Camera.main;
-        _model.transform.rotation   = cam != null ? cam.transform.rotation * DisplayRotation : DisplayRotation;
-        _model.transform.localScale = _modelScale;
-        _model.SetActive(true);
-    }
+    // ── Cleanup ────────────────────────────────────────────────────────────────
 
     void OnDestroy()
     {
         if (_model != null) Destroy(_model);
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────
-
-    Vector3 ComputeFitScale(float worldW, float worldH)
-    {
-        _model.transform.localScale = Vector3.one;
-        _model.transform.rotation   = DisplayRotation;
-
-        var bounds = new Bounds(_model.transform.position, Vector3.zero);
-        foreach (var r in _model.GetComponentsInChildren<Renderer>())
-            bounds.Encapsulate(r.bounds);
-
-        if (bounds.extents == Vector3.zero)
-            return Vector3.one * (worldH * 0.5f);
-
-        // Fit within worldW × worldH with 15% padding, constrained by both axes
-        float sx = worldW * 0.85f / bounds.size.x;
-        float sy = worldH * 0.85f / bounds.size.y;
-        return Vector3.one * Mathf.Min(sx, sy);
-    }
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
     static void SetLayerRecursive(GameObject go, int layer)
     {
@@ -148,7 +138,7 @@ public class InventoryItemView : MonoBehaviour,
             t.gameObject.layer = layer;
     }
 
-    // ── Event forwarding ───────────────────────────────────────────────────
+    // ── Event forwarding ───────────────────────────────────────────────────────
 
     public void OnBeginDrag(PointerEventData e)    => Owner.OnItemBeginDrag(this, e);
     public void OnDrag(PointerEventData e)          => Owner.OnItemDrag(this, e);
