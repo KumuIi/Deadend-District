@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e5eb830dd07e9a479e54d0c276bd929, type: 3}
+  m_Name: Makarov
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponSO
+  itemName: Item
+  gridSize: {x: 2, y: 1}
+  modelPrefab: {fileID: 3711449249242201056, guid: e830617b892b431438596a43d84d4183, type: 3}
+  itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
+  caliber: 9x18
+  fireMode: 1
+  burstCount: 3
+  burstShotInterval: 0.08
+  fireRate: 600
+  baseDamage: 25
+  range: 100
+  hitLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  reloadTime: 1.8
+  defaultMagazineType: {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
+  adsInTime: 0.15
+  adsOutTime: 0.12
+  adsFirerateMultiplier: 0.75
+  boltTravelDistance: 0.0007
+  boltBackTime: 0.04
+  boltForwardTime: 0.1
+  triggerRotationAngle: 15
+  triggerPullTime: 0.03
+  triggerReleaseTime: 0.08
+  casingPrefab: {fileID: 3995026478072861770, guid: 17c2546342ab0d9419a04bcf4b3c1e30, type: 3}
+  casingEjectForce: 3
+  casingEjectSpread: 1.5
+  casingTorque: 8
+  casingLifetime: 4
+  muzzleFlashPrefab: {fileID: 1881687275341570813, guid: 05db9151f93e18e4598102ad0dd3c3c8, type: 3}
+  gunshotClip: {fileID: 8300000, guid: 2a8a853b1be954c499cc8a83851d7000, type: 3}
+  defaultAmmo: {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}

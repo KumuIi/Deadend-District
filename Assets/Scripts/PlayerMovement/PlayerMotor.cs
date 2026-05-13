@@ -117,7 +117,8 @@ public class PlayerMotor : MonoBehaviour
 
     void Update()
     {
-        _pendingYaw += Input.GetAxisRaw("Mouse X") * config.mouseSensitivity;
+        if (!GameInputState.GameplayBlocked)
+            _pendingYaw += Input.GetAxisRaw("Mouse X") * config.mouseSensitivity;
 
         if (_jumpBufferTimer > 0f)
             _jumpBufferTimer -= Time.deltaTime;

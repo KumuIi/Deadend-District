@@ -10,6 +10,15 @@ public class PlayerInput : MonoBehaviour
 
     void Update()
     {
+        if (GameInputState.GameplayBlocked)
+        {
+            MoveInput  = Vector2.zero;
+            SprintHeld = false;
+            LeanInput  = 0f;
+            // JumpPressed intentionally not cleared — buffered jumps expire naturally
+            return;
+        }
+
         MoveInput   = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         SprintHeld  = Input.GetKey(KeyCode.LeftShift);
         JumpPressed |= Input.GetKeyDown(KeyCode.Space);

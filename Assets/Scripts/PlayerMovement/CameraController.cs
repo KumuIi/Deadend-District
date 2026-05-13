@@ -33,9 +33,12 @@ public class CameraController : MonoBehaviour
 
     void LateUpdate()
     {
-        float mouseY = Input.GetAxisRaw("Mouse Y") * config.mouseSensitivity * _fovRatio;
-        _pitch -= mouseY;
-        _pitch = Mathf.Clamp(_pitch, -config.verticalLookLimit, config.verticalLookLimit);
+        if (!GameInputState.GameplayBlocked)
+        {
+            float mouseY = Input.GetAxisRaw("Mouse Y") * config.mouseSensitivity * _fovRatio;
+            _pitch -= mouseY;
+            _pitch = Mathf.Clamp(_pitch, -config.verticalLookLimit, config.verticalLookLimit);
+        }
 
         // ── Lean ─────────────────────────────────────────────────────────────
         float leanTarget = playerInput ? playerInput.LeanInput : 0f;

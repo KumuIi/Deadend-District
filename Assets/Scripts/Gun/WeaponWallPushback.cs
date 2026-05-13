@@ -1,32 +1,54 @@
 using UnityEngine;
 
+/// <summary>
+/// WeaponWallPushback — pulls the gun back on the Z axis when the muzzle
+/// is close to or inside a wall, preventing clipping.
+///
+/// ATTACH THIS to a PARENT node that wraps the gun pivot, NOT to the gun
+/// pivot itself — otherwise GunSway/GunController overwrite localPosition
+/// every frame on the same object.
+///
+/// Hierarchy example:
+///   WeaponHolder          ← attach WeaponWallPushback here
+///     └─ GunPivot         ← GunSway / GunController live here
+///          └─ GunMesh
+///
+/// FIX 1: Removed double-lerp (was smoothing currentPushback AND currentLocalPos).
+/// FIX 2: [DefaultExecutionOrder(-100)] ensures this runs before GunSway/GunController
+///         so the parent offset is stable when sway reads its rest position.
+/// FIX 3: Added collisionMask fallback so the SphereCast works out-of-the-box.
+/// </summary>
+[DefaultExecutionOrder(-100)]
 public class WeaponWallPushback : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private Transform gunTip;          // Point near the muzzle/front of the gun
-    [SerializeField] private Transform castOrigin;      // Usually your camera or weapon root parent
+    [SerializeField] private Transform gunTip;     // Point near the muzzle/front of the gun
+    [SerializeField] private Transform castOrigin; // Usually your camera transform
 
     [Header("Detection")]
-    [SerializeField] private float checkDistance = 1.0f;
-    [SerializeField] private float sphereRadius = 0.08f;
+    [SerializeField] private float     checkDistance = 1.0f;
+    [SerializeField] private float     sphereRadius  = 0.08f;
     [SerializeField] private LayerMask collisionMask;
 
     [Header("Pushback")]
-    [SerializeField] private float maxPushback = 0.5f;
-    [SerializeField] private float pushbackPadding = 0.05f;
-    [SerializeField] private float smoothSpeed = 12f;
+    [SerializeField] private float maxPushback      = 0.5f;
+    [SerializeField] private float pushbackPadding  = 0.05f;
+    [SerializeField] private float smoothSpeed      = 12f;
 
-    private Vector3 defaultLocalPos;
-    private Vector3 currentLocalPos;
-    private float currentPushback;
+    private Vector3 _defaultLocalPos;
+    private Vector3 _currentLocalPos;
 
     private void Start()
     {
-        defaultLocalPos = transform.localPosition;
-        currentLocalPos = defaultLocalPos;
+        _defaultLocalPos = transform.localPosition;
+        _currentLocalPos = _defaultLocalPos;
 
         if (castOrigin == null)
             castOrigin = Camera.main != null ? Camera.main.transform : transform.parent;
+
+        // FIX 3: fall back to "Default" layer if nothing was assigned in Inspector
+        if (collisionMask == 0)
+            collisionMask = LayerMask.GetMask("Default");
     }
 
     private void LateUpdate()
@@ -35,24 +57,24 @@ public class WeaponWallPushback : MonoBehaviour
 
         if (gunTip != null && castOrigin != null)
         {
-            Vector3 origin = castOrigin.position;
+            Vector3 origin    = castOrigin.position;
             Vector3 direction = (gunTip.position - origin).normalized;
 
             float distanceToTip = Vector3.Distance(origin, gunTip.position);
-            float castDistance = Mathf.Max(checkDistance, distanceToTip);
+            float castDistance  = Mathf.Max(checkDistance, distanceToTip);
 
-            if (Physics.SphereCast(origin, sphereRadius, direction, out RaycastHit hit, castDistance, collisionMask, QueryTriggerInteraction.Ignore))
+            if (Physics.SphereCast(origin, sphereRadius, direction, out RaycastHit hit,
+                castDistance, collisionMask, QueryTriggerInteraction.Ignore))
             {
                 float desired = castDistance - hit.distance + pushbackPadding;
                 targetPushback = Mathf.Clamp(desired, 0f, maxPushback);
             }
         }
 
-        currentPushback = Mathf.Lerp(currentPushback, targetPushback, Time.deltaTime * smoothSpeed);
+        // FIX 1: single lerp — smooth directly to the target local position
+        Vector3 targetLocalPos = _defaultLocalPos - new Vector3(0f, 0f, targetPushback);
+        _currentLocalPos = Vector3.Lerp(_currentLocalPos, targetLocalPos, Time.deltaTime * smoothSpeed);
 
-        Vector3 targetLocalPos = defaultLocalPos - new Vector3(0f, 0f, currentPushback);
-        currentLocalPos = Vector3.Lerp(currentLocalPos, targetLocalPos, Time.deltaTime * smoothSpeed);
-
-        transform.localPosition = currentLocalPos;
+        transform.localPosition = _currentLocalPos;
     }
 }

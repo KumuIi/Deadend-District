@@ -6,6 +6,11 @@ using UnityEngine;
 /// All player-level refs (gunPivot, playerMotor, playerCam, cameraController,
 /// gunController) are injected by Weapon.Initialize() before this object is
 /// enabled. Gun-specific tuning lives entirely in the Inspector.
+///
+/// FIX: Moved final pivot write from Update → LateUpdate so execution order is:
+///   1. GunSway.LateUpdate  (writes sway offsets, lower exec order)
+///   2. GunController.LateUpdate (applies ADS on top, exec order 10000)
+///   3. Animation Rigging IK evaluates — sees the correct final position
 /// </summary>
 public class GunSway : MonoBehaviour
 {
@@ -15,8 +20,8 @@ public class GunSway : MonoBehaviour
     public float swayMaxDelta = 0.06f;
 
     [Header("=== Mouse Tilt (Roll) ===")]
-    public float tiltAmount        = 4f;
-    public float tiltSmooth        = 8f;
+    public float tiltAmount  = 4f;
+    public float tiltSmooth  = 8f;
     [Tooltip("Tilt multiplier while ADS (set lower to reduce roll when aiming)")]
     public float adsTiltMultiplier = 0.2f;
 
@@ -43,14 +48,14 @@ public class GunSway : MonoBehaviour
     public float sprintTiltSmooth    = 6f;
 
     [Header("=== Airborne ===")]
-    public float airborneRiseAmount   = 0.04f;
-    public float airborneRiseSmooth   = 0.15f;
-    public float airborneReturnSmooth = 0.08f;
+    public float airborneRiseAmount    = 0.04f;
+    public float airborneRiseSmooth    = 0.15f;
+    public float airborneReturnSmooth  = 0.08f;
 
     [Header("=== Landing Slam ===")]
-    public float landSlamAmount     = 0.025f;
-    public float landRecoverSmooth  = 0.06f;
-    public float landVelocityThresh = -3f;
+    public float landSlamAmount      = 0.025f;
+    public float landRecoverSmooth   = 0.06f;
+    public float landVelocityThresh  = -3f;
 
     [Header("=== Footstep Nudge ===")]
     public float stepNudgeAmount = 0.003f;
@@ -62,11 +67,11 @@ public class GunSway : MonoBehaviour
     public float returnSmooth    = 12f;
 
     // ── Injected refs (set by Weapon.Initialize before Start) ────────────
-    private Transform        _gunPivot;
-    private PlayerMotor      _playerMotor;
-    private Transform        _playerCam;
-    private CameraController _cameraController;
-    private GunController    _gunController;
+    private Transform          _gunPivot;
+    private PlayerMotor        _playerMotor;
+    private Transform          _playerCam;
+    private CameraController   _cameraController;
+    private GunController      _gunController;
 
     // ── Private state ─────────────────────────────────────────────────────
     private Vector3    _currentPos;
@@ -119,13 +124,15 @@ public class GunSway : MonoBehaviour
             return;
         }
 
-        _restPos     = _gunPivot.localPosition;
-        _restRot     = _gunPivot.localRotation;
-        _currentPos  = _restPos;
-        _currentRot  = _restRot;
+        _restPos    = _gunPivot.localPosition;
+        _restRot    = _gunPivot.localRotation;
+        _currentPos = _restPos;
+        _currentRot = _restRot;
         _wasGrounded = _playerMotor ? _playerMotor.IsGrounded : true;
     }
 
+    // FIX: all state simulation still happens in Update (so deltaTime is right),
+    // but the pivot write moves to LateUpdate so IK sees the final position.
     void Update()
     {
         if (!_gunPivot || !_playerMotor) return;
@@ -136,9 +143,6 @@ public class GunSway : MonoBehaviour
         float vertVel    = _playerMotor.VerticalVelocity;
         float horizSpeed = _playerMotor.HorizontalVelocity.magnitude;
 
-        // hipWeight suppresses mouse-driven sway (precision matters when aiming).
-        // bobWeight uses a softer curve so movement sway persists at half strength
-        // when ADS — naturally zero when standing still since shouldBob is false.
         float adsWeight = _gunController ? _gunController.AdsWeight : 0f;
         float hipWeight = 1f - adsWeight;
         float bobWeight = Mathf.Lerp(1f, 0.5f, adsWeight);
@@ -157,8 +161,8 @@ public class GunSway : MonoBehaviour
             _mouseTiltCurrent, tiltTarget, ref _mouseTiltVelocity, 1f / tiltSmooth);
 
         // ── Breathing ─────────────────────────────────────────────────────
-        float breathT = Time.time * breatheFrequency * Mathf.PI * 2f;
-        bool  isIdle  = horizSpeed < walkBobSpeedThreshold && grounded;
+        float breathT   = Time.time * breatheFrequency * Mathf.PI * 2f;
+        bool  isIdle    = horizSpeed < walkBobSpeedThreshold && grounded;
         Vector3 breatheOffset = isIdle
             ? new Vector3(
                 Mathf.Sin(breathT * 0.7f) * breatheAmplitudeX,
@@ -167,9 +171,9 @@ public class GunSway : MonoBehaviour
             : Vector3.zero;
 
         // ── Walk / sprint bob ─────────────────────────────────────────────
-        bool isWalking   = horizSpeed >= walkBobSpeedThreshold && grounded && !sprinting;
+        bool isWalking  = horizSpeed >= walkBobSpeedThreshold && grounded && !sprinting;
         bool isSprinting = sprinting && grounded;
-        bool shouldBob   = isWalking || isSprinting;
+        bool shouldBob  = isWalking || isSprinting;
 
         float bobFreq = isSprinting ? sprintBobFrequency : walkBobFrequency;
         float bobAmpY = isSprinting ? sprintBobAmplitudeY : walkBobAmplitudeY;
@@ -184,15 +188,16 @@ public class GunSway : MonoBehaviour
         int currentStep = Mathf.FloorToInt(_bobTimer / Mathf.PI);
         if (shouldBob && currentStep != _lastBobStep)
         {
-            _lastBobStep     = currentStep;
+            _lastBobStep    = currentStep;
             _stepNudgeOffset = (currentStep % 2 == 0 ? 1f : -1f) * stepNudgeAmount;
         }
+
         _stepNudgeOffset = Mathf.SmoothDamp(
             _stepNudgeOffset, 0f, ref _stepNudgeVelocity, 1f / stepNudgeSmooth);
 
         Vector3 bobOffset = shouldBob
             ? new Vector3(
-                Mathf.Sin(_bobTimer)            * bobAmpX + _stepNudgeOffset,
+                Mathf.Sin(_bobTimer)           * bobAmpX + _stepNudgeOffset,
                 Mathf.Abs(Mathf.Sin(_bobTimer)) * bobAmpY,
                 0f) * bobWeight
             : Vector3.zero;
@@ -219,8 +224,8 @@ public class GunSway : MonoBehaviour
             _landOffset   = -landSlamAmount * impact;
             _landVelocity = 0f;
         }
-        _landOffset           = Mathf.SmoothDamp(_landOffset, 0f, ref _landVelocity, landRecoverSmooth);
-        _wasGrounded          = grounded;
+        _landOffset  = Mathf.SmoothDamp(_landOffset, 0f, ref _landVelocity, landRecoverSmooth);
+        _wasGrounded = grounded;
         _lastVerticalVelocity = vertVel;
 
         // ── Compose target ────────────────────────────────────────────────
@@ -228,20 +233,30 @@ public class GunSway : MonoBehaviour
             + (swayOffset + breatheOffset + bobOffset) * masterIntensity
             + new Vector3(0f, (_airborneOffset + _landOffset) * masterIntensity, 0f);
 
-        float      totalZ     = (_mouseTiltCurrent + _sprintTiltCurrent) * masterIntensity + leanTilt;
-        Quaternion targetRot  = _restRot * Quaternion.Euler(0f, 0f, totalZ);
+        float     totalZ    = (_mouseTiltCurrent + _sprintTiltCurrent) * masterIntensity + leanTilt;
+        Quaternion targetRot = _restRot * Quaternion.Euler(0f, 0f, totalZ);
 
         // ── Smooth to target ──────────────────────────────────────────────
         _currentPos = Vector3.SmoothDamp(_currentPos, targetPos, ref _posVelocity, 1f / returnSmooth);
 
         Vector3 ce = _currentRot.eulerAngles;
         Vector3 te = targetRot.eulerAngles;
-        float ex = Mathf.SmoothDampAngle(ce.x, te.x, ref _rotXVel, 1f / returnSmooth);
-        float ey = Mathf.SmoothDampAngle(ce.y, te.y, ref _rotYVel, 1f / returnSmooth);
-        float ez = Mathf.SmoothDampAngle(ce.z, te.z, ref _rotZVel, 1f / returnSmooth);
+        float ex   = Mathf.SmoothDampAngle(ce.x, te.x, ref _rotXVel, 1f / returnSmooth);
+        float ey   = Mathf.SmoothDampAngle(ce.y, te.y, ref _rotYVel, 1f / returnSmooth);
+        float ez   = Mathf.SmoothDampAngle(ce.z, te.z, ref _rotZVel, 1f / returnSmooth);
         _currentRot = Quaternion.Euler(ex, ey, ez);
 
-        // Write to pivot — GunController.Update will override with ADS on top
+        // FIX: do NOT write to pivot here anymore — moved to LateUpdate below.
+    }
+
+    // FIX: write sway result in LateUpdate so the order is:
+    //   GunSway.LateUpdate (this, default exec order) → writes sway base
+    //   GunController.LateUpdate (exec order 10000)   → adds ADS shift on top
+    //   Animation Rigging IK                           → reads correct final pos
+    void LateUpdate()
+    {
+        if (!_gunPivot) return;
+
         _gunPivot.localPosition = _currentPos;
         _gunPivot.localRotation = _currentRot;
     }
