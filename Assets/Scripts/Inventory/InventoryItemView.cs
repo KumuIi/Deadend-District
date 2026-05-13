@@ -66,23 +66,22 @@ public class InventoryItemView : MonoBehaviour,
 
         Vector3 center = (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
 
-        // World-space size of one grid unit so multi-cell items scale correctly.
-        float worldW   = Vector3.Distance(corners[0], corners[3]);
-        float worldH   = Vector3.Distance(corners[0], corners[1]);
-        float cellUnit = Mathf.Min(worldW / Item.CurrentSize.x, worldH / Item.CurrentSize.y);
+        // Total world-space footprint of the item (all cells combined).
+        float worldW = Vector3.Distance(corners[0], corners[3]);
+        float worldH = Vector3.Distance(corners[0], corners[1]);
 
-        // Lie flat on the panel surface:
-        //   _rect.rotation encodes the panel tilt (e.g. tiltX=35, tiltY=-8).
-        //   Euler(-90, …, 0) in that local space rotates the model so its top
-        //   faces the viewer instead of its front — "lying on its back" on the panel.
+        // Lie flat on the panel surface.
+        // _rect.rotation encodes the panel tilt; Euler(-90, …, 0) rotates the model
+        // so its top faces the viewer rather than its front.
         float yawOffset = Item.isRotated ? 90f : 0f;
         _model.transform.rotation = _rect.rotation * Quaternion.Euler(-90f, yawOffset, 0f);
 
-        // Offset slightly toward the camera so the model is in front of the panel quad,
-        // preventing z-fighting with the canvas background image.
+        // Offset slightly toward the camera to sit in front of the panel quad.
         _model.transform.position = center - _rect.forward * 0.004f;
 
-        // Scale to fill ~75 % of one cell unit (leaves a visible margin).
+        // Scale: fit the model's bounding sphere to 80 % of the item's longest world-space
+        // dimension. Using Max(W, H) rather than a per-cell value keeps the size identical
+        // in both rotations — a 2×1 and a 1×2 item both resolve to the same longer edge.
         _model.transform.localScale = Vector3.one;
         var b = new Bounds(_model.transform.position, Vector3.zero);
         foreach (var r in _model.GetComponentsInChildren<Renderer>(true))
@@ -90,8 +89,9 @@ public class InventoryItemView : MonoBehaviour,
 
         if (b.extents != Vector3.zero)
         {
-            float diameter = b.extents.magnitude * 2f;
-            _model.transform.localScale = Vector3.one * (cellUnit * 0.75f / diameter);
+            float fitSize      = Mathf.Max(worldW, worldH) * 0.8f;
+            float modelRadius  = b.extents.magnitude;
+            _model.transform.localScale = Vector3.one * (fitSize * 0.5f / modelRadius);
         }
     }
 
