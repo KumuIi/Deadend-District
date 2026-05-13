@@ -64,6 +64,7 @@ public class InventoryUI : MonoBehaviour
     private RectTransform _itemsLayer;
     private RectTransform _dragLayer;
     private Camera        _overlayCamera; // depth-only camera that draws 3D models on top
+    private Canvas        _canvas;        // cached root canvas
 
     private InventoryItemView _draggedView;
     private InventoryItemView _hoveredView;
@@ -83,11 +84,20 @@ public class InventoryUI : MonoBehaviour
         var defaultImage = GetComponent<Image>();
         if (defaultImage) Destroy(defaultImage);
 
+        _canvas = GetComponentInParent<Canvas>();
+
         // Scene-setup guards: drag/click requires both of these in the scene.
-        if (GetComponentInParent<Canvas>() is Canvas cv && !cv.GetComponent<GraphicRaycaster>())
+        if (_canvas != null && !_canvas.GetComponent<GraphicRaycaster>())
             Debug.LogWarning("InventoryUI: Canvas is missing a GraphicRaycaster — drag/click won't work.");
         if (!FindObjectOfType<EventSystem>())
             Debug.LogWarning("InventoryUI: No EventSystem in scene — drag/click won't work. Add one via GameObject > UI > Event System.");
+
+        // 3D model overlay requires the canvas to be in Screen Space – Camera mode.
+        // In Screen Space Overlay the canvas renders AFTER every camera, so world-space
+        // models are always hidden behind it. Switch Canvas > Render Mode to Screen Space – Camera.
+        if (_canvas != null && _canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            Debug.LogError("InventoryUI: Canvas is Screen Space Overlay — 3D item models will be invisible. " +
+                           "Change the Canvas Render Mode to Screen Space – Camera and assign your player camera.");
 
         Grid = new InventoryGrid(gridWidth, gridHeight);
 
@@ -107,8 +117,10 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
+        // Not parented to the canvas — must live in scene world space so its transform
+        // can be synced to Camera.main each frame. Parenting to a RectTransform puts it
+        // at a corner of the panel, looking the wrong direction.
         var go = new GameObject("InventoryModelOverlay");
-        go.transform.SetParent(transform);
         _overlayCamera = go.AddComponent<Camera>();
         _overlayCamera.cullingMask = 1 << modelLayer;
         _overlayCamera.enabled     = false;
@@ -121,58 +133,60 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
+    // ── URP overlay camera wiring ─────────────────────────────────────────
+    // Stored so SetOpen can add/remove the overlay from the URP camera stack.
+    private System.Type   _urpDataType;    // UniversalAdditionalCameraData type, null = Built-In
+    private System.Object _urpMainData;   // main camera's URP data component
+
     /// <summary>
-    /// Detects URP at runtime (no compile-time package dependency) and configures the
-    /// overlay camera as CameraRenderType.Overlay, adding it to Camera.main's stack.
-    /// Returns true if URP was detected and configured; false means Built-In pipeline.
+    /// Scans all loaded assemblies for URP types (no hard package dependency).
+    /// Configures the overlay camera as CameraRenderType.Overlay and suppresses
+    /// post-processing so it never re-blurs the scene.
+    /// Returns true if URP was found and configured; false = Built-In pipeline.
     /// </summary>
     bool TryConfigureAsURPOverlay()
     {
         if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline == null)
-            return false; // Built-In RP
+            return false;
 
-        // Reflect into URP assembly so we don't need a hard package reference.
-        var dataType = System.Type.GetType(
-            "UnityEngine.Rendering.Universal.UniversalAdditionalCameraData, " +
-            "Unity.RenderPipelines.Universal.Runtime");
+        // Scan all assemblies — avoids fragile hardcoded assembly name
+        System.Type dataType = null;
+        foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+        {
+            dataType = asm.GetType("UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
+            if (dataType != null) break;
+        }
         if (dataType == null) return false;
 
         var overlayData = _overlayCamera.GetComponent(dataType)
                        ?? _overlayCamera.gameObject.AddComponent(dataType);
 
-        // CameraRenderType.Overlay = 1
-        dataType.GetProperty("renderType")?.SetValue(overlayData, 1);
-        // Don't let this camera re-run post-processing (avoids the blur)
+        // renderType must be set as the actual enum value, not a bare int
+        var renderTypeProp = dataType.GetProperty("renderType");
+        if (renderTypeProp != null)
+            renderTypeProp.SetValue(overlayData,
+                System.Enum.ToObject(renderTypeProp.PropertyType, 1)); // 1 = Overlay
+
         dataType.GetProperty("renderPostProcessing")?.SetValue(overlayData, false);
 
-        _urpDataType   = dataType;
-        _urpOverlayData = overlayData;
+        _urpDataType = dataType;
         return true;
     }
 
-    // Stored so Start() can add to Camera.main's stack (main may not exist yet in Awake)
-    private System.Type   _urpDataType;
-    private System.Object _urpOverlayData;
-
     void Start()
     {
-        if (_urpDataType == null || _overlayCamera == null) return;
-
         var mainCam = Camera.main;
         if (mainCam == null)
         {
-            Debug.LogWarning("InventoryUI: No Camera.main found. Tag your player camera as MainCamera " +
-                             "so the inventory model overlay can be added to its URP stack.");
+            Debug.LogWarning("InventoryUI: No Camera.main — tag your player camera MainCamera.");
             return;
         }
 
-        var mainData = mainCam.GetComponent(_urpDataType);
-        if (mainData == null) return;
+        // Hide modelLayer from the main camera so only the overlay camera sees the models
+        mainCam.cullingMask &= ~(1 << modelLayer);
 
-        var stack = _urpDataType.GetProperty("cameraStack")?.GetValue(mainData)
-                    as System.Collections.IList;
-        if (stack != null && !stack.Contains(_overlayCamera))
-            stack.Add(_overlayCamera);
+        if (_urpDataType != null)
+            _urpMainData = mainCam.GetComponent(_urpDataType);
     }
 
     void OnDestroy()
@@ -180,18 +194,36 @@ public class InventoryUI : MonoBehaviour
         if (_panel != null && _panel.gameObject.activeSelf)
             GameInputState.Unblock();
 
-        // Remove from URP stack to avoid a dangling reference
-        if (_urpDataType != null && _overlayCamera != null)
+        if (_overlayCamera != null)
         {
-            var mainCam = Camera.main;
-            if (mainCam != null)
-            {
-                var mainData = mainCam.GetComponent(_urpDataType);
-                var stack = _urpDataType.GetProperty("cameraStack")?.GetValue(mainData)
-                            as System.Collections.IList;
-                stack?.Remove(_overlayCamera);
-            }
+            RemoveFromURPStack();
+            Destroy(_overlayCamera.gameObject);
         }
+    }
+
+    // Adds/removes the overlay camera from the URP stack and enables/disables it.
+    // In URP, add+enable on open and remove+disable on close is the safest cross-version approach.
+    void SetURPStackActive(bool active)
+    {
+        if (_urpMainData == null) return;
+        var stack = _urpDataType.GetProperty("cameraStack")?.GetValue(_urpMainData)
+                    as System.Collections.IList;
+        if (stack == null) return;
+
+        if (active && !stack.Contains(_overlayCamera))
+            stack.Add(_overlayCamera);
+        else if (!active)
+            stack.Remove(_overlayCamera);
+
+        _overlayCamera.enabled = active;
+    }
+
+    void RemoveFromURPStack()
+    {
+        if (_urpDataType == null || _urpMainData == null) return;
+        var stack = _urpDataType.GetProperty("cameraStack")?.GetValue(_urpMainData)
+                    as System.Collections.IList;
+        stack?.Remove(_overlayCamera);
     }
 
     /// <summary>
@@ -237,11 +269,41 @@ public class InventoryUI : MonoBehaviour
 
     public void SetHovered(InventoryItemView view) => _hoveredView = view;
 
+    // Overlay camera must match the scene camera every frame so models project onto
+    // their correct screen positions and the "facing north" rotation issue is avoided.
+    void LateUpdate()
+    {
+        if (_overlayCamera == null || !_overlayCamera.enabled) return;
+        Camera src = GetRenderCamera();
+        if (src == null) return;
+        _overlayCamera.transform.SetPositionAndRotation(src.transform.position, src.transform.rotation);
+        _overlayCamera.fieldOfView    = src.fieldOfView;
+        _overlayCamera.nearClipPlane  = src.nearClipPlane;
+        _overlayCamera.farClipPlane   = src.farClipPlane;
+        _overlayCamera.aspect         = src.aspect;
+    }
+
+    // Use the canvas's assigned render camera; fall back to Camera.main.
+    Camera GetRenderCamera()
+    {
+        if (_canvas != null && _canvas.worldCamera != null) return _canvas.worldCamera;
+        return Camera.main;
+    }
 
     void SetOpen(bool open)
     {
         _panel.gameObject.SetActive(open);
-        if (_overlayCamera) _overlayCamera.enabled = open;
+
+        if (_overlayCamera)
+        {
+            if (_urpDataType != null) SetURPStackActive(open);
+            else                      _overlayCamera.enabled = open;
+        }
+
+        // Show/hide 3D models — they live in world space so the camera alone isn't enough
+        foreach (var view in _views.Values)
+            view.SetModelVisible(open);
+
         if (open) GameInputState.Block();
         else      GameInputState.Unblock();
     }
@@ -386,6 +448,8 @@ public class InventoryUI : MonoBehaviour
 
         var view = go.GetComponent<InventoryItemView>();
         view.Initialize(item, this, modelLayer, cellSize);
+        // If inventory is open when an item is picked up, show model immediately
+        view.SetModelVisible(_panel.gameObject.activeSelf);
         _views[item] = view;
     }
 
@@ -406,9 +470,8 @@ public class InventoryUI : MonoBehaviour
     {
         // In Screen Space – Camera mode, e.position is screen-space but transform.position
         // is world-space; ScreenPointToWorldPointInRectangle does the correct projection.
-        Canvas canvas = GetComponentInParent<Canvas>();
-        Camera uiCam  = canvas && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-            ? canvas.worldCamera : null;
+        Camera uiCam = _canvas && _canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? _canvas.worldCamera : null;
 
         if (RectTransformUtility.ScreenPointToWorldPointInRectangle(
                 _dragLayer, e.position, uiCam, out Vector3 worldPos))
@@ -506,9 +569,8 @@ public class InventoryUI : MonoBehaviour
 
     Vector2Int? ScreenToCell(Vector2 screenPos)
     {
-        Canvas canvas = GetComponentInParent<Canvas>();
-        Camera cam    = canvas && canvas.renderMode != RenderMode.ScreenSpaceOverlay
-            ? canvas.worldCamera : null;
+        Camera cam = _canvas && _canvas.renderMode != RenderMode.ScreenSpaceOverlay
+            ? _canvas.worldCamera : null;
 
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 _itemsLayer, screenPos, cam, out Vector2 local))

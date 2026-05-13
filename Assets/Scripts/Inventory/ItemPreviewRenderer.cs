@@ -8,7 +8,7 @@ using UnityEngine;
 /// child objects or layer configuration required.
 ///
 /// Models are staged 10 000 units away from world origin, so the preview camera
-/// never sees gameplay geometry even with cullingMask = Everything.
+/// never sees gameplay geometry even without layer restrictions.
 /// </summary>
 public class ItemPreviewRenderer : MonoBehaviour
 {
@@ -24,8 +24,16 @@ public class ItemPreviewRenderer : MonoBehaviour
     public Vector3 lightEuler     = new Vector3(45f, -30f, 0f);
     public float   lightIntensity = 1.4f;
 
+    [Header("Layer")]
+    [Tooltip("Layer used exclusively for staged preview models. " +
+             "Create a layer named 'ItemPreview' in Project Settings → Tags and Layers " +
+             "and enter its index here. The preview camera sees ONLY this layer.")]
+    public int previewLayer = 30;
+
     private Camera    _cam;
     private Transform _root;
+    private RenderTexture _dummyRT; // permanent off-screen target so the camera can never
+                                    // accidentally render to screen even if .enabled gets set
 
     // Far from any gameplay geometry — nothing else should be here
     private static readonly Vector3 StagingOrigin = new Vector3(10000f, 10000f, 10000f);
@@ -41,18 +49,26 @@ public class ItemPreviewRenderer : MonoBehaviour
         rootGO.transform.position = StagingOrigin;
         _root = rootGO.transform;
 
-        // Perspective capture camera — perspective gives depth cues that orthographic flattens out
-        var camGO = new GameObject("PreviewCamera");
+        // Perspective capture camera
+        var camGO = new GameObject("ItemPreviewCam");
         camGO.transform.SetParent(transform);
         _cam = camGO.AddComponent<Camera>();
         _cam.orthographic    = false;
-        _cam.fieldOfView     = 40f; // narrow FOV = less distortion, more "telephoto" look
+        _cam.fieldOfView     = 40f;
         _cam.clearFlags      = CameraClearFlags.SolidColor;
         _cam.backgroundColor = backgroundColor;
-        _cam.cullingMask     = ~0; // all layers — safe because staging area is empty
-        _cam.nearClipPlane   = 0.01f;
-        _cam.farClipPlane    = 2000f;
-        _cam.enabled         = false; // only render on explicit Render() calls
+
+        // Only see models explicitly moved to previewLayer — never sees sky, gameplay, or scene
+        _cam.cullingMask   = 1 << previewLayer;
+
+        _cam.nearClipPlane = 0.01f;
+        _cam.farClipPlane  = 2000f;
+        _cam.enabled       = false;
+
+        // Permanently bind to a 1×1 off-screen RT.
+        // Even if .enabled becomes true through external code, the camera renders off-screen.
+        _dummyRT = new RenderTexture(1, 1, 16);
+        _cam.targetTexture = _dummyRT;
 
         // Directional light aimed at the staging area
         var lightGO = new GameObject("PreviewLight");
@@ -61,6 +77,11 @@ public class ItemPreviewRenderer : MonoBehaviour
         var light = lightGO.AddComponent<Light>();
         light.type      = LightType.Directional;
         light.intensity = lightIntensity;
+    }
+
+    void OnDestroy()
+    {
+        if (_dummyRT != null) Destroy(_dummyRT);
     }
 
     // ── Public API ────────────────────────────────────────────────────────
@@ -81,6 +102,7 @@ public class ItemPreviewRenderer : MonoBehaviour
         GameObject instance = Instantiate(item.modelPrefab, _root);
         instance.transform.localPosition = Vector3.zero;
         instance.transform.localRotation = Quaternion.identity;
+        SetLayerRecursive(instance, previewLayer); // must be on previewLayer for culling mask to see it
         FrameModel(instance, pixelWidth, pixelHeight);
 
         _cam.Render();
@@ -89,11 +111,11 @@ public class ItemPreviewRenderer : MonoBehaviour
         var tex = new Texture2D(pixelWidth, pixelHeight, TextureFormat.RGBA32, false);
         tex.ReadPixels(new Rect(0, 0, pixelWidth, pixelHeight), 0, 0);
         tex.Apply();
-        RenderTexture.active   = null;
-        _cam.targetTexture     = null;
+        RenderTexture.active = null;
 
         Destroy(instance);
         Destroy(rt);
+        _cam.targetTexture = _dummyRT; // restore off-screen target
         return tex;
     }
 
@@ -105,7 +127,6 @@ public class ItemPreviewRenderer : MonoBehaviour
         foreach (Renderer r in instance.GetComponentsInChildren<Renderer>())
             bounds.Encapsulate(r.bounds);
 
-        // Guard against empty renderers (no MeshRenderers in prefab)
         if (bounds.extents == Vector3.zero)
             bounds = new Bounds(instance.transform.position, Vector3.one * 0.5f);
 
@@ -123,9 +144,14 @@ public class ItemPreviewRenderer : MonoBehaviour
         _cam.farClipPlane  = dist * 10f;
     }
 
+    static void SetLayerRecursive(GameObject go, int layer)
+    {
+        foreach (Transform t in go.GetComponentsInChildren<Transform>(true))
+            t.gameObject.layer = layer;
+    }
+
     static Texture2D MakeSolidTexture(int w, int h, Color colour)
     {
-        // Force alpha=1 — transparent fallback makes items invisible and unclickable in UGUI
         Color32 c  = new Color(colour.r, colour.g, colour.b, 1f);
         var tex    = new Texture2D(w, h);
         var pixels = new Color32[w * h];

@@ -319,6 +319,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -225
       objectReference: {fileID: 0}
+    - target: {fileID: 1626063122134828695, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2414894659310627983, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     - target: {fileID: 2414894659310627983, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_IsActive
       value: 1
@@ -326,7 +334,7 @@ PrefabInstance:
     - target: {fileID: 2856363764570276122, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_Camera
       value: 
-      objectReference: {fileID: 1119861998}
+      objectReference: {fileID: 2078697419}
     - target: {fileID: 2856363764570276122, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_RenderMode
       value: 1
@@ -337,7 +345,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2856363764570276122, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_PlaneDistance
-      value: 0.1
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5225043522839316477, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_IgnoreReversedGraphics
@@ -346,6 +354,10 @@ PrefabInstance:
     - target: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_Name
       value: '[Player]'
+      objectReference: {fileID: 0}
+    - target: {fileID: 6969243968740073941, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_TagString
+      value: MainCamera
       objectReference: {fileID: 0}
     - target: {fileID: 7486249704204675625, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1015,11 +1027,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4000012348412654, guid: a50af88759b02d74b8328377b33ab3e8, type: 3}
   m_PrefabInstance: {fileID: 385628561}
   m_PrefabAsset: {fileID: 0}
---- !u!20 &1119861998 stripped
-Camera:
-  m_CorrespondingSourceObject: {fileID: 8539914166893846076, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-  m_PrefabInstance: {fileID: 71126150}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1190859709 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1626063122134828695, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
@@ -1086,7 +1093,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1191832757}
   - component: {fileID: 1191832756}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: ItemPreviewGO
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1105,12 +1112,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 18e4743abb85ddc42a6db4bcf7e250a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ItemPreviewRenderer
-  previewCamera: {fileID: 2078697419}
-  previewRoot: {fileID: 1435952632}
-  lightEuler: {x: 45, y: -30, z: 0}
-  lightIntensity: 1.4
   backgroundColor: {r: 0.12, g: 0.12, b: 0.16, a: 0}
   boundsPadding: 0.12
+  lightEuler: {x: 45, y: -30, z: 0}
+  lightIntensity: 1.4
+  previewLayer: 6
 --- !u!4 &1191832757
 Transform:
   m_ObjectHideFlags: 0
@@ -1203,7 +1209,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1435952632}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: PreviewRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1365,7 +1371,7 @@ GameObject:
   - component: {fileID: 1732285750}
   - component: {fileID: 1732285752}
   - component: {fileID: 1732285751}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Directional Light
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1703,7 +1709,7 @@ GameObject:
   - component: {fileID: 2078697416}
   - component: {fileID: 2078697419}
   - component: {fileID: 2078697417}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: ItemPreviewCam
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1770,7 +1776,7 @@ MonoBehaviour:
     m_Anamorphism: 0
   flipYMode: 0
   xrRendering: 1
-  fullscreenPassthrough: 0
+  fullscreenPassthrough: 1
   allowDynamicResolution: 0
   customRenderingSettings: 0
   invertFaceCulling: 0
@@ -1883,7 +1889,7 @@ Camera:
   m_ShutterSpeed: 0.005
   m_Aperture: 16
   m_FocusDistance: 10
-  m_FocalLength: 50
+  m_FocalLength: 20.78461
   m_BladeCount: 5
   m_Curvature: {x: 2, y: 11}
   m_BarrelClipping: 0.25
@@ -1896,10 +1902,10 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
-  far clip plane: 1000
+  near clip plane: 0.01
+  far clip plane: 1
   field of view: 60
-  orthographic: 1
+  orthographic: 0
   orthographic size: 5
   m_Depth: 0
   m_CullingMask:

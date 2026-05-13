@@ -52,7 +52,13 @@ public class InventoryItemView : MonoBehaviour,
         {
             _model = Instantiate(item.data.modelPrefab);
             SetLayerRecursive(_model, modelLayer);
+            _model.SetActive(false); // hidden until inventory opens
         }
+    }
+
+    public void SetModelVisible(bool visible)
+    {
+        if (_model != null) _model.SetActive(visible);
     }
 
     // ── Layout ─────────────────────────────────────────────────────────────
@@ -98,10 +104,14 @@ public class InventoryItemView : MonoBehaviour,
             }
         }
 
-        // Place model slightly in front of the canvas plane so the overlay camera sees it
-        // on top. _rect.forward points INTO the screen; negating it points toward the viewer.
-        _model.transform.position   = center - _rect.forward * 0.1f;
-        _model.transform.rotation   = DisplayRotation;
+        // Place model slightly in front of the canvas plane so the overlay camera sees it.
+        // _rect.forward points INTO the screen; negating it points toward the viewer.
+        _model.transform.position = center - _rect.forward * 0.1f;
+
+        // Rotation is camera-relative so the isometric display angle is constant regardless
+        // of which direction the player faces (the overlay camera always matches Camera.main).
+        Camera cam = Camera.main;
+        _model.transform.rotation   = cam != null ? cam.transform.rotation * DisplayRotation : DisplayRotation;
         _model.transform.localScale = _modelScale;
         _model.SetActive(true);
     }

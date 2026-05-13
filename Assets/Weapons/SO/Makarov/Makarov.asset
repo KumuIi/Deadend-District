@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSO
   itemName: Item
   gridSize: {x: 2, y: 1}
-  modelPrefab: {fileID: 3711449249242201056, guid: e830617b892b431438596a43d84d4183, type: 3}
+  modelPrefab: {fileID: 919132149155446097, guid: a19ffdb9431f0924ba6aeda4c3895614, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   caliber: 9x18
   fireMode: 1
