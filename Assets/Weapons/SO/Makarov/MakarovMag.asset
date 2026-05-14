@@ -19,5 +19,5 @@ MonoBehaviour:
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   modelOrientationOffset: {x: 0, y: 0, z: 0}
   gridRotationAxis: {x: 0, y: 90, z: 0}
-  caliber: {fileID: 0}
+  caliber: {fileID: 11400000, guid: 7b6eede7fd2b5a94b8e25469cd746b7c, type: 2}
   capacity: 8

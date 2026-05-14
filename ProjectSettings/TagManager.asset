@@ -35,8 +35,8 @@ TagManager:
   - 
   - 
   - 
+  - 
   - InventoryItems
-  - ItemPreview
   m_SortingLayers:
   - name: Default
     uniqueID: 0

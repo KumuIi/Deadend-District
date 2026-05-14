@@ -16,6 +16,12 @@ MonoBehaviour:
   walkSpeed: 4
   sprintSpeed: 7
   crouchSpeed: 2
+  acceleration: 60
+  deceleration: 80
+  airDeceleration: 15
+  crouchHeight: 1.5
+  standHeight: 2
+  crouchLerpSpeed: 12
   jumpForce: 6
   gravity: 25
   coyoteTime: 0.12
@@ -30,5 +36,7 @@ MonoBehaviour:
   slideStopAngle: 30
   slideWiggleSpeed: 1.5
   slideSpeed: 8
+  groundCheckExtra: 0.2
+  maxStepHeight: 50
   mouseSensitivity: 2
   verticalLookLimit: 85

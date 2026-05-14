@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e5eb830dd07e9a479e54d0c276bd929, type: 3}
   m_Name: Makarov
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSO
-  itemName: Item
+  itemName: Makarov
   gridSize: {x: 2, y: 1}
   cellOffsets: []
   modelPrefab: {fileID: 919132149155446097, guid: a19ffdb9431f0924ba6aeda4c3895614, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   modelOrientationOffset: {x: 90, y: 0, z: 0}
   gridRotationAxis: {x: 0, y: 0, z: 90}
-  caliber: {fileID: 0}
+  caliber: {fileID: 11400000, guid: 7b6eede7fd2b5a94b8e25469cd746b7c, type: 2}
   fireMode: 1
   burstCount: 3
   burstShotInterval: 0.08

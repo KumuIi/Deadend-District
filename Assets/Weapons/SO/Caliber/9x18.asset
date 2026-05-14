@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b67f50f0b4c21a7428cfaf16bbff5bfd, type: 3}
   m_Name: 9x18
   m_EditorClassIdentifier: Assembly-CSharp::CaliberSO
-  displayName: 9x19 Parabellum
+  displayName: 9x18
