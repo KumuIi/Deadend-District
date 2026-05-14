@@ -4,9 +4,9 @@ using UnityEngine;
 /// Global input gate. Set GameplayBlocked = true to freeze all player controls
 /// (movement, look, shooting) while keeping UI systems running.
 ///
-/// This is a static class — no scene setup or singleton GO needed.
+/// Static class — no scene setup or singleton GO needed.
 /// Any system (inventory, dialogue, menus) can block/unblock independently.
-/// The cursor is managed here so every blocker doesn't have to remember to do it.
+/// Cursor ownership lives here so no blocker needs to manage it manually.
 /// </summary>
 public static class GameInputState
 {
@@ -22,7 +22,9 @@ public static class GameInputState
     public static bool ReloadPressed => Input.GetKeyDown(KeyCode.R);
     /// <summary>Hold-open / debug bolt key held.</summary>
     public static bool HoldOpenHeld  => Input.GetKey(KeyCode.H);
-    
+
+    // --
+
     private static int _blockCount = 0;
 
     /// <summary>True while any system has requested a gameplay block.</summary>
@@ -51,5 +53,13 @@ public static class GameInputState
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible   = false;
         }
+    }
+
+    /// <summary>Force all blocks cleared — use in scene transitions / reloads.</summary>
+    public static void ForceUnblockAll()
+    {
+        _blockCount      = 0;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible   = false;
     }
 }

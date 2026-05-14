@@ -230,7 +230,7 @@ GameObject:
   - component: {fileID: 8371605008115463076}
   - component: {fileID: 7540430925693762199}
   - component: {fileID: 4456151400688467550}
-  m_Layer: 7
+  m_Layer: 0
   m_Name: InventoryUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -309,9 +309,9 @@ MonoBehaviour:
   gridWidth: 5
   gridHeight: 10
   cellSize: 25
-  cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.9}
-  cellHighlight: {r: 0.15, g: 0.65, b: 0.15, a: 0.9}
-  cellBlocked: {r: 0.65, g: 0.1, b: 0.1, a: 0.9}
+  cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.2}
+  cellHighlight: {r: 0, g: 1, b: 0, a: 0.69803923}
+  cellBlocked: {r: 0.65, g: 0.1, b: 0.1, a: 0.69803923}
   paddingRight: 20
   paddingTop: 20
   tiltX: 0
@@ -571,7 +571,7 @@ GameObject:
   - component: {fileID: 2856363764570276122}
   - component: {fileID: 5119149563980311176}
   - component: {fileID: 5225043522839316477}
-  m_Layer: 7
+  m_Layer: 0
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1203,6 +1203,59 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2076618833046402887}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &4526521495657032477
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4297102381319490913}
+  - component: {fileID: 1198579033372320372}
+  m_Layer: 0
+  m_Name: CameraRig
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4297102381319490913
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4526521495657032477}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.65, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6052119987546144178}
+  m_Father: {fileID: 7486249704204675625}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1198579033372320372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4526521495657032477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36ed9261b42890d43874971f9a0c3f49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraController
+  config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
+  playerInput: {fileID: 6115976582632229670}
+  standCamY: 1.65
+  crouchCamY: 0.7
+  crouchLerpSpeed: 8
+  leanAngle: 15
+  leanSideOffset: 0.15
+  leanSmooth: 10
 --- !u!1 &4601303575614882545
 GameObject:
   m_ObjectHideFlags: 0
@@ -1607,7 +1660,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2355197963388634524}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: '[UI]'
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1709,7 +1762,7 @@ GameObject:
   - component: {fileID: 6115976582632229670}
   - component: {fileID: 6033725508184216472}
   - component: {fileID: 3272549334419077199}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: '[Player]'
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -1729,7 +1782,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6052119987546144178}
+  - {fileID: 4297102381319490913}
   - {fileID: 2355197963388634524}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1753,9 +1806,9 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.3
-  m_Height: 1.8
+  m_Height: 2
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!54 &6576121701542909435
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1796,6 +1849,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
   config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
+  mouseSensitivity: 2
 --- !u!114 &6115976582632229670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1821,9 +1875,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponManager
   playerCam: {fileID: 6052119987546144178}
-  cameraController: {fileID: 1468809247145183220}
+  cameraController: {fileID: 0}
   playerMotor: {fileID: 3513889191098211496}
-  weapons:
+  _initialWeapons:
   - {fileID: 4227657300526545024}
   rightHandIKTarget: {fileID: 0}
   leftHandIKTarget: {fileID: 0}
@@ -1881,7 +1935,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6514903454602418858}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Guns
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1914,7 +1968,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6997981538978783331}
   - component: {fileID: 7665384062712154852}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Makarov
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1970,9 +2024,8 @@ GameObject:
   - component: {fileID: 6052119987546144178}
   - component: {fileID: 8539914166893846076}
   - component: {fileID: 204086531483002203}
-  - component: {fileID: 1468809247145183220}
   - component: {fileID: 4640568856907054883}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: '[Camera]'
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
@@ -1988,12 +2041,12 @@ Transform:
   m_GameObject: {fileID: 6969243968740073941}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.6, z: 0.2}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7681915681699475355}
-  m_Father: {fileID: 7486249704204675625}
+  m_Father: {fileID: 4297102381319490913}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &8539914166893846076
 Camera:
@@ -2054,23 +2107,6 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6969243968740073941}
   m_Enabled: 1
---- !u!114 &1468809247145183220
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6969243968740073941}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 36ed9261b42890d43874971f9a0c3f49, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CameraController
-  config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
-  playerInput: {fileID: 6115976582632229670}
-  leanAngle: 15
-  leanSideOffset: 0.15
-  leanSmooth: 10
 --- !u!114 &4640568856907054883
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2673,7 +2709,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7681915681699475355}
   - component: {fileID: 6617269260189376774}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: FPSRig
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3045,6 +3081,10 @@ PrefabInstance:
     - target: {fileID: 9187789757393904275, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
       propertyPath: m_Name
       value: '[Makarov]Pivot'
+      objectReference: {fileID: 0}
+    - target: {fileID: 9187789757393904275, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
+      propertyPath: m_Layer
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

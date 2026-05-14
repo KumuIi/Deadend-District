@@ -1,12 +1,19 @@
 using UnityEngine;
 
+/// <summary>
+/// Thin input reader. Collects raw input every Update and exposes clean
+/// properties to other systems. JumpPressed uses a latch (|=) so no press
+/// is lost between Update and FixedUpdate.
+/// </summary>
 public class PlayerInput : MonoBehaviour
 {
-    public Vector2 MoveInput   { get; private set; }
-    public bool    SprintHeld  { get; private set; }
+    public Vector2 MoveInput  { get; private set; }
+    public bool    SprintHeld { get; private set; }
+    public bool    CrouchHeld { get; private set; }
     public bool    JumpPressed { get; private set; }
-    /// <summary>-1 = lean left (Q), 0 = none, +1 = lean right (E)</summary>
-    public float   LeanInput   { get; private set; }
+
+    /// -1 = lean left (Q), 0 = none, +1 = lean right (E)
+    public float LeanInput { get; private set; }
 
     void Update()
     {
@@ -14,13 +21,15 @@ public class PlayerInput : MonoBehaviour
         {
             MoveInput  = Vector2.zero;
             SprintHeld = false;
+            CrouchHeld = false;
             LeanInput  = 0f;
-            // JumpPressed intentionally not cleared — buffered jumps expire naturally
+            // JumpPressed intentionally NOT cleared here — buffered jumps expire naturally
             return;
         }
 
-        MoveInput   = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-        SprintHeld  = Input.GetKey(KeyCode.LeftShift);
+        MoveInput  = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+        SprintHeld = Input.GetKey(KeyCode.LeftShift);
+        CrouchHeld = Input.GetKey(KeyCode.LeftControl);
         JumpPressed |= Input.GetKeyDown(KeyCode.Space);
 
         float lean = 0f;
@@ -30,7 +39,4 @@ public class PlayerInput : MonoBehaviour
     }
 
     public void ConsumeJump() => JumpPressed = false;
-    
-    
-    
 }

@@ -1,19 +1,55 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 /// <summary>
-/// PlayerMotor — kinematic Rigidbody character controller.
+/// PlayerMotor — kinematic character controller.
 ///
-/// FixedUpdate pipeline each physics tick:
-///   1. CheckGround        – SphereCast ground probe
-///   2. HandleGravity      – gravity accumulation on _velocity.y
-///   3. HandleJump         – buffered jump with coyote-time guard
-///   4. HandleSteepSlope   – drain → slide state machine
-///   5. HandleMovement     – normal XZ movement
-///   6. Integrate          – candidate target position
-///   7. ResolveCollisions  – depenetration loop (max 3 iterations)
-///   8. TryStepUp          – lift over stair risers when grounded + moving
-///   9. SnapToGround       – flush with walkable surfaces
-///  10. MovePosition       – commit to physics sim
+/// ══ REQUIRED UNITY SETUP ════════════════════════════════════════════════
+///
+///   Player GameObject (pivot = FEET — this is where y=0 sits on the floor)
+///   ├── Rigidbody
+///   │     Is Kinematic    = ✓ ON
+///   │     Interpolation   = Interpolate
+///   │     Freeze Rotation = X✓  Y✓  Z✓
+///   │     Collision Det.  = Continuous (recommended)
+///   │
+///   ├── CapsuleCollider
+///   │     Direction = Y-Axis
+///   │     Height    = 2.0
+///   │     Radius    = 0.3
+///   │     Center    = (0, 1.0, 0)   ← MUST be (0, Height/2, 0)
+///   │
+///   ├── PlayerInput    (script)
+///   ├── PlayerMotor    (script)  ← this file
+///   │
+///   └── CameraRig  (child GameObject)
+///         LocalPosition = (0, 1.65, 0)
+///         Camera + CameraController here
+///
+/// ══ CAPSULE GEOMETRY ════════════════════════════════════════════════════
+///
+///   pivot = feet = rb.position
+///
+///   GeomCenter(fp) = fp + up * _halfH              →  fp.y + 1.0
+///   GeomBottom(fp) = fp + up * _radius             →  fp.y + 0.3  (lower cyan gizmo)
+///   GeomTop(fp)    = fp + up * (height - _radius)  →  fp.y + 1.7  (upper cyan gizmo)
+///
+/// ══ GROUND PROBE GEOMETRY ═══════════════════════════════════════════════
+///
+///   SphereCast origin    = GeomCenter  (fp.y + _halfH)
+///   probeDist            = (_halfH - _radius) + config.groundCheckExtra
+///
+/// ══ COLLISION PIPELINE (FixedUpdate each tick) ═══════════════════════════
+///  1.  CheckGround
+///  2.  HandleCrouch
+///  3.  HandleGravity
+///  4.  HandleJump
+///  5.  HandleSteepSlope
+///  6.  HandleMovement
+///  7.  CollideAndSlide  (two-pass: horizontal + vertical)
+///  8.  TryStepUp
+///  9.  SnapToGround
+///  10. SafetyDepenetrate
+///  11. MovePosition
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CapsuleCollider))]
@@ -23,16 +59,23 @@ public class PlayerMotor : MonoBehaviour
     // ─── Inspector ────────────────────────────────────────────────────────
     [SerializeField] private PlayerMovementConfig config;
 
-    // ─── Component refs ───────────────────────────────────────────────────
+    [Header("Mouse Look (Yaw only — Pitch handled by CameraController)")]
+    [SerializeField] private float mouseSensitivity = 2f;
+
+    // ─── Components ───────────────────────────────────────────────────────
     private Rigidbody       _rb;
     private PlayerInput     _input;
     private CapsuleCollider _capsule;
 
-    // Derived from CapsuleCollider at runtime — always in sync with Inspector
-    private float _capsuleHalfHeight;
-    private float _capsuleRadius;
+    // ─── Capsule geometry ─────────────────────────────────────────────────
+    private float _halfH;
+    private float _radius;
 
-    // ─── Velocity state ───────────────────────────────────────────────────
+    Vector3 GeomCenter(Vector3 fp) => fp + Vector3.up * _halfH;
+    Vector3 GeomBottom(Vector3 fp) => fp + Vector3.up * _radius;
+    Vector3 GeomTop   (Vector3 fp) => fp + Vector3.up * (_halfH * 2f - _radius);
+
+    // ─── Velocity ─────────────────────────────────────────────────────────
     private Vector3 _velocity;
 
     // ─── Ground state ─────────────────────────────────────────────────────
@@ -41,97 +84,127 @@ public class PlayerMotor : MonoBehaviour
     private float      _groundAngle;
     private RaycastHit _groundHit;
 
-    // ─── Ceiling state ────────────────────────────────────────────────────
+    // ─── Ceiling ──────────────────────────────────────────────────────────
     private bool _hitCeiling;
 
-    // ─── Jump timing ──────────────────────────────────────────────────────
+    // ─── Jump ─────────────────────────────────────────────────────────────
     private float _coyoteTimer;
     private float _jumpBufferTimer;
     private bool  _jumpedThisFrame;
 
-    // ─── Slope-mode state ─────────────────────────────────────────────────
+    // ─── Slope ────────────────────────────────────────────────────────────
     private bool  _inSlopeMode;
     private bool  _isSliding;
     private float _slopeSpeed;
     private float _slideSpeed;
 
-    // ─── Step-up state ────────────────────────────────────────────────────
-    /// <summary>Current vertical offset being smoothly lerped toward 0 as the visual
-    /// body catches up with the physics position after a step.</summary>
+    // FIX: grace timer — player must be touching steep ground for this many
+    // seconds before slope mode activates. Prevents single-frame triggering
+    // at the flat→slope boundary.
+    private float _steepGroundTimer;
+    private const float SteepGroundGrace = 0.08f;
+
+    // ─── Crouch ───────────────────────────────────────────────────────────
+    private bool  _isCrouching;
+    private float _currentHeight;
+
+    // ─── Step visual ──────────────────────────────────────────────────────
     private float _stepLerpOffset;
     private float _visualBaseY;
 
-    // ─── Rotation caching ─────────────────────────────────────────────────
+    // FIX: cooldown so TryStepUp cannot fire two frames in a row,
+    // breaking the teleport-up → slide-back loop.
+    private float _stepCooldown;
+    private const float StepCooldownTime = 0.1f;
+
+    // ─── Rotation ─────────────────────────────────────────────────────────
     private float _pendingYaw;
 
-    // ─── Buffers ──────────────────────────────────────────────────────────
-    private readonly Collider[] _overlapBuffer = new Collider[8];
+    // ─── Speed modifier ───────────────────────────────────────────────────
+    public float SpeedMultiplier { get; set; } = 1f;
+
+    // ─── Depenetration buffers ────────────────────────────────────────────
+    private readonly Collider[] _overlapBuffer = new Collider[16];
     private readonly Vector3[]  _pushNormals   = new Vector3[24];
-    private int                 _normalCount;
+    private int _normalCount;
 
     // ─── Constants ────────────────────────────────────────────────────────
-    
-    
-    private const float GroundCheckDist      = 0.12f;
-    private const float SkinWidth            = 0.01f;
-    private const float SlideMaxSpeed        = 10f;
-    private const int   MaxDepenetrationIter = 3;
+    private const float SkinWidth         = 0.01f;
+    private const float VeryCloseDistance = 0.005f;
+    private const int   MaxBounces        = 3;
+    private const int   MaxDepenetration  = 3;
+    private const float StepCheckDepth    = 0.2f;
+    private const float StepSmoothSpeed   = 12f;
+    private const float SlideMaxSpeed     = 10f;
+    private const float SlopeDrainMin     = 2f;
+    private const float SlopeDrainMax     = 20f;
+    private const float SlideAccel        = 3f;
+    private const float SlideDecel        = 8f;
+    private const float SlideEntrySpeed   = 0.5f;
+    private const float SlideStopThr      = 0.1f;
+    private const float StrafeDeadzone    = 0.1f;
 
-    // Step-up tuning
-    private const float MaxStepHeight       = 0.4f;   // tallest riser the player climbs
-    private const float StepCheckDepth      = 0.2f;   // how far forward to probe for a riser
-    private const float StepSmoothSpeed     = 12f;    // visual lerp speed (higher = snappier)
-
-    // Slope-drain tuning
-    private const float SlopeDrainMin       = 2f;
-    private const float SlopeDrainMax       = 20f;
-    private const float SlideAcceleration   = 3f;
-    private const float SlideDeceleration   = 8f;
-    private const float SlideEntrySpeed     = 0.5f;
-    private const float SlideStopThreshold  = 0.1f;
-    private const float StrafeDeadzone      = 0.1f;
+    // ─── Public API ───────────────────────────────────────────────────────
+    public bool    IsGrounded         => _grounded;
+    public bool    IsCrouching        => _isCrouching;
+    public bool    IsSprinting        => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching;
+    public bool    IsMoving           => new Vector3(_velocity.x, 0f, _velocity.z).sqrMagnitude > 0.01f;
+    public float   VerticalVelocity   => _velocity.y;
+    public Vector3 HorizontalVelocity => new Vector3(_velocity.x, 0f, _velocity.z);
+    public bool    CanJump            => (_grounded || _coyoteTimer <= config.coyoteTime)
+                                         && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame;
 
     // ─────────────────────────────────────────────────────────────────────
-    
-    public bool  IsGrounded   => _grounded;
-    public bool  IsSprinting  => _input.SprintHeld && _input.MoveInput.y > 0f;
-    public bool  IsMoving     => new Vector3(_velocity.x, 0f, _velocity.z).sqrMagnitude > 0.01f;
-    public float VerticalVelocity => _velocity.y;
-    public Vector3 HorizontalVelocity => new Vector3(_velocity.x, 0f, _velocity.z);
-// ─────────────────────────────────────────────────────────────────────────────
 
     void Awake()
     {
         _rb      = GetComponent<Rigidbody>();
         _input   = GetComponent<PlayerInput>();
         _capsule = GetComponent<CapsuleCollider>();
-        _rb.freezeRotation = true;
 
-        // Read collider dimensions so all probe math matches the actual shape.
-        _capsuleRadius     = _capsule.radius;
-        _capsuleHalfHeight = _capsule.height / 2f;
+        _rb.freezeRotation = true;
+        _rb.interpolation  = RigidbodyInterpolation.Interpolate;
+        _rb.isKinematic    = true;
+
+        _currentHeight = config.standHeight;
+        ApplyCapsuleGeometry(config.standHeight);
 
         if (transform.childCount > 0)
             _visualBaseY = transform.GetChild(0).localPosition.y;
     }
 
+    void ApplyCapsuleGeometry(float height)
+    {
+        _capsule.height = height;
+        _capsule.center = new Vector3(0f, height * 0.5f, 0f);
+        _halfH          = height * 0.5f;
+        _radius         = _capsule.radius;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+
     void Update()
     {
         if (!GameInputState.GameplayBlocked)
-            _pendingYaw += Input.GetAxisRaw("Mouse X") * config.mouseSensitivity;
+            _pendingYaw += Input.GetAxisRaw("Mouse X") * mouseSensitivity;
 
         if (_jumpBufferTimer > 0f)
             _jumpBufferTimer -= Time.deltaTime;
 
         if (_input.JumpPressed && _jumpBufferTimer <= 0f)
             _jumpBufferTimer = config.jumpBufferTime;
+
+        // FIX: tick step cooldown in Update so it drains even during lag frames
+        if (_stepCooldown > 0f)
+            _stepCooldown -= Time.deltaTime;
     }
 
     void FixedUpdate()
     {
+        SpeedMultiplier  = 1f;
         _jumpedThisFrame = false;
+        _hitCeiling      = false;
 
-        // Apply yaw before collision so depenetration uses correct orientation.
         if (!Mathf.Approximately(_pendingYaw, 0f))
         {
             _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, _pendingYaw, 0f));
@@ -139,203 +212,98 @@ public class PlayerMotor : MonoBehaviour
         }
 
         CheckGround();
+        HandleCrouch();
         HandleGravity();
         HandleJump();
         HandleSteepSlope();
         HandleMovement();
 
-        Vector3 target = _rb.position + _velocity * Time.fixedDeltaTime;
+        Vector3 moveDelta = new Vector3(_velocity.x, 0f, _velocity.z) * Time.fixedDeltaTime;
+        moveDelta = CollideAndSlide(_rb.position, moveDelta, false, false);
 
-        TryStepUp(ref target);
-        ResolveCollisions(ref target);
-        SnapToGround(ref target);
+        Vector3 gravDelta = new Vector3(0f, _velocity.y, 0f) * Time.fixedDeltaTime;
+        gravDelta = CollideAndSlide(_rb.position + moveDelta, gravDelta, true, true);
 
-        _rb.MovePosition(target);
+        Vector3 newFeetPos = _rb.position + moveDelta + gravDelta;
+
+        if (Time.fixedDeltaTime > 0f)
+        {
+            _velocity.x = moveDelta.x / Time.fixedDeltaTime;
+            _velocity.z = moveDelta.z / Time.fixedDeltaTime;
+            _velocity.y = gravDelta.y  / Time.fixedDeltaTime;
+        }
+
+        TryStepUp(ref newFeetPos);
+        SnapToGround(ref newFeetPos);
+        SafetyDepenetrate(ref newFeetPos);
+        _rb.MovePosition(newFeetPos);
     }
 
-    // ─── Ground check ────────────────────────────────────────────────────
-
+    // ─── Ground check ─────────────────────────────────────────────────────
     void CheckGround()
     {
-        // Start at pivot (capsule centre) — sphere is fully inside capsule,
-        // cannot intersect floor geometry before the cast begins.
-        Vector3 origin = _rb.position;
-        float   dist   = _capsuleHalfHeight + GroundCheckDist;
+        Vector3 origin    = GeomCenter(_rb.position);
+        float   probeDist = (_halfH - _radius) + config.groundCheckExtra;
 
         bool hit = Physics.SphereCast(
-            origin, _capsuleRadius, Vector3.down, out _groundHit,
-            dist, config.groundMask, QueryTriggerInteraction.Ignore);
+            origin, _radius, Vector3.down, out _groundHit,
+            probeDist, config.groundMask, QueryTriggerInteraction.Ignore);
 
         _groundAngle = hit ? Vector3.Angle(_groundHit.normal, Vector3.up) : 0f;
-        _steepGround = hit && _groundAngle >= config.maxSlopeAngle;
+
+        // FIX: _steepGround uses a grace timer so a single-frame brush
+        // against a steep slope does not instantly flip the player into
+        // slide mode. The timer only increments while the probe is actually
+        // hitting steep geometry; it resets the moment that contact is lost.
+        bool rawSteep = hit && _groundAngle >= config.maxSlopeAngle;
+        if (rawSteep)
+            _steepGroundTimer += Time.fixedDeltaTime;
+        else
+            _steepGroundTimer = 0f;
+
+        _steepGround = _steepGroundTimer >= SteepGroundGrace;
         _grounded    = hit && !_steepGround;
 
         if (_grounded) _coyoteTimer = 0f;
         else           _coyoteTimer += Time.fixedDeltaTime;
     }
 
-    void SnapToGround(ref Vector3 target)
+    // ─── Crouch ───────────────────────────────────────────────────────────
+    void HandleCrouch()
     {
-        if (!_grounded || _velocity.y > 0f || _jumpedThisFrame) return;
+        bool wantCrouch = _input.CrouchHeld;
 
-        Vector3 origin = target;
-        float   dist   = _capsuleHalfHeight + GroundCheckDist;
-
-        if (Physics.SphereCast(origin, _capsuleRadius, Vector3.down, out RaycastHit hit,
-            dist, config.groundMask, QueryTriggerInteraction.Ignore))
+        if (_isCrouching && !wantCrouch)
         {
-            target.y    = hit.point.y + _capsuleHalfHeight;
-            _velocity.y = 0f;
-        }
-    }
-
-    // ─── Step-up ─────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Detects stair risers in the movement direction and lifts the player over
-    /// them rather than treating them as walls.
-    ///
-    /// Algorithm (three-raycast staircase probe):
-    ///   1. LOW  ray  — fires horizontally at ankle height in the move direction.
-    ///                  A hit here means there is a riser ahead.
-    ///   2. HIGH ray  — fires horizontally at MaxStepHeight above the ankle.
-    ///                  No hit means the top of the riser is below MaxStepHeight,
-    ///                  i.e. it is a step, not a wall.
-    ///   3. DOWN ray  — fires from above the step landing point straight down to
-    ///                  find the actual surface height to land on.
-    ///   If all three conditions pass the player's target.y is raised instantly
-    ///   (physics position) while a _stepLerpOffset visual counter smooths the
-    ///   visual pop over StepSmoothSpeed frames.
-    ///
-    /// Guards:
-    ///   • Only runs when grounded (no mid-air stair climbing).
-    ///   • Only runs when there is actual horizontal movement.
-    ///   • Ignores triggers and non-collision-mask objects.
-    ///   • Skips if jump was initiated this frame.
-    /// </summary>
-    void TryStepUp(ref Vector3 target)
-    {
-        // Only step while grounded, moving horizontally, and not jumping.
-        if (!_grounded || _jumpedThisFrame) return;
-
-        Vector3 horizontal = new Vector3(_velocity.x, 0f, _velocity.z);
-        if (horizontal.sqrMagnitude < 0.001f) return;
-
-        Vector3 moveDir = horizontal.normalized;
-
-        // Ankle position — just above the foot, low enough to catch small steps
-        // but above SkinWidth so it doesn't fire on flush floor seams.
-        float   ankleY      = _rb.position.y - _capsuleHalfHeight + SkinWidth * 2f;
-        Vector3 ankleOrigin = new Vector3(_rb.position.x, ankleY, _rb.position.z);
-
-        // 1. LOW ray — is there a riser in front of us?
-        if (!Physics.Raycast(ankleOrigin, moveDir, out RaycastHit lowHit,
-            _capsuleRadius + StepCheckDepth, config.collisionMask, QueryTriggerInteraction.Ignore))
-            return; // nothing blocking at ankle height, no step needed
-
-        if (lowHit.normal.y > 0.25f) return;
-
-        // 2. HIGH ray — is the top of the riser below MaxStepHeight?
-        float   stepTopY   = _rb.position.y - _capsuleHalfHeight + MaxStepHeight;
-        Vector3 highOrigin = new Vector3(_rb.position.x, stepTopY, _rb.position.z);
-
-        if (Physics.Raycast(highOrigin, moveDir, _capsuleRadius + StepCheckDepth,
-            config.collisionMask, QueryTriggerInteraction.Ignore))
-            return; // obstacle continues above MaxStepHeight — it's a wall, not a step
-
-        // 3. DOWN ray — find the exact surface height on top of the step.
-        //    Probe from slightly past the riser face so we land on its top face.
-        Vector3 probeOrigin = new Vector3(
-            _rb.position.x + moveDir.x * (_capsuleRadius + StepCheckDepth),
-            stepTopY,
-            _rb.position.z + moveDir.z * (_capsuleRadius + StepCheckDepth));
-
-        if (!Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit topHit,
-            MaxStepHeight + SkinWidth, config.collisionMask, QueryTriggerInteraction.Ignore))
-            return; // no surface found on top of the step (e.g. hollow geometry)
-
-        if (Vector3.Angle(topHit.normal, Vector3.up) >= config.maxSlopeAngle) return;
-
-        float stepHeight = topHit.point.y - (_rb.position.y - _capsuleHalfHeight);
-
-        if (stepHeight < SkinWidth || stepHeight > MaxStepHeight) return;
-
-        target.y = topHit.point.y + _capsuleHalfHeight;
-        _velocity.y = 0f;
-
-        // Start the visual offset from wherever the child currently sits so
-        // mid-lerp steps do not stack debt. Clamp to MaxStepHeight as a hard backstop.
-        Transform stepVisual = transform.childCount > 0 ? transform.GetChild(0) : null;
-        float currentVisualOffset = stepVisual != null ? stepVisual.localPosition.y - _visualBaseY : 0f;
-        _stepLerpOffset = Mathf.Clamp(currentVisualOffset - stepHeight, -MaxStepHeight, 0f);
-    }
-
-    // ─── Visual step smoothing ────────────────────────────────────────────
-
-    /// <summary>
-    /// Smooths the visual body position after a step-up so the camera doesn't
-    /// snap. The physics Rigidbody moves instantly (required for correct
-    /// collision), but the rendered transform is offset downward by _stepLerpOffset
-    /// and that offset is lerped back to zero each LateUpdate.
-    ///
-    /// NOTE: This requires the visual mesh / camera to be on a child object.
-    /// If your camera is directly on this GameObject, remove this method and
-    /// accept the instant step (still works, just less smooth).
-    /// </summary>
-    void LateUpdate()
-    {
-        if (transform.childCount == 0) return;
-        Transform visual = transform.GetChild(0);
-
-        // No offset pending — hard-reset Y to 0 to eliminate any float residue.
-        if (Mathf.Approximately(_stepLerpOffset, 0f))
-        {
-            Vector3 lp = visual.localPosition;
-            if (!Mathf.Approximately(lp.y, _visualBaseY))
-            {
-                lp.y = _visualBaseY;
-                visual.localPosition = lp;
-            }
-            return;
+            float   clearance  = config.standHeight - config.crouchHeight;
+            Vector3 castOrigin = GeomTop(_rb.position);
+            if (Physics.SphereCast(castOrigin, _radius, Vector3.up, out _,
+                    clearance, config.collisionMask, QueryTriggerInteraction.Ignore))
+                wantCrouch = true;
         }
 
-        // Lerp offset back to 0. TryStepUp always writes _stepLerpOffset based
-        // on the child's CURRENT localPosition.y so rapid stair climbing never
-        // stacks debt — each step restarts from the current visual position.
-        _stepLerpOffset = Mathf.MoveTowards(
-            _stepLerpOffset, 0f, StepSmoothSpeed * Time.deltaTime);
+        _isCrouching = wantCrouch;
 
-        Vector3 pos = visual.localPosition;
-        pos.y = _visualBaseY + _stepLerpOffset;
-        visual.localPosition = pos;
+        float targetH = _isCrouching ? config.crouchHeight : config.standHeight;
+        _currentHeight = Mathf.Lerp(_currentHeight, targetH, config.crouchLerpSpeed * Time.fixedDeltaTime);
+        ApplyCapsuleGeometry(_currentHeight);
     }
 
-    // ─── Gravity ─────────────────────────────────────────────────────────
-
+    // ─── Gravity ──────────────────────────────────────────────────────────
     void HandleGravity()
     {
-        if (_grounded && _velocity.y <= 0f)
-            _velocity.y = 0f;
-        else
-            _velocity.y -= config.gravity * Time.fixedDeltaTime;
+        if (_grounded && _velocity.y <= 0f) _velocity.y = 0f;
+        else _velocity.y -= config.gravity * Time.fixedDeltaTime;
     }
 
-    // ─── Jump ────────────────────────────────────────────────────────────
-
+    // ─── Jump ─────────────────────────────────────────────────────────────
     void HandleJump()
     {
         if (_jumpBufferTimer <= 0f) return;
-
-        bool withinCoyote = _coyoteTimer <= config.coyoteTime;
-        bool canJump      = (_grounded || withinCoyote)
-                          && !_inSlopeMode
-                          && !_hitCeiling
-                          && !_steepGround;
-
-        // Always consume both tokens regardless of jump success.
+        bool canJump = (_grounded || _coyoteTimer <= config.coyoteTime)
+                       && !_inSlopeMode && !_hitCeiling && !_steepGround && !_isCrouching;
         _jumpBufferTimer = 0f;
         _input.ConsumeJump();
-
         if (canJump)
         {
             _velocity.y      = config.jumpForce;
@@ -344,246 +312,322 @@ public class PlayerMotor : MonoBehaviour
         }
     }
 
-    // ─── Normal movement ─────────────────────────────────────────────────
-
+    // ─── Movement ─────────────────────────────────────────────────────────
     void HandleMovement()
     {
         if (_inSlopeMode) return;
+        Vector2 move  = _input.MoveInput;
+        bool sprint   = _input.SprintHeld && move.y > 0f && !_isCrouching;
+        float targetSpeed = (_isCrouching ? config.crouchSpeed
+                            : sprint      ? config.sprintSpeed
+                                          : config.walkSpeed) * SpeedMultiplier;
 
-        Vector2 move      = _input.MoveInput;
-        bool    sprinting = _input.SprintHeld && move.y > 0f;
-        float   speed     = sprinting ? config.sprintSpeed : config.walkSpeed;
+        Vector3 fwd   = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+        Vector3 right = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
+        Vector3 wish  = fwd * move.y + right * move.x;
+        if (wish.sqrMagnitude > 1f) wish.Normalize();
 
-        Vector3 forward    = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-        Vector3 right      = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
-        Vector3 horizontal = forward * move.y + right * move.x;
+        Vector3 curH = new Vector3(_velocity.x, 0f, _velocity.z);
+        float accel  = _grounded
+            ? (wish.sqrMagnitude > 0.01f ? config.acceleration : config.deceleration)
+            : config.airDeceleration;
 
-        if (horizontal.sqrMagnitude > 1f) horizontal.Normalize();
-
-        _velocity.x = horizontal.x * speed;
-        _velocity.z = horizontal.z * speed;
+        Vector3 newH = Vector3.MoveTowards(curH, wish * targetSpeed, accel * Time.fixedDeltaTime);
+        _velocity.x  = newH.x;
+        _velocity.z  = newH.z;
     }
 
-    // ─── Steep slope state machine ────────────────────────────────────────
-
+    // ─── Steep slope ──────────────────────────────────────────────────────
     void HandleSteepSlope()
     {
         if (_steepGround)
         {
             if (!_inSlopeMode)
             {
-                _inSlopeMode = true;
-                _isSliding   = false;
-                _slideSpeed  = 0f;
-                float vx = _velocity.x, vz = _velocity.z;
-                _slopeSpeed = Mathf.Sqrt(vx * vx + vz * vz);
+                _inSlopeMode = true; _isSliding = false; _slideSpeed = 0f;
+                _slopeSpeed = new Vector3(_velocity.x, 0f, _velocity.z).magnitude;
             }
-
-            float steepness = Mathf.InverseLerp(config.maxSlopeAngle, 90f, _groundAngle);
-
+            float steep = Mathf.InverseLerp(config.maxSlopeAngle, 90f, _groundAngle);
             if (!_isSliding)
             {
-                float drain = Mathf.Lerp(SlopeDrainMin, SlopeDrainMax, steepness)
-                            * Time.fixedDeltaTime;
-                _slopeSpeed = Mathf.Max(0f, _slopeSpeed - drain);
-
-                Vector2 move    = _input.MoveInput;
-                Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-                Vector3 right   = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
-                Vector3 dir     = forward * move.y + right * move.x;
-                if (dir.sqrMagnitude > 1f) dir.Normalize();
-
-                _velocity.x = dir.x * _slopeSpeed;
-                _velocity.z = dir.z * _slopeSpeed;
-
-                if (_slopeSpeed <= SlideStopThreshold)
-                {
-                    _isSliding  = true;
-                    _slideSpeed = SlideEntrySpeed;
-                }
+                _slopeSpeed = Mathf.Max(0f, _slopeSpeed - Mathf.Lerp(SlopeDrainMin, SlopeDrainMax, steep) * Time.fixedDeltaTime);
+                Vector2 mv = _input.MoveInput;
+                Vector3 d  = (Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized * mv.y
+                             + Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized * mv.x).normalized;
+                _velocity.x = d.x * _slopeSpeed; _velocity.z = d.z * _slopeSpeed;
+                if (_slopeSpeed <= SlideStopThr) { _isSliding = true; _slideSpeed = SlideEntrySpeed; }
             }
-
             if (_isSliding)
             {
-                _slideSpeed = Mathf.Min(SlideMaxSpeed,
-                    _slideSpeed + SlideAcceleration * Time.fixedDeltaTime);
-
-                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized;
-                _velocity.x = slideDir.x * _slideSpeed;
-                _velocity.z = slideDir.z * _slideSpeed;
-
+                _slideSpeed = Mathf.Min(SlideMaxSpeed, _slideSpeed + SlideAccel * Time.fixedDeltaTime);
+                Vector3 sd = Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized;
+                _velocity.x = sd.x * _slideSpeed; _velocity.z = sd.z * _slideSpeed;
                 float strafe = _input.MoveInput.x;
                 if (Mathf.Abs(strafe) > StrafeDeadzone)
                 {
-                    Vector3 wiggleDir = Vector3.ProjectOnPlane(
-                        transform.right, _groundHit.normal).normalized;
-                    _velocity.x += wiggleDir.x * strafe * config.slideWiggleSpeed;
-                    _velocity.z += wiggleDir.z * strafe * config.slideWiggleSpeed;
+                    Vector3 w = Vector3.ProjectOnPlane(transform.right, _groundHit.normal).normalized;
+                    _velocity.x += w.x * strafe * config.slideWiggleSpeed;
+                    _velocity.z += w.z * strafe * config.slideWiggleSpeed;
                 }
             }
         }
         else if (_inSlopeMode)
         {
-            if (_grounded && _groundAngle <= config.slideStopAngle)
-                ExitSlopeMode();
+            if      (_grounded && _groundAngle <= config.slideStopAngle) ExitSlope();
             else if (_grounded && _isSliding)
             {
-                _slideSpeed = Mathf.Max(0f, _slideSpeed - SlideDeceleration * Time.fixedDeltaTime);
-                Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized;
-                _velocity.x = slideDir.x * _slideSpeed;
-                _velocity.z = slideDir.z * _slideSpeed;
-                if (_slideSpeed <= 0f) ExitSlopeMode();
+                _slideSpeed = Mathf.Max(0f, _slideSpeed - SlideDecel * Time.fixedDeltaTime);
+                Vector3 sd = Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized;
+                _velocity.x = sd.x * _slideSpeed; _velocity.z = sd.z * _slideSpeed;
+                if (_slideSpeed <= 0f) ExitSlope();
             }
-            else if (!_grounded && !_steepGround)
-                ExitSlopeMode();
-            else
-                ExitSlopeMode(); // failsafe
+            else ExitSlope();
+        }
+    }
+    void ExitSlope() { _inSlopeMode = false; _isSliding = false; _slideSpeed = 0f; _slopeSpeed = 0f; }
+
+    // ─── Collide and Slide (Fauerby) ──────────────────────────────────────
+    Vector3 CollideAndSlide(Vector3 feetPos, Vector3 vel, bool isGravPass, bool allowGroundSet,
+                             int depth = 0, Vector3 prevSlidePlane = default)
+    {
+        if (depth >= MaxBounces || vel.magnitude < VeryCloseDistance)
+            return vel.magnitude < VeryCloseDistance ? Vector3.zero : vel;
+
+        float castDist = vel.magnitude + SkinWidth;
+        bool hit = Physics.CapsuleCast(
+            GeomBottom(feetPos), GeomTop(feetPos),
+            _radius - SkinWidth,
+            vel.normalized, out RaycastHit ch, castDist,
+            config.collisionMask, QueryTriggerInteraction.Ignore);
+
+        if (!hit) return vel;
+
+        float   snapDist   = Mathf.Max(ch.distance - SkinWidth, 0f);
+        Vector3 snapVel    = vel.normalized * snapDist;
+        Vector3 newFeetPos = feetPos + snapVel;
+        Vector3 leftover   = vel - snapVel;
+
+        Vector3 slideNormal = (GeomCenter(newFeetPos) - ch.point).normalized;
+        if (slideNormal.sqrMagnitude < 0.001f) slideNormal = ch.normal;
+
+        if (isGravPass)
+        {
+            if (ch.normal.y > Mathf.Cos(config.maxSlopeAngle * Mathf.Deg2Rad))
+            {
+                if (allowGroundSet) { _velocity.y = 0f; _grounded = true; }
+                return snapVel;
+            }
+            if (ch.normal.y < -0.1f)
+            {
+                if (allowGroundSet) { _hitCeiling = true; _velocity.y = 0f; }
+                return snapVel;
+            }
+        }
+
+        Vector3 projected = Vector3.ProjectOnPlane(leftover, slideNormal).normalized * leftover.magnitude;
+
+        if (!isGravPass)
+        {
+            if (depth == 0)
+            {
+                Vector3 vH = new Vector3(vel.x, 0f, vel.z), nH = new Vector3(slideNormal.x, 0f, slideNormal.z);
+                float wallDot = 1f - Mathf.Abs(Vector3.Dot(
+                    vH.sqrMagnitude > 0f ? vH.normalized : Vector3.forward,
+                    nH.sqrMagnitude > 0f ? nH.normalized : Vector3.right));
+                projected *= wallDot;
+            }
+            if (depth >= 1 && prevSlidePlane != default(Vector3))
+            {
+                Vector3 crease = Vector3.Cross(prevSlidePlane, slideNormal).normalized;
+                if (crease.sqrMagnitude > 0.001f) projected = Vector3.Project(leftover, crease);
+            }
+        }
+
+        return snapVel + CollideAndSlide(newFeetPos, projected, isGravPass, allowGroundSet, depth + 1, slideNormal);
+    }
+
+    // ─── Snap to ground ───────────────────────────────────────────────────
+    void SnapToGround(ref Vector3 feetPos)
+    {
+        // FIX: do not snap while in slope mode — this was the primary cause
+        // of the oscillation. When sliding, gravity already handles vertical
+        // movement; forcing a snap on top of it caused the bounce.
+        if (!_grounded || _velocity.y > 0f || _jumpedThisFrame || _inSlopeMode) return;
+
+        Vector3 origin    = GeomCenter(feetPos);
+        float   probeDist = (_halfH - _radius) + config.groundCheckExtra;
+
+        if (Physics.SphereCast(origin, _radius, Vector3.down, out RaycastHit hit,
+                probeDist, config.groundMask, QueryTriggerInteraction.Ignore))
+        {
+            feetPos.y   = hit.point.y;
+            _velocity.y = 0f;
         }
     }
 
-    private void ExitSlopeMode()
+    // ─── Step up ──────────────────────────────────────────────────────────
+    void TryStepUp(ref Vector3 feetPos)
+{
+    if (!_grounded || _jumpedThisFrame) return;
+    if (_stepCooldown > 0f) return;
+
+    Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
+    if (horiz.sqrMagnitude < 0.001f) return;
+
+    Vector3 dir    = horiz.normalized;
+    float   ankleY = feetPos.y + SkinWidth * 2f;
+    float   topY   = feetPos.y + config.maxStepHeight;
+
+    // 1. Low ray: must hit something nearly vertical (a wall/step face).
+    //    normal.y > 0.25 means it's a slope, not a step — already filtered.
+    if (!Physics.Raycast(new Vector3(feetPos.x, ankleY, feetPos.z), dir,
+            out RaycastHit lowHit, _radius + StepCheckDepth,
+            config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+    if (lowHit.normal.y > 0.25f) return;
+
+    // 2. High ray: must be CLEAR above the step — no wall continues upward.
+    if (Physics.Raycast(new Vector3(feetPos.x, topY, feetPos.z), dir,
+            _radius + StepCheckDepth, config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+
+    // 3. FIX: cast the downward probe from directly above the hit point,
+    //    not from an arbitrary forward offset. This ensures we land exactly
+    //    on the step surface and not on a distant slope.
+    Vector3 probeOrigin = new Vector3(
+        lowHit.point.x + dir.x * SkinWidth,   // just past the step face
+        topY,
+        lowHit.point.z + dir.z * SkinWidth);
+
+    if (!Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit topHit,
+            config.maxStepHeight + SkinWidth, config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+    if (Vector3.Angle(topHit.normal, Vector3.up) >= config.maxSlopeAngle) return;
+
+    float stepH = topHit.point.y - feetPos.y;
+
+    // FIX: reject if the detected surface is not meaningfully above the feet.
+    // Without this, a nearly-flat slope registers as a tiny step every frame.
+    if (stepH < SkinWidth * 4f || stepH > config.maxStepHeight) return;
+
+    // FIX: the top surface must be approximately flat — measured from the
+    // downward hit normal. Rejects sloped tops masquerading as step surfaces.
+    if (topHit.normal.y < 0.9f) return;
+
+    // Verify capsule fits at the new position.
+    Vector3 steppedPos = new Vector3(feetPos.x, topHit.point.y, feetPos.z);
+    if (Physics.CheckCapsule(
+            GeomBottom(steppedPos), GeomTop(steppedPos), _radius - SkinWidth,
+            config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+
+    feetPos.y     = topHit.point.y;
+    _velocity.y   = 0f;
+    _stepCooldown = StepCooldownTime;
+
+    Transform vis = transform.childCount > 0 ? transform.GetChild(0) : null;
+    float cur = vis != null ? vis.localPosition.y - _visualBaseY : 0f;
+    _stepLerpOffset = Mathf.Clamp(cur - stepH, -config.maxStepHeight, 0f);
+}
+
+    void LateUpdate()
     {
-        _inSlopeMode = false;
-        _isSliding   = false;
-        _slideSpeed  = 0f;
-        _slopeSpeed  = 0f;
+        if (transform.childCount == 0) return;
+        Transform vis = transform.GetChild(0);
+        if (Mathf.Approximately(_stepLerpOffset, 0f))
+        {
+            Vector3 lp = vis.localPosition;
+            if (!Mathf.Approximately(lp.y, _visualBaseY)) { lp.y = _visualBaseY; vis.localPosition = lp; }
+            return;
+        }
+        _stepLerpOffset = Mathf.MoveTowards(_stepLerpOffset, 0f, StepSmoothSpeed * Time.deltaTime);
+        Vector3 p = vis.localPosition; p.y = _visualBaseY + _stepLerpOffset; vis.localPosition = p;
     }
 
-    // ─── Collision resolution ─────────────────────────────────────────────
-
-    void ResolveCollisions(ref Vector3 position)
+    // ─── Safety depenetration ─────────────────────────────────────────────
+    void SafetyDepenetrate(ref Vector3 feetPos)
     {
-        _hitCeiling  = false;
         _normalCount = 0;
-
-        for (int iter = 0; iter < MaxDepenetrationIter; iter++)
+        for (int iter = 0; iter < MaxDepenetration; iter++)
         {
-            Vector3 bottom = position + Vector3.down * (_capsuleHalfHeight - _capsuleRadius);
-            Vector3 top    = position + Vector3.up   * (_capsuleHalfHeight - _capsuleRadius);
-
             int count = Physics.OverlapCapsuleNonAlloc(
-                bottom, top, _capsuleRadius,
+                GeomBottom(feetPos), GeomTop(feetPos), _radius,
                 _overlapBuffer, config.collisionMask, QueryTriggerInteraction.Ignore);
+            if (count == _overlapBuffer.Length)
+                Debug.LogWarning("[PlayerMotor] Overlap buffer full — increase size.");
 
             bool pushed = false;
-
             for (int i = 0; i < count; i++)
             {
-                Collider other = _overlapBuffer[i];
-                if (other == _capsule) continue;
-
+                if (_overlapBuffer[i] == _capsule) continue;
                 if (!Physics.ComputePenetration(
-                    _capsule, position, transform.rotation,
-                    other,   other.transform.position, other.transform.rotation,
-                    out Vector3 dir, out float dist))
-                    continue;
-
-                if (_grounded && dir.y > 0.5f)
-                    position.y += dist + SkinWidth;
-                else
-                    position   += dir * (dist + SkinWidth);
-
+                        _capsule, feetPos, transform.rotation,
+                        _overlapBuffer[i], _overlapBuffer[i].transform.position, _overlapBuffer[i].transform.rotation,
+                        out Vector3 dir, out float dist)) continue;
+                if (_grounded && dir.y > 0.5f) feetPos.y += dist + SkinWidth;
+                else feetPos += dir * (dist + SkinWidth);
                 pushed = true;
-
-                if (_normalCount < _pushNormals.Length)
-                    _pushNormals[_normalCount++] = dir;
-
-                if (dir.y < -0.1f)
-                    _hitCeiling = true;
+                if (_normalCount < _pushNormals.Length) _pushNormals[_normalCount++] = dir;
+                if (dir.y < -0.1f) _hitCeiling = true;
             }
-
             if (!pushed) break;
         }
-
-        // Velocity cancel pass — all normals, single ceiling clamp.
-        if (_hitCeiling && _velocity.y > 0f)
-            _velocity.y = 0f;
-
+        if (_hitCeiling && _velocity.y > 0f) _velocity.y = 0f;
         for (int i = 0; i < _normalCount; i++)
         {
-            Vector3 pushDir = _pushNormals[i];
-            if (pushDir.y < -0.1f) continue;
-
+            Vector3 pd = _pushNormals[i];
+            if (pd.y < -0.1f) continue;
             if (_grounded)
             {
-                Vector3 flatDir = new Vector3(pushDir.x, 0f, pushDir.z);
-                if (flatDir.sqrMagnitude > 0.001f)
+                Vector3 flat = new Vector3(pd.x, 0f, pd.z);
+                if (flat.sqrMagnitude > 0.001f)
                 {
-                    flatDir.Normalize();
-                    float velInto = _velocity.x * flatDir.x + _velocity.z * flatDir.z;
-                    if (velInto < 0f)
-                    {
-                        _velocity.x -= velInto * flatDir.x;
-                        _velocity.z -= velInto * flatDir.z;
-                    }
+                    flat.Normalize();
+                    float into = _velocity.x * flat.x + _velocity.z * flat.z;
+                    if (into < 0f) { _velocity.x -= into * flat.x; _velocity.z -= into * flat.z; }
                 }
             }
-            else
-            {
-                float velInto = Vector3.Dot(_velocity, pushDir);
-                if (velInto < 0f)
-                    _velocity -= velInto * pushDir;
-            }
+            else { float into = Vector3.Dot(_velocity, pd); if (into < 0f) _velocity -= into * pd; }
         }
     }
 
-    // ─── Debug gizmos ─────────────────────────────────────────────────────
-
+    // ─── Gizmos ───────────────────────────────────────────────────────────
     void OnDrawGizmosSelected()
     {
-        Vector3 origin = Application.isPlaying ? _rb.position : transform.position;
+        if (!Application.isPlaying) return;
+        Vector3 fp = _rb.position;
 
-        float probeOriginY = origin.y;
-        float probeDist    = _capsuleHalfHeight + GroundCheckDist;
+        float probeDist = (_halfH - _radius) + config.groundCheckExtra;
+        Gizmos.color = _grounded ? Color.green : _steepGround ? Color.yellow : Color.red;
+        Vector3 gc = GeomCenter(fp);
+        Gizmos.DrawWireSphere(gc, _radius);
+        Gizmos.DrawWireSphere(gc + Vector3.down * probeDist, _radius);
+        Gizmos.DrawLine(gc, gc + Vector3.down * probeDist);
 
-        Gizmos.color = Application.isPlaying
-            ? (_grounded ? Color.green : _steepGround ? Color.yellow : Color.red)
-            : Color.cyan;
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(GeomBottom(fp), _radius);
+        Gizmos.DrawWireSphere(GeomTop(fp),    _radius);
 
-        Gizmos.DrawWireSphere(new Vector3(origin.x, probeOriginY, origin.z),            _capsuleRadius);
-        Gizmos.DrawWireSphere(new Vector3(origin.x, probeOriginY - probeDist, origin.z), _capsuleRadius);
-        Gizmos.DrawLine(
-            new Vector3(origin.x, probeOriginY, origin.z),
-            new Vector3(origin.x, probeOriginY - probeDist, origin.z));
-
-        if (!Application.isPlaying || (!_grounded && !_steepGround)) return;
-
-        Gizmos.color = _steepGround ? Color.red : Color.green;
-        Gizmos.DrawWireSphere(_groundHit.point, 0.05f);
-        Gizmos.DrawRay(_groundHit.point, _groundHit.normal * 0.5f);
-
-        if (_isSliding)
+        if (_grounded || _steepGround)
         {
-            Gizmos.color = Color.magenta;
-            Gizmos.DrawRay(_groundHit.point,
-                Vector3.ProjectOnPlane(Vector3.down, _groundHit.normal).normalized * 0.7f);
+            Gizmos.color = _steepGround ? Color.red : Color.green;
+            Gizmos.DrawWireSphere(_groundHit.point, 0.05f);
+            Gizmos.DrawRay(_groundHit.point, _groundHit.normal * 0.5f);
         }
 
-        // Step-up probe visualisation (cyan = ankle ray, white = high ray)
         if (_grounded)
         {
-            Vector3 horizontal = new Vector3(_velocity.x, 0f, _velocity.z);
-            if (horizontal.sqrMagnitude > 0.001f)
+            Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
+            if (horiz.sqrMagnitude > 0.001f)
             {
-                Vector3 moveDir  = horizontal.normalized;
-                float   ankleY   = origin.y - _capsuleHalfHeight + SkinWidth * 2f;
-                float   stepTopY = origin.y - _capsuleHalfHeight + MaxStepHeight;
-
+                Vector3 d = horiz.normalized;
                 Gizmos.color = Color.cyan;
-                Gizmos.DrawRay(new Vector3(origin.x, ankleY,   origin.z), moveDir * (_capsuleRadius + StepCheckDepth));
-
+                Gizmos.DrawRay(new Vector3(fp.x, fp.y + SkinWidth * 2f,          fp.z), d * (_radius + StepCheckDepth));
                 Gizmos.color = Color.white;
-                Gizmos.DrawRay(new Vector3(origin.x, stepTopY, origin.z), moveDir * (_capsuleRadius + StepCheckDepth));
+                Gizmos.DrawRay(new Vector3(fp.x, fp.y + config.maxStepHeight, fp.z), d * (_radius + StepCheckDepth));
             }
         }
 
-        if (_jumpBufferTimer > 0f)
+        if (_isCrouching)
         {
-            Gizmos.color = Color.white;
-            Gizmos.DrawWireSphere(origin + Vector3.up * (_capsuleHalfHeight + 0.2f), 0.08f);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(GeomTop(fp), _radius * 0.5f);
         }
     }
 }
-
-
-
