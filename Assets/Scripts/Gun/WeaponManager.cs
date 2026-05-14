@@ -1,67 +1,112 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// Holds all player-level references and manages equip/unequip.
-/// Guns are pre-placed in the scene hierarchy (disabled). Awake() initializes
-/// them all while they're still inactive, so Start() on each gun always runs
-/// with valid refs when it's first enabled.
 ///
-/// On equip, the Animation Rigging IK targets (rightHandIKTarget / leftHandIKTarget)
-/// are re-parented to the new gun's grip points so the player hands follow the
-/// weapon automatically — no per-frame position copy needed.
+/// Starter weapons are assigned in _initialWeapons (Inspector).
+/// Runtime pickup / drop uses AddWeapon() / RemoveWeapon().
+///
+/// Awake() initialises all weapons while they are still inactive so
+/// every gun's Start() always runs with valid refs when first enabled.
 /// </summary>
 public class WeaponManager : MonoBehaviour
 {
-    [Header("=== Player References ===")]
-    public Transform        playerCam;
-    public CameraController cameraController;
-    public PlayerMotor      playerMotor;
+    // ── Inspector ──────────────────────────────────────────────────────────
 
-    [Header("=== Weapons ===")]
-    [Tooltip("Drag in the gun GameObjects already placed under the player — all start disabled")]
-    public GunController[] weapons;
+    [Header("=== Player References ===")]
+    public Transform playerCam;
+    public CameraController cameraController;
+    public PlayerMotor playerMotor;
+
+    [Header("=== Starting Weapons ===")]
+    [Tooltip("Drag in gun GameObjects already placed under the player. All start disabled.")]
+    [SerializeField] private GunController[] _initialWeapons;
 
     [Header("=== IK Constraint Targets ===")]
-    [Tooltip("The Transform that the right-hand IK constraint uses as its target")]
+    [Tooltip("The Transform the right-hand IK constraint uses as its target.")]
     public Transform rightHandIKTarget;
-    [Tooltip("The Transform that the left-hand IK constraint uses as its target")]
+    [Tooltip("The Transform the left-hand IK constraint uses as its target.")]
     public Transform leftHandIKTarget;
 
-    public Transform        PlayerCam        => playerCam;
-    public CameraController CameraController => cameraController;
-    public PlayerMotor      PlayerMotor      => playerMotor;
+    // ── Public accessors ───────────────────────────────────────────────────
 
+    public Transform PlayerCam           => playerCam;
+    public CameraController CameraController => cameraController;
+    public PlayerMotor PlayerMotor       => playerMotor;
+
+    /// <summary>The currently equipped weapon, or null if holstered.</summary>
     public GunController CurrentWeapon { get; private set; }
 
-    void Awake()
+    /// <summary>Read-only view of all registered weapons (including runtime pickups).</summary>
+    public IReadOnlyList<GunController> Weapons => _weapons;
+
+    // ── Private ────────────────────────────────────────────────────────────
+
+    private readonly List<GunController> _weapons = new List<GunController>();
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────
+
+    private void Awake()
     {
-        foreach (GunController gun in weapons)
+        if (_initialWeapons != null)
         {
-            if (gun == null) { Debug.LogWarning("WeaponManager: null entry in weapons[]", this); continue; }
-            gun.gameObject.SetActive(false);
-            gun.Initialize(this);
+            foreach (GunController gun in _initialWeapons)
+                RegisterWeapon(gun);
         }
     }
 
-    void Start()
+    private void Start()
     {
-        if (weapons.Length > 0)
+        if (_weapons.Count > 0)
             Equip(0);
     }
 
+    // ── Weapon registration ────────────────────────────────────────────────
+
+    private void RegisterWeapon(GunController gun)
+    {
+        if (gun == null)
+        {
+            Debug.LogWarning("WeaponManager: null entry in weapon list.", this);
+            return;
+        }
+        gun.gameObject.SetActive(false);
+        gun.Initialize(this);
+        _weapons.Add(gun);
+    }
+
+    /// <summary>Adds a weapon at runtime (e.g. picked up from the ground).</summary>
+    public void AddWeapon(GunController gun)
+    {
+        if (_weapons.Contains(gun)) return;
+        RegisterWeapon(gun);
+    }
+
+    /// <summary>Removes a weapon at runtime (e.g. dropped or discarded).</summary>
+    public void RemoveWeapon(GunController gun)
+    {
+        if (CurrentWeapon == gun) Holster();
+        _weapons.Remove(gun);
+    }
+
+    // ── Equip / holster ────────────────────────────────────────────────────
+
+    /// <summary>Equips the weapon at the given slot index.</summary>
     public void Equip(int index)
     {
-        if (index < 0 || index >= weapons.Length) return;
+        if (index < 0 || index >= _weapons.Count) return;
 
         if (CurrentWeapon != null)
             CurrentWeapon.gameObject.SetActive(false);
 
-        CurrentWeapon = weapons[index];
+        CurrentWeapon = _weapons[index];
         CurrentWeapon.gameObject.SetActive(true);
 
         ApplyIKTargets(CurrentWeapon);
     }
 
+    /// <summary>Disables the current weapon without equipping another.</summary>
     public void Holster()
     {
         if (CurrentWeapon == null) return;
@@ -69,9 +114,9 @@ public class WeaponManager : MonoBehaviour
         CurrentWeapon = null;
     }
 
-    // ── IK ────────────────────────────────────────────────────────────────
+    // ── IK ─────────────────────────────────────────────────────────────────
 
-    void ApplyIKTargets(GunController gun)
+    private void ApplyIKTargets(GunController gun)
     {
         if (rightHandIKTarget && gun.rightHandGrip)
         {

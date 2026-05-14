@@ -10,6 +10,19 @@ using UnityEngine;
 /// </summary>
 public static class GameInputState
 {
+    // ── Weapon input ───────────────────────────────────────────────────────
+
+    /// <summary>Fire button held (full-auto).</summary>
+    public static bool FireHeld     => Input.GetButton("Fire1");
+    /// <summary>Fire button pressed this frame (semi/burst).</summary>
+    public static bool FirePressed  => Input.GetButtonDown("Fire1");
+    /// <summary>Aim / ADS button held.</summary>
+    public static bool AimHeld      => Input.GetButton("Fire2");
+    /// <summary>Reload key pressed this frame.</summary>
+    public static bool ReloadPressed => Input.GetKeyDown(KeyCode.R);
+    /// <summary>Hold-open / debug bolt key held.</summary>
+    public static bool HoldOpenHeld  => Input.GetKey(KeyCode.H);
+    
     private static int _blockCount = 0;
 
     /// <summary>True while any system has requested a gameplay block.</summary>

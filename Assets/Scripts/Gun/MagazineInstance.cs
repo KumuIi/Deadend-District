@@ -1,36 +1,45 @@
 using System.Collections.Generic;
 
 /// <summary>
-/// Runtime state of a single physical magazine.
+/// Runtime state of one physical magazine — the actual rounds currently loaded.
 /// Rounds are stored back-to-front: index [Count-1] = next round to fire.
 ///
-/// Passed between the inventory system and GunController.
-/// To save: record MagazineSO.name + the list of AmmunitionSO.names in order.
+/// Flow:
+///   Inventory holds a List&lt;MagazineInstance&gt;.
+///   On reload: call gun.EjectMagazine() to get the old one back,
+///              then gun.StartReload(chosenMag) to slot in the new one.
+///   Each shot: GunController calls ConsumeRound() automatically.
+///
+/// To save to disk: store MagazineSO.name + each AmmunitionSO.name in _rounds order.
 /// </summary>
 public class MagazineInstance
 {
+    /// <summary>The SO definition this magazine was created from.</summary>
     public readonly MagazineSO data;
 
     private readonly List<AmmunitionSO> _rounds;
 
     public MagazineInstance(MagazineSO definition)
     {
-        data    = definition;
+        data = definition;
         _rounds = new List<AmmunitionSO>(definition.capacity);
     }
 
-    // ── State ─────────────────────────────────────────────────────────────
+    // ── State ──────────────────────────────────────────────────────────────
 
-    public int  BulletCount => _rounds.Count;
-    public bool IsEmpty     => _rounds.Count == 0;
-    public bool IsFull      => _rounds.Count >= data.capacity;
+    /// <summary>How many rounds are currently loaded.</summary>
+    public int BulletCount => _rounds.Count;
+    /// <summary>True when no rounds remain.</summary>
+    public bool IsEmpty => _rounds.Count == 0;
+    /// <summary>True when loaded to full capacity.</summary>
+    public bool IsFull => _rounds.Count >= data.capacity;
 
-    // ── Round access ──────────────────────────────────────────────────────
+    // ── Round access ───────────────────────────────────────────────────────
 
     /// <summary>Returns the next round to fire without removing it.</summary>
     public AmmunitionSO PeekNextRound() => IsEmpty ? null : _rounds[^1];
 
-    /// <summary>Removes and returns the top round (call once per shot fired).</summary>
+    /// <summary>Removes and returns the top round. Call once per shot fired.</summary>
     public AmmunitionSO ConsumeRound()
     {
         if (IsEmpty) return null;
@@ -41,7 +50,7 @@ public class MagazineInstance
 
     /// <summary>
     /// Pushes one round into the magazine.
-    /// Returns false if the magazine is full or the caliber doesn't match.
+    /// Returns false if full or caliber does not match.
     /// </summary>
     public bool LoadRound(AmmunitionSO ammo)
     {

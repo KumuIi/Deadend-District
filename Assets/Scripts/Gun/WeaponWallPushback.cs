@@ -1,33 +1,28 @@
 using UnityEngine;
 
 /// <summary>
-/// WeaponWallPushback — pulls the gun back on the Z axis when the muzzle
-/// is close to or inside a wall, preventing clipping.
+/// Pulls the gun back on the Z axis when the muzzle is close to or inside a wall,
+/// preventing the mesh from clipping through geometry.
 ///
-/// ATTACH THIS to a PARENT node that wraps the gun pivot, NOT to the gun
-/// pivot itself — otherwise GunSway/GunController overwrite localPosition
-/// every frame on the same object.
+/// Attach to the PARENT node that wraps the gun pivot (WeaponHolder), NOT to the
+/// gun pivot itself — GunSway and GunController overwrite localPosition every frame
+/// on the pivot object.
 ///
-/// Hierarchy example:
-///   WeaponHolder          ← attach WeaponWallPushback here
-///     └─ GunPivot         ← GunSway / GunController live here
-///          └─ GunMesh
-///
-/// FIX 1: Removed double-lerp (was smoothing currentPushback AND currentLocalPos).
-/// FIX 2: [DefaultExecutionOrder(-100)] ensures this runs before GunSway/GunController
-///         so the parent offset is stable when sway reads its rest position.
-/// FIX 3: Added collisionMask fallback so the SphereCast works out-of-the-box.
+/// Hierarchy:
+///   WeaponHolder  ← WeaponWallPushback lives here
+///   └─ GunPivot   ← GunSway / GunController live here
+///      └─ GunMesh
 /// </summary>
 [DefaultExecutionOrder(-100)]
 public class WeaponWallPushback : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private Transform gunTip;     // Point near the muzzle/front of the gun
-    [SerializeField] private Transform castOrigin; // Usually your camera transform
+    [SerializeField] private Transform gunTip;      // Point near the muzzle / front of the gun
+    [SerializeField] private Transform castOrigin;  // Usually the camera transform
 
     [Header("Detection")]
-    [SerializeField] private float     checkDistance = 1.0f;
-    [SerializeField] private float     sphereRadius  = 0.08f;
+    [SerializeField] private float checkDistance = 1.0f;
+    [SerializeField] private float sphereRadius  = 0.08f;
     [SerializeField] private LayerMask collisionMask;
 
     [Header("Pushback")]
@@ -46,7 +41,6 @@ public class WeaponWallPushback : MonoBehaviour
         if (castOrigin == null)
             castOrigin = Camera.main != null ? Camera.main.transform : transform.parent;
 
-        // FIX 3: fall back to "Default" layer if nothing was assigned in Inspector
         if (collisionMask == 0)
             collisionMask = LayerMask.GetMask("Default");
     }
@@ -71,10 +65,8 @@ public class WeaponWallPushback : MonoBehaviour
             }
         }
 
-        // FIX 1: single lerp — smooth directly to the target local position
         Vector3 targetLocalPos = _defaultLocalPos - new Vector3(0f, 0f, targetPushback);
         _currentLocalPos = Vector3.Lerp(_currentLocalPos, targetLocalPos, Time.deltaTime * smoothSpeed);
-
         transform.localPosition = _currentLocalPos;
     }
 }

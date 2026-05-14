@@ -1,112 +1,128 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
-/// GunController — weapon initialization, ADS pivot, fire modes, bolt/trigger animation,
-/// casing ejection, magazine management, and reload.
+/// Main weapon MonoBehaviour. Reads all tuning from WeaponSO.
+/// Player-level refs are injected by WeaponManager.Initialize() before first enable.
 ///
-/// All tuning data is read from the assigned WeaponSO.
-/// Magazine state is managed through MagazineInstance; swap it from the inventory system
-/// by calling InsertMagazine() / EjectMagazine(), then StartReload().
-///
-/// Gun-internal refs (pivot, bones, sockets, grip targets) are serialized on the prefab.
-/// Player-level refs are injected by WeaponManager before the object is enabled.
+/// Magazine flow (inventory integration):
+///   • On equip:   call InsertMagazine(mag)
+///   • On reload:  call EjectMagazine() to get old mag back, then StartReload(newMag)
+///   • Each shot:  ConsumeRound() is called automatically inside FireShot()
 /// </summary>
 [DefaultExecutionOrder(10000)]
 [RequireComponent(typeof(AudioSource))]
 [RequireComponent(typeof(GunSway))]
 public class GunController : MonoBehaviour
 {
+    // ── Inspector — weapon data ────────────────────────────────────────────
+
     [Header("=== Weapon Data ===")]
     public WeaponSO weaponData;
 
+    // ── Inspector — gun pivot ──────────────────────────────────────────────
+
     [Header("=== Gun Pivot ===")]
-    [Tooltip("The GunPivot empty child — shared with GunSway")]
+    [Tooltip("The GunPivot empty child — shared with GunSway.")]
     public Transform gunPivot;
 
+    // ── Inspector — bones ──────────────────────────────────────────────────
+
     [Header("=== Bone References ===")]
-    [Tooltip("Slider / bolt bone")]
+    [Tooltip("Slider / bolt bone.")]
     public Transform topBone;
-    [Tooltip("Trigger bone")]
+    [Tooltip("Trigger bone.")]
     public Transform triggerBone;
 
+    // ── Inspector — sockets ────────────────────────────────────────────────
+
     [Header("=== Sockets ===")]
-    [Tooltip("Empty at the barrel tip — raycast origin and FX spawn")]
+    [Tooltip("Empty at the barrel tip — raycast origin and FX spawn.")]
     public Transform muzzlePoint;
-    [Tooltip("Empty on the right side of the chamber")]
+    [Tooltip("Empty on the right side of the chamber.")]
     public Transform casingEjectPoint;
-    [Tooltip("Empty placed at the iron sight / optic centre")]
+    [Tooltip("Empty placed at the iron sight / optic centre.")]
     public Transform aimSocket;
 
+    // ── Inspector — IK grip targets ────────────────────────────────────────
+
     [Header("=== IK Grip Targets ===")]
-    [Tooltip("Empty child where the right (primary) hand grips")]
+    [Tooltip("Empty child where the right (primary) hand grips.")]
     public Transform rightHandGrip;
-    [Tooltip("Empty child where the left (support) hand grips")]
+    [Tooltip("Empty child where the left (support) hand grips.")]
     public Transform leftHandGrip;
 
-    [Header("=== Controls ===")]
-    public KeyCode reloadKey   = KeyCode.R;
-    public KeyCode holdOpenKey = KeyCode.H;
+    // ── Inspector — reload events ──────────────────────────────────────────
 
-    // ── Public state ──────────────────────────────────────────────────────
-    public bool  IsAiming    { get; private set; }
-    /// <summary>0 = hip, 1 = full ADS</summary>
-    public float AdsWeight   { get; private set; }
-    public bool  IsReloading { get; private set; }
+    [Header("=== Reload Events ===")]
+    [Tooltip("Fired at reloadMagEjectTime seconds — hook up animation, audio, VFX here.")]
+    public UnityEvent OnMagEjected;
+    [Tooltip("Fired at reloadMagInsertTime seconds — hook up animation, audio, VFX here.")]
+    public UnityEvent OnMagInserted;
+    [Tooltip("Fired when the full reload sequence finishes.")]
+    public UnityEvent OnReloadComplete;
 
-    // ── Magazine ──────────────────────────────────────────────────────────
-    public int  BulletsRemaining => _currentMagazine?.BulletCount ?? 0;
-    public int  MagazineCapacity => _currentMagazine?.data.capacity ?? 0;
+    // ── Public state ───────────────────────────────────────────────────────
 
-    /// <summary>Returns the ammo type of the next round, or the weapon default if no mag is loaded.</summary>
+    /// <summary>True while ADS input is held.</summary>
+    public bool IsAiming { get; private set; }
+    /// <summary>0 = hip, 1 = full ADS.</summary>
+    public float AdsWeight { get; private set; }
+    /// <summary>True while a reload coroutine is running.</summary>
+    public bool IsReloading { get; private set; }
+
+    // ── Magazine ───────────────────────────────────────────────────────────
+
+    /// <summary>Rounds currently loaded in the active magazine.</summary>
+    public int BulletsRemaining => _currentMagazine?.BulletCount ?? 0;
+    /// <summary>Capacity of the active magazine.</summary>
+    public int MagazineCapacity => _currentMagazine?.data.capacity ?? 0;
+    /// <summary>Next round to fire, or weapon default ammo if no mag is loaded.</summary>
     public AmmunitionSO CurrentAmmo =>
         _currentMagazine?.PeekNextRound() ?? weaponData?.defaultAmmo;
 
     private MagazineInstance _currentMagazine;
 
-    // ── Injected player refs ───────────────────────────────────────────────
-    private Transform _playerCam;
-    private GunSway   _sway;
+    // ── Private refs ───────────────────────────────────────────────────────
 
-    // ── Private state ─────────────────────────────────────────────────────
-    private float          _nextFireTime;
-    private AudioSource    _audio;
+    private Transform _playerCam;
+    private GunSway _sway;
+    private AudioSource _audio;
     private ParticleSystem _muzzleFlash;
 
-    // Bolt
-    private float _boltCurrent, _boltTarget, _boltVelocity;
+    // ── Private state ──────────────────────────────────────────────────────
 
-    // Trigger
+    private float _nextFireTime;
+
+    private float _boltCurrent, _boltTarget, _boltVelocity;
     private float _triggerCurrent, _triggerTarget, _triggerVelocity;
 
-    // ADS
-    private float   _adsWeight, _adsVelocity;
+    private float _adsWeight, _adsVelocity;
     private Vector3 _hipPosition, _adsLocalTarget;
 
-    // Bone rest poses
-    private Vector3    _boltRestPos;
+    private Vector3 _boltRestPos;
     private Quaternion _triggerRestRot;
 
-    // Burst
-    private int   _burstShotsRemaining;
+    private int _burstShotsRemaining;
     private float _nextBurstShotTime;
 
-    // ── Injection ─────────────────────────────────────────────────────────
+    // ── Injection ──────────────────────────────────────────────────────────
 
-    /// <summary>Called by WeaponManager while the object is disabled.</summary>
+    /// <summary>Called by WeaponManager.Awake() while this object is disabled.</summary>
     public void Initialize(WeaponManager mgr)
     {
         _playerCam = mgr.PlayerCam;
-        _sway      = GetComponent<GunSway>();
+        _sway = GetComponent<GunSway>();
         _sway.Initialize(gunPivot, mgr.PlayerMotor, mgr.PlayerCam, mgr.CameraController, this);
     }
 
-    // ── Magazine API (called by inventory / weapon manager) ───────────────
+    // ── Magazine API ───────────────────────────────────────────────────────
 
-    /// <summary>Directly inserts a magazine (e.g. from inventory on equip).</summary>
+    /// <summary>Directly inserts a magazine (call from inventory on equip).</summary>
     public void InsertMagazine(MagazineInstance mag) => _currentMagazine = mag;
 
-    /// <summary>Removes and returns the current magazine (e.g. to return to inventory).</summary>
+    /// <summary>Removes and returns the current magazine (call from inventory before reload).</summary>
     public MagazineInstance EjectMagazine()
     {
         var mag = _currentMagazine;
@@ -115,8 +131,9 @@ public class GunController : MonoBehaviour
     }
 
     /// <summary>
-    /// Begins a reload using newMag. If newMag is null and weaponData.defaultMagazineType
-    /// is assigned, auto-creates a full magazine (debug/testing convenience).
+    /// Starts a reload sequence with newMag.
+    /// If newMag is null and WeaponSO.defaultMagazineType is set, auto-creates a
+    /// full magazine for debug / testing without a real inventory.
     /// </summary>
     public void StartReload(MagazineInstance newMag = null)
     {
@@ -131,23 +148,23 @@ public class GunController : MonoBehaviour
 
         if (newMag.data.caliber != weaponData.caliber)
         {
-            Debug.LogWarning($"GunController: magazine caliber '{newMag.data.caliber}' " +
-                             $"doesn't match weapon caliber '{weaponData.caliber}'.");
+            Debug.LogWarning($"GunController: magazine caliber '{newMag.data.caliber.displayName}' " +
+                             $"doesn't match weapon caliber '{weaponData.caliber.displayName}'.");
             return;
         }
 
         StartCoroutine(ReloadCoroutine(newMag));
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────
+    // ── Lifecycle ──────────────────────────────────────────────────────────
 
-    void Start()
+    private void Start()
     {
         if (topBone)     _boltRestPos    = topBone.localPosition;
         if (triggerBone) _triggerRestRot = triggerBone.localRotation;
         if (gunPivot)
         {
-            _hipPosition    = gunPivot.localPosition;
+            _hipPosition   = gunPivot.localPosition;
             _adsLocalTarget = _hipPosition;
         }
 
@@ -160,101 +177,24 @@ public class GunController : MonoBehaviour
             _muzzleFlash.Stop();
         }
 
-        // Auto-load a default magazine for testing
-        if (_currentMagazine == null && weaponData?.defaultMagazineType)
+        // Auto-load debug magazine if no inventory has provided one yet.
+        if (_currentMagazine == null && weaponData?.defaultMagazineType != null)
             StartReload();
     }
 
-    void Update()
+    private void Update()
     {
         if (!weaponData) return;
 
-        // ── Hold-open debug ───────────────────────────────────────────────
-        if (Input.GetKey(holdOpenKey))
-        {
-            _boltTarget = _boltCurrent = -weaponData.boltTravelDistance;
-            _boltVelocity = 0f;
-            return;
-        }
-
-        // ── ADS ───────────────────────────────────────────────────────────
-        IsAiming = !GameInputState.GameplayBlocked && Input.GetButton("Fire2");
-        float adsSmooth = IsAiming ? weaponData.adsInTime : weaponData.adsOutTime;
-        _adsWeight = Mathf.SmoothDamp(_adsWeight, IsAiming ? 1f : 0f, ref _adsVelocity, adsSmooth);
-        AdsWeight  = _adsWeight;
-
-        // ── Reload input ──────────────────────────────────────────────────
-        if (!GameInputState.GameplayBlocked && Input.GetKeyDown(reloadKey) && !IsReloading)
-            StartReload();
-
-        // ── Fire input ────────────────────────────────────────────────────
-        if (!IsReloading && !GameInputState.GameplayBlocked)
-        {
-            float rpm = IsAiming
-                ? weaponData.fireRate * weaponData.adsFirerateMultiplier
-                : weaponData.fireRate;
-
-            switch (weaponData.fireMode)
-            {
-                case FireMode.FullAuto:
-                    if (Input.GetButton("Fire1") && Time.time >= _nextFireTime && CanFire())
-                    {
-                        FireShot();
-                        _nextFireTime = Time.time + 60f / rpm;
-                    }
-                    break;
-
-                case FireMode.SemiAuto:
-                    if (Input.GetButtonDown("Fire1") && Time.time >= _nextFireTime && CanFire())
-                    {
-                        FireShot();
-                        _nextFireTime = Time.time + 60f / rpm;
-                    }
-                    break;
-
-                case FireMode.Burst:
-                    if (Input.GetButtonDown("Fire1") && Time.time >= _nextFireTime
-                        && _burstShotsRemaining == 0 && CanFire())
-                    {
-                        _burstShotsRemaining = weaponData.burstCount;
-                        _nextBurstShotTime   = Time.time;
-                    }
-                    break;
-            }
-
-            // Burst tick — independent of fire mode block so it drains naturally
-            if (_burstShotsRemaining > 0 && Time.time >= _nextBurstShotTime && CanFire())
-            {
-                FireShot();
-                _burstShotsRemaining--;
-                _nextBurstShotTime = Time.time + weaponData.burstShotInterval;
-                if (_burstShotsRemaining == 0)
-                    _nextFireTime = Time.time + 60f / (IsAiming
-                        ? weaponData.fireRate * weaponData.adsFirerateMultiplier
-                        : weaponData.fireRate);
-            }
-        }
-
-        // ── Bolt tick ─────────────────────────────────────────────────────
-        float boltSmooth = (_boltTarget < -0.0001f) ? weaponData.boltBackTime : weaponData.boltForwardTime;
-        _boltCurrent = Mathf.SmoothDamp(_boltCurrent, _boltTarget, ref _boltVelocity, boltSmooth);
-
-        if (_boltTarget < 0f  && Mathf.Abs(_boltCurrent - _boltTarget) < 0.0001f)
-            { _boltTarget = 0f; _boltVelocity = 0f; }
-        if (_boltTarget >= 0f && Mathf.Abs(_boltCurrent) < 0.00005f)
-            { _boltCurrent = 0f; _boltVelocity = 0f; }
-
-        // ── Trigger tick ──────────────────────────────────────────────────
-        float trigSmooth = (_triggerTarget > 0.01f) ? weaponData.triggerPullTime : weaponData.triggerReleaseTime;
-        _triggerCurrent = Mathf.SmoothDamp(_triggerCurrent, _triggerTarget, ref _triggerVelocity, trigSmooth);
-
-        if (_triggerTarget > 0f  && Mathf.Abs(_triggerCurrent - _triggerTarget) < 0.01f)
-            { _triggerTarget = 0f; _triggerVelocity = 0f; }
-        if (_triggerTarget <= 0f && Mathf.Abs(_triggerCurrent) < 0.001f)
-            { _triggerCurrent = 0f; _triggerVelocity = 0f; }
+        HandleHoldOpen();
+        HandleADS();
+        HandleReloadInput();
+        HandleFireInput();
+        TickBolt();
+        TickTrigger();
     }
 
-    void LateUpdate()
+    private void LateUpdate()
     {
         if (topBone)
             topBone.localPosition = _boltRestPos + new Vector3(-_boltCurrent, 0f, 0f);
@@ -265,47 +205,163 @@ public class GunController : MonoBehaviour
         ApplyAdsPivot();
     }
 
-    // ── ADS pivot ─────────────────────────────────────────────────────────
+    // ── Input handlers ─────────────────────────────────────────────────────
 
-    void ApplyAdsPivot()
+    private void HandleHoldOpen()
+    {
+        if (!GameInputState.HoldOpenHeld) return;
+        _boltTarget = _boltCurrent = -weaponData.boltTravelDistance;
+        _boltVelocity = 0f;
+    }
+
+    private void HandleADS()
+    {
+        IsAiming = !GameInputState.GameplayBlocked && GameInputState.AimHeld;
+        float adsSmooth = IsAiming ? weaponData.adsInTime : weaponData.adsOutTime;
+        _adsWeight = Mathf.SmoothDamp(_adsWeight, IsAiming ? 1f : 0f, ref _adsVelocity, adsSmooth);
+        AdsWeight = _adsWeight;
+    }
+
+    private void HandleReloadInput()
+    {
+        if (!GameInputState.GameplayBlocked && GameInputState.ReloadPressed && !IsReloading)
+            StartReload();
+    }
+
+    private void HandleFireInput()
+    {
+        if (IsReloading || GameInputState.GameplayBlocked) return;
+
+        float rpm = IsAiming
+            ? weaponData.fireRate * weaponData.adsFirerateMultiplier
+            : weaponData.fireRate;
+
+        switch (weaponData.fireMode)
+        {
+            case FireMode.FullAuto:
+                if (GameInputState.FireHeld && Time.time >= _nextFireTime && CanFire())
+                {
+                    FireShot();
+                    _nextFireTime = Time.time + 60f / rpm;
+                }
+                break;
+
+            case FireMode.SemiAuto:
+                if (GameInputState.FirePressed && Time.time >= _nextFireTime && CanFire())
+                {
+                    FireShot();
+                    _nextFireTime = Time.time + 60f / rpm;
+                }
+                break;
+
+            case FireMode.Burst:
+                if (GameInputState.FirePressed && Time.time >= _nextFireTime
+                    && _burstShotsRemaining == 0 && CanFire())
+                {
+                    _burstShotsRemaining = weaponData.burstCount;
+                    _nextBurstShotTime   = Time.time;
+                }
+                break;
+        }
+
+        // Burst drain — independent of fire mode block.
+        if (_burstShotsRemaining > 0 && Time.time >= _nextBurstShotTime && CanFire())
+        {
+            FireShot();
+            _burstShotsRemaining--;
+            _nextBurstShotTime = Time.time + weaponData.burstShotInterval;
+            if (_burstShotsRemaining == 0)
+            {
+                float finalRpm = IsAiming
+                    ? weaponData.fireRate * weaponData.adsFirerateMultiplier
+                    : weaponData.fireRate;
+                _nextFireTime = Time.time + 60f / finalRpm;
+            }
+        }
+    }
+
+    // ── Bolt / trigger tick ────────────────────────────────────────────────
+
+    private void TickBolt()
+    {
+        if (GameInputState.HoldOpenHeld) return; // handled in HandleHoldOpen
+
+        float boltSmooth = _boltTarget < -0.0001f ? weaponData.boltBackTime : weaponData.boltForwardTime;
+        _boltCurrent = Mathf.SmoothDamp(_boltCurrent, _boltTarget, ref _boltVelocity, boltSmooth);
+
+        if (_boltTarget < 0f && Mathf.Abs(_boltCurrent - _boltTarget) < 0.0001f)
+        { _boltTarget = 0f; _boltVelocity = 0f; }
+        if (_boltTarget >= 0f && Mathf.Abs(_boltCurrent) < 0.00005f)
+        { _boltCurrent = 0f; _boltVelocity = 0f; }
+    }
+
+    private void TickTrigger()
+    {
+        float trigSmooth = _triggerTarget > 0.01f ? weaponData.triggerPullTime : weaponData.triggerReleaseTime;
+        _triggerCurrent = Mathf.SmoothDamp(_triggerCurrent, _triggerTarget, ref _triggerVelocity, trigSmooth);
+
+        if (_triggerTarget > 0f && Mathf.Abs(_triggerCurrent - _triggerTarget) < 0.01f)
+        { _triggerTarget = 0f; _triggerVelocity = 0f; }
+        if (_triggerTarget <= 0f && Mathf.Abs(_triggerCurrent) < 0.001f)
+        { _triggerCurrent = 0f; _triggerVelocity = 0f; }
+    }
+
+    // ── ADS pivot ──────────────────────────────────────────────────────────
+
+    private void ApplyAdsPivot()
     {
         if (!gunPivot || !_playerCam) return;
 
         if (aimSocket)
         {
             Vector3 socketToGunPivot = gunPivot.position - aimSocket.position;
-            Vector3 adsWorldPos      = _playerCam.position + socketToGunPivot;
+            Vector3 adsWorldPos = _playerCam.position + socketToGunPivot;
             _adsLocalTarget = gunPivot.parent
                 ? gunPivot.parent.InverseTransformPoint(adsWorldPos)
                 : adsWorldPos;
         }
 
-        Vector3 adsShift         = _adsLocalTarget - _hipPosition;
+        Vector3 adsShift       = _adsLocalTarget - _hipPosition;
         Vector3 swayContribution = gunPivot.localPosition - _hipPosition;
-        gunPivot.localPosition   = _hipPosition + swayContribution + adsShift * _adsWeight;
+        gunPivot.localPosition = _hipPosition + swayContribution + adsShift * _adsWeight;
     }
 
-    // ── Reload coroutine ──────────────────────────────────────────────────
+    // ── Reload coroutine ───────────────────────────────────────────────────
 
-    IEnumerator ReloadCoroutine(MagazineInstance newMag)
+    private IEnumerator ReloadCoroutine(MagazineInstance newMag)
     {
         IsReloading = true;
-        yield return new WaitForSeconds(weaponData.reloadTime);
+
+        yield return new WaitForSeconds(weaponData.reloadMagEjectTime);
+        OnMagEjected?.Invoke();
+
+        float insertWait = Mathf.Max(0f, weaponData.reloadMagInsertTime - weaponData.reloadMagEjectTime);
+        yield return new WaitForSeconds(insertWait);
         _currentMagazine = newMag;
+        OnMagInserted?.Invoke();
+
+        float finishWait = Mathf.Max(0f, weaponData.reloadTime - weaponData.reloadMagInsertTime);
+        yield return new WaitForSeconds(finishWait);
+
         IsReloading = false;
+        OnReloadComplete?.Invoke();
     }
 
-    // ── Fire ──────────────────────────────────────────────────────────────
+    // ── Fire ───────────────────────────────────────────────────────────────
 
-    bool CanFire() => _currentMagazine != null && !_currentMagazine.IsEmpty;
+    private bool CanFire() => _currentMagazine != null && !_currentMagazine.IsEmpty;
 
-    void FireShot()
+    private void FireShot()
     {
         AmmunitionSO ammo = CurrentAmmo;
         _currentMagazine?.ConsumeRound();
 
-        Vector3 origin    = _playerCam ? _playerCam.position : (muzzlePoint ? muzzlePoint.position  : transform.position);
-        Vector3 direction = _playerCam ? _playerCam.forward  : (muzzlePoint ? muzzlePoint.forward   : transform.forward);
+        Vector3 origin = _playerCam
+            ? _playerCam.position
+            : (muzzlePoint ? muzzlePoint.position : transform.position);
+        Vector3 direction = _playerCam
+            ? _playerCam.forward
+            : (muzzlePoint ? muzzlePoint.forward : transform.forward);
 
         if (Physics.Raycast(origin, direction, out RaycastHit hit, weaponData.range, weaponData.hitLayers))
         {
@@ -321,7 +377,7 @@ public class GunController : MonoBehaviour
                 ApplyExplosion(hit.point, ammo);
         }
 
-        if (_muzzleFlash)          _muzzleFlash.Play();
+        if (_muzzleFlash) _muzzleFlash.Play();
         if (weaponData.gunshotClip) _audio.PlayOneShot(weaponData.gunshotClip);
 
         EjectCasing();
@@ -333,17 +389,15 @@ public class GunController : MonoBehaviour
         _triggerVelocity = weaponData.triggerRotationAngle / weaponData.triggerPullTime;
     }
 
-    void ApplyExplosion(Vector3 centre, AmmunitionSO ammo)
+    private void ApplyExplosion(Vector3 centre, AmmunitionSO ammo)
     {
         Collider[] cols = Physics.OverlapSphere(centre, ammo.explosionRadius, weaponData.hitLayers);
         foreach (Collider col in cols)
-        {
             col.attachedRigidbody?.AddExplosionForce(
                 ammo.explosionForce, centre, ammo.explosionRadius, 0.5f);
-        }
     }
 
-    void EjectCasing()
+    private void EjectCasing()
     {
         if (!weaponData.casingPrefab || !casingEjectPoint) return;
 
@@ -359,15 +413,15 @@ public class GunController : MonoBehaviour
         }
 
         Vector3 ejectDir = (casingEjectPoint.right
-            + casingEjectPoint.up      * 0.5f
+            + casingEjectPoint.up * 0.5f
             + casingEjectPoint.forward * -0.2f).normalized;
 
         Vector3 spread = new Vector3(
             Random.Range(-weaponData.casingEjectSpread, weaponData.casingEjectSpread) * 0.3f,
-            Random.Range(0f,                            weaponData.casingEjectSpread) * 0.5f,
+            Random.Range(0f, weaponData.casingEjectSpread) * 0.5f,
             Random.Range(-weaponData.casingEjectSpread, weaponData.casingEjectSpread) * 0.2f);
 
-        rb.linearVelocity  = (ejectDir * weaponData.casingEjectForce + spread)
+        rb.linearVelocity = (ejectDir * weaponData.casingEjectForce + spread)
             + (_playerCam ? _playerCam.forward * 0.5f : Vector3.zero);
 
         rb.angularVelocity = new Vector3(
