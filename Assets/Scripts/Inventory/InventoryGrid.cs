@@ -2,21 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Pure data model for a 2D inventory grid — no MonoBehaviour, no UI.
+/// Pure C# data model for a 2D inventory grid — no MonoBehaviour, no UnityEngine.UI.
 /// Width = columns (X axis), Height = rows (Y axis). Origin = top-left cell (0,0).
 ///
 /// Each cell holds a reference to the ItemInstance covering it, or null.
-/// Items record their own top-left gridPosition so moves can be validated
-/// without scanning the full array.
+/// Items use their cellOffsets (via ItemInstance.GetCurrentOffsets) for shape-aware placement,
+/// supporting rectangles, L-shapes, and any custom footprint defined in the ItemSO.
 /// </summary>
 public class InventoryGrid
 {
     public readonly int Width;
     public readonly int Height;
 
-    private readonly ItemInstance[,]    _cells;
+    private readonly ItemInstance[,] _cells;
     private readonly HashSet<ItemInstance> _placed = new HashSet<ItemInstance>();
 
+    /// <summary>All items currently placed in this grid.</summary>
     public IReadOnlyCollection<ItemInstance> PlacedItems => _placed;
 
     public InventoryGrid(int width, int height)
@@ -28,26 +29,42 @@ public class InventoryGrid
 
     // ── Queries ───────────────────────────────────────────────────────────
 
+    /// <summary>Returns true if (x,y) is inside the grid boundaries.</summary>
     public bool IsInBounds(int x, int y) =>
         x >= 0 && x < Width && y >= 0 && y < Height;
 
+    /// <summary>Returns the item occupying cell (x,y), or null.</summary>
     public ItemInstance GetAt(int x, int y) =>
         IsInBounds(x, y) ? _cells[x, y] : null;
 
+    /// <inheritdoc cref="GetAt(int,int)"/>
     public ItemInstance GetAt(Vector2Int pos) => GetAt(pos.x, pos.y);
 
     /// <summary>
-    /// Returns true if the item's footprint fits at pos with no occupied-by-another-item conflicts.
-    /// An item may overlap its own current cells (needed for in-place rotation checks).
+    /// Returns the total number of unoccupied cells in the grid.
+    /// </summary>
+    public int GetFreeCellCount()
+    {
+        int free = 0;
+        for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
+                if (_cells[x, y] == null) free++;
+        return free;
+    }
+
+    /// <summary>
+    /// Returns true if the item's shape (in its current rotation) fits at
+    /// <paramref name="pos"/> with no conflicts.
+    /// An item may overlap its own current cells (needed for in-place rotation).
     /// </summary>
     public bool CanPlace(ItemInstance item, Vector2Int pos)
     {
-        Vector2Int size = item.CurrentSize;
-        for (int y = pos.y; y < pos.y + size.y; y++)
-        for (int x = pos.x; x < pos.x + size.x; x++)
+        foreach (var offset in item.GetCurrentOffsets())
         {
+            int x = pos.x + offset.x;
+            int y = pos.y + offset.y;
             if (!IsInBounds(x, y)) return false;
-            ItemInstance occupant = _cells[x, y];
+            var occupant = _cells[x, y];
             if (occupant != null && occupant != item) return false;
         }
         return true;
@@ -56,8 +73,8 @@ public class InventoryGrid
     // ── Placement ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Places the item at pos. If the item is already in this grid it is moved.
-    /// Returns false without modifying state if placement is invalid.
+    /// Places the item at <paramref name="pos"/>. If the item is already in
+    /// this grid it is moved. Returns false without modifying state if invalid.
     /// </summary>
     public bool TryPlace(ItemInstance item, Vector2Int pos)
     {
@@ -65,12 +82,10 @@ public class InventoryGrid
 
         if (_placed.Contains(item)) RemoveInternal(item);
 
-        Vector2Int size   = item.CurrentSize;
         item.gridPosition = pos;
 
-        for (int y = pos.y; y < pos.y + size.y; y++)
-        for (int x = pos.x; x < pos.x + size.x; x++)
-            _cells[x, y] = item;
+        foreach (var offset in item.GetCurrentOffsets())
+            _cells[pos.x + offset.x, pos.y + offset.y] = item;
 
         _placed.Add(item);
         return true;
@@ -86,11 +101,14 @@ public class InventoryGrid
 
     private void RemoveInternal(ItemInstance item)
     {
-        Vector2Int size = item.CurrentSize;
-        Vector2Int pos  = item.gridPosition;
-        for (int y = pos.y; y < pos.y + size.y; y++)
-        for (int x = pos.x; x < pos.x + size.x; x++)
-            if (_cells[x, y] == item) _cells[x, y] = null;
+        // Use the item's stored position + current offsets to clear cells
+        foreach (var offset in item.GetCurrentOffsets())
+        {
+            int x = item.gridPosition.x + offset.x;
+            int y = item.gridPosition.y + offset.y;
+            if (IsInBounds(x, y) && _cells[x, y] == item)
+                _cells[x, y] = null;
+        }
         _placed.Remove(item);
     }
 
@@ -101,40 +119,70 @@ public class InventoryGrid
     public Vector2Int? FindFreeSpace(ItemInstance item)
     {
         for (int y = 0; y < Height; y++)
-        for (int x = 0; x < Width;  x++)
-        {
-            var pos = new Vector2Int(x, y);
-            if (CanPlace(item, pos)) return pos;
-        }
+            for (int x = 0; x < Width; x++)
+            {
+                var pos = new Vector2Int(x, y);
+                if (CanPlace(item, pos)) return pos;
+            }
         return null;
     }
 
-    // ── Save data ─────────────────────────────────────────────────────────
+    // ── Save / Load ───────────────────────────────────────────────────────
 
     /// <summary>Returns the minimal data needed to reconstruct this grid's contents.</summary>
     public List<GridSaveEntry> GetSaveData()
     {
         var entries = new List<GridSaveEntry>(_placed.Count);
-        foreach (ItemInstance item in _placed)
-        {
+        foreach (var item in _placed)
             entries.Add(new GridSaveEntry
             {
-                soName    = item.data.name,   // ScriptableObject asset name — use for lookup
+                soName    = item.data.name,
                 gridX     = item.gridPosition.x,
                 gridY     = item.gridPosition.y,
                 isRotated = item.isRotated,
             });
-        }
         return entries;
     }
-}
 
-/// <summary>Serialisable record for one item's grid position. Store this; rebuild everything else.</summary>
-[System.Serializable]
-public class GridSaveEntry
-{
-    public string soName;
-    public int    gridX;
-    public int    gridY;
-    public bool   isRotated;
+    /// <summary>
+    /// Rebuilds the grid from previously saved data.
+    /// Uses <paramref name="resolver"/> to look up ItemSO assets by name — the grid
+    /// itself has no dependency on Resources or any Unity loading API.
+    /// Entries whose SO cannot be resolved are skipped with a logged warning.
+    /// </summary>
+    public void LoadFromSaveData(List<GridSaveEntry> entries, IItemSOResolver resolver)
+    {
+        if (entries == null || resolver == null) return;
+
+        foreach (var entry in entries)
+        {
+            var so = resolver.Resolve(entry.soName);
+            if (so == null)
+            {
+                Debug.LogWarning($"[InventoryGrid] Could not resolve ItemSO '{entry.soName}' — skipping.");
+                continue;
+            }
+
+            var item = new ItemInstance(so)
+            {
+                gridPosition = new Vector2Int(entry.gridX, entry.gridY),
+                isRotated    = entry.isRotated,
+            };
+
+            if (!TryPlace(item, item.gridPosition))
+                Debug.LogWarning($"[InventoryGrid] Could not place '{entry.soName}' at " +
+                                 $"({entry.gridX},{entry.gridY}) during load — position occupied or out of bounds.");
+        }
+    }
+
+    /// <summary>Serialisable record for one item's grid placement. Store this; rebuild everything else from the SO.</summary>
+    [System.Serializable]
+    public class GridSaveEntry
+    {
+        /// <summary>ScriptableObject asset name — pass to IItemSOResolver.Resolve().</summary>
+        public string soName;
+        public int    gridX;
+        public int    gridY;
+        public bool   isRotated;
+    }
 }

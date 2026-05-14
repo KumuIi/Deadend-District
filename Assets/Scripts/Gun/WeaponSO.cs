@@ -11,7 +11,6 @@ public enum FireMode { FullAuto, SemiAuto, Burst }
 ///   2. Create / reuse AmmunitionSO + MagazineSO with a matching CaliberSO
 ///   3. Duplicate a gun prefab  →  assign this SO to GunController.weaponData
 ///   4. Drag the prefab into WeaponManager._initialWeapons
-///   Done.
 /// </summary>
 [CreateAssetMenu(fileName = "NewWeapon", menuName = "Deadend District/Weapon")]
 public class WeaponSO : ItemSO

@@ -2,39 +2,37 @@ using UnityEngine;
 
 /// <summary>
 /// Dev-only script for testing inventory pickup without a full loot system.
-/// Attach to any GameObject in the scene. Delete before shipping.
+/// Attach to any GameObject in the scene.
 /// </summary>
-public class InventoryTester : MonoBehaviour
+public sealed class InventoryTester : MonoBehaviour
 {
+    [Header("=== DEV ONLY — DELETE BEFORE SHIP ===")]
     public InventoryUI inventory;
 
-    [Tooltip("ItemSOs to cycle through when pressing the add key")]
+    [Tooltip("ItemSOs to cycle through when pressing the add key.")]
     public ItemSO[] testItems;
 
     public KeyCode addKey    = KeyCode.F;
     public KeyCode removeKey = KeyCode.G;
 
-    private int _index = 0;
+    private int          _index    = 0;
     private ItemInstance _lastAdded;
 
-    void Update()
+    private void Update()
     {
-        if (Input.GetKeyDown(addKey))
-            AddNext();
-
-        if (Input.GetKeyDown(removeKey) && _lastAdded != null)
-            Remove();
+        if (Input.GetKeyDown(addKey))    AddNext();
+        if (Input.GetKeyDown(removeKey)) RemoveLast();
     }
 
-    void AddNext()
+    private void AddNext()
     {
         if (inventory == null || testItems == null || testItems.Length == 0)
         {
-            Debug.LogWarning("InventoryTester: assign InventoryUI and at least one ItemSO.");
+            Debug.LogWarning("[InventoryTester] Assign InventoryUI and at least one ItemSO.");
             return;
         }
 
-        ItemSO so = testItems[_index % testItems.Length];
+        var so     = testItems[_index % testItems.Length];
         _index++;
 
         var item   = new ItemInstance(so);
@@ -43,9 +41,8 @@ public class InventoryTester : MonoBehaviour
         if (result == PickupResult.Placed)
         {
             _lastAdded = item;
-            Debug.Log($"[InventoryTester] Added '{so.itemName}' at {item.gridPosition}  " +
-                      $"rotated={item.isRotated}  " +
-                      $"remaining cells: {FreeCount()}");
+            Debug.Log($"[InventoryTester] Added '{so.itemName}' at {item.gridPosition} " +
+                      $"rotated={item.isRotated} | free cells: {inventory.Grid.GetFreeCellCount()}");
         }
         else
         {
@@ -53,19 +50,11 @@ public class InventoryTester : MonoBehaviour
         }
     }
 
-    void Remove()
+    private void RemoveLast()
     {
+        if (_lastAdded == null) return;
         inventory.RemoveItem(_lastAdded);
         Debug.Log($"[InventoryTester] Removed '{_lastAdded.data.itemName}'.");
         _lastAdded = null;
-    }
-
-    int FreeCount()
-    {
-        int free = 0;
-        for (int y = 0; y < inventory.Grid.Height; y++)
-        for (int x = 0; x < inventory.Grid.Width;  x++)
-            if (inventory.Grid.GetAt(x, y) == null) free++;
-        return free;
     }
 }

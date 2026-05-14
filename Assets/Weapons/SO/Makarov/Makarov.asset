@@ -14,23 +14,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSO
   itemName: Item
   gridSize: {x: 2, y: 1}
+  cellOffsets: []
   modelPrefab: {fileID: 919132149155446097, guid: a19ffdb9431f0924ba6aeda4c3895614, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
-  caliber: 9x18
+  modelOrientationOffset: {x: 90, y: 0, z: 0}
+  gridRotationAxis: {x: 0, y: 0, z: 90}
+  caliber: {fileID: 0}
   fireMode: 1
   burstCount: 3
   burstShotInterval: 0.08
   fireRate: 600
-  baseDamage: 25
+  baseDamage: 15
   range: 100
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  reloadTime: 1.8
+  reloadTime: 2
+  reloadMagEjectTime: 0.3
+  reloadMagInsertTime: 1.2
   defaultMagazineType: {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
-  adsInTime: 0.15
-  adsOutTime: 0.12
-  adsFirerateMultiplier: 0.75
+  adsInTime: 0.09
+  adsOutTime: 0.2
+  adsFirerateMultiplier: 1
   boltTravelDistance: 0.0007
   boltBackTime: 0.04
   boltForwardTime: 0.1
@@ -38,10 +43,40 @@ MonoBehaviour:
   triggerPullTime: 0.03
   triggerReleaseTime: 0.08
   casingPrefab: {fileID: 3995026478072861770, guid: 17c2546342ab0d9419a04bcf4b3c1e30, type: 3}
-  casingEjectForce: 3
+  casingEjectForce: 1
   casingEjectSpread: 1.5
   casingTorque: 8
   casingLifetime: 4
   muzzleFlashPrefab: {fileID: 1881687275341570813, guid: 05db9151f93e18e4598102ad0dd3c3c8, type: 3}
   gunshotClip: {fileID: 8300000, guid: 2a8a853b1be954c499cc8a83851d7000, type: 3}
   defaultAmmo: {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}
+  feel:
+    swayAmount: 0.04
+    swaySmooth: 8
+    swayMaxDelta: 1
+    tiltAmount: 10
+    tiltSmooth: 8
+    adsTiltMultiplier: 1
+    leanGunTiltAmount: 10
+    breatheAmplitudeY: 0.0015
+    breatheAmplitudeX: 0.0008
+    breatheFrequency: 0.8
+    walkBobSpeedThreshold: 0.5
+    walkBobFrequency: 1.2
+    walkBobAmplitudeY: 0.006
+    walkBobAmplitudeX: 0.003
+    sprintBobFrequency: 1.5
+    sprintBobAmplitudeY: 0.02
+    sprintBobAmplitudeX: 0.01
+    sprintTiltZ: 45
+    sprintTiltSmooth: 6
+    airborneRiseAmount: 0.04
+    airborneRiseSmooth: 0.15
+    airborneReturnSmooth: 0.08
+    landSlamAmount: 0.125
+    landRecoverSmooth: 0.25
+    landVelocityThresh: -3
+    stepNudgeAmount: 0.0045
+    stepNudgeSmooth: 10
+    masterIntensity: 1
+    returnSmooth: 12

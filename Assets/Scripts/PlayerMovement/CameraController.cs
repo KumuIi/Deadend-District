@@ -2,17 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// CameraController — attach this to the Camera child of the player, NOT the root.
-///
-/// ══ SETUP ════════════════════════════════════════════════════════════════
-///
-///   Player (root, pivot = FEET)
-///   └── CameraRig  ← attach this script HERE
-///         LocalPosition = (0, 1.65, 0)   ← eye level for a 2m capsule
-///         Camera component here
-///
-///   Drag the PlayerInput component (on the root) into the "Player Input" field.
-///   Cursor locking is owned by GameInputState — NOT this script.
-///
+
 /// ══ PROPERTIES USED BY OTHER SCRIPTS ════════════════════════════════════
 ///
 ///   LeanWeight  — smoothed lean value (-1..+1). Read by GunSway and others.

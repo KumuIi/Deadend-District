@@ -3,14 +3,24 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// Hit-test surface in the inventory grid. The item's 3D model prefab is instantiated as a
-/// normal scene object and physically placed at the cell's world-space position so it appears
-/// to lie flat on the inventory panel. No RenderTexture or per-item camera involved.
+/// Hit-test surface in the inventory grid.
+/// The item's 3D model prefab is instantiated as a normal scene object and physically
+/// placed at the cells' world-space centre so it appears to lie flat on the inventory panel.
+///
+/// Rotation pipeline (applied in order):
+///   1. panelTilt       — inherits the canvas panel's world rotation
+///   2. flatOnPanel     — Euler(-90,0,0) lays the model flat on the panel surface
+///   3. perItemOffset   — ItemSO.modelOrientationOffset corrects per-model export differences
+///   4. gridRotation    — 90° around ItemSO.gridRotationAxis (default: panel normal = Z)
+///                        when the item is rotated in the grid
+///
+/// The grid rotation spins the model around the panel's surface normal (Z after steps 1-3),
+/// which matches the grid's cell-swap behaviour (width ↔ height) correctly.
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 [RequireComponent(typeof(RawImage))]
 [RequireComponent(typeof(CanvasGroup))]
-public class InventoryItemView : MonoBehaviour,
+public sealed class InventoryItemView : MonoBehaviour,
     IBeginDragHandler, IDragHandler, IEndDragHandler,
     IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
@@ -20,10 +30,9 @@ public class InventoryItemView : MonoBehaviour,
     private RectTransform _rect;
     private RawImage      _image;
     private CanvasGroup   _group;
-    private bool          _isDragging;
     private GameObject    _model;
 
-    // ── Initialisation ─────────────────────────────────────────────────────────
+    // ── Initialisation ────────────────────────────────────────────────────
 
     public void Initialize(ItemInstance item, InventoryUI owner, int modelLayer, float cellSize)
     {
@@ -34,7 +43,6 @@ public class InventoryItemView : MonoBehaviour,
         _image = GetComponent<RawImage>();
         _group = GetComponent<CanvasGroup>();
 
-        // RawImage is fully transparent — it exists only to receive pointer/drag events.
         _image.color         = new Color(0f, 0f, 0f, 0f);
         _image.raycastTarget = true;
 
@@ -43,17 +51,24 @@ public class InventoryItemView : MonoBehaviour,
         if (item.data.modelPrefab == null) return;
 
         _model = Instantiate(item.data.modelPrefab);
-        _model.SetActive(false); // hidden until inventory is opened
-        SetLayerRecursive(_model, modelLayer);
+        _model.SetActive(false);
+        _model.SetLayerRecursive(modelLayer);
 
         PlaceModel();
     }
 
-    // ── 3D placement ───────────────────────────────────────────────────────────
+    // ── 3D model placement ────────────────────────────────────────────────
 
-    // Positions and scales the model so it physically occupies its grid cells.
-    // Forcing canvas layout update ensures GetWorldCorners returns valid positions
-    // even when called in the same frame the item is spawned.
+    /// <summary>
+    /// Positions and orients the model so it lies flat on its grid cells.
+    ///
+    /// Rotation order:
+    ///   panelTilt × flatOnPanel × perItemOffset × gridRotation
+    ///
+    /// gridRotation spins around ItemSO.gridRotationAxis in the model's LOCAL space
+    /// (i.e. AFTER the first three steps are applied). Default axis (0,0,1) = panel normal,
+    /// so the model spins flat on the panel surface — matching the grid's width/height swap.
+    /// </summary>
     public void PlaceModel()
     {
         if (_model == null) return;
@@ -62,26 +77,26 @@ public class InventoryItemView : MonoBehaviour,
 
         var corners = new Vector3[4];
         _rect.GetWorldCorners(corners);
-        // corners: [0]=BL  [1]=TL  [2]=TR  [3]=BR
 
         Vector3 center = (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
+        float worldW   = Vector3.Distance(corners[0], corners[3]);
+        float worldH   = Vector3.Distance(corners[0], corners[1]);
 
-        // Total world-space footprint of the item (all cells combined).
-        float worldW = Vector3.Distance(corners[0], corners[3]);
-        float worldH = Vector3.Distance(corners[0], corners[1]);
+        // ── Build rotation in explicit layers ────────────────────────────
+        Quaternion panelTilt    = _rect.rotation;
+        Quaternion flatOnPanel  = Quaternion.Euler(-90f, 0f, 0f);
+        Quaternion perItemOff   = Quaternion.Euler(Item.data.modelOrientationOffset);
 
-        // Lie flat on the panel surface.
-        // _rect.rotation encodes the panel tilt; Euler(-90, …, 0) rotates the model
-        // so its top faces the viewer rather than its front.
-        float yawOffset = Item.isRotated ? 90f : 0f;
-        _model.transform.rotation = _rect.rotation * Quaternion.Euler(-90f, yawOffset, 0f);
+        // Grid rotation: 90° around the per-item axis (default Z = panel normal).
+        // AngleAxis works in LOCAL space here because we compose it AFTER the offset.
+        Quaternion gridRotation = Item.isRotated
+            ? Quaternion.AngleAxis(90f, Item.data.gridRotationAxis.normalized)
+            : Quaternion.identity;
 
-        // Offset slightly toward the camera to sit in front of the panel quad.
+        _model.transform.rotation = panelTilt * flatOnPanel * perItemOff * gridRotation;
         _model.transform.position = center - _rect.forward * 0.004f;
 
-        // Scale: fit the model's bounding sphere to 80 % of the item's longest world-space
-        // dimension. Using Max(W, H) rather than a per-cell value keeps the size identical
-        // in both rotations — a 2×1 and a 1×2 item both resolve to the same longer edge.
+        // Scale: fit bounding sphere to 80% of longest world-space dimension
         _model.transform.localScale = Vector3.one;
         var b = new Bounds(_model.transform.position, Vector3.zero);
         foreach (var r in _model.GetComponentsInChildren<Renderer>(true))
@@ -89,21 +104,21 @@ public class InventoryItemView : MonoBehaviour,
 
         if (b.extents != Vector3.zero)
         {
-            float fitSize      = Mathf.Max(worldW, worldH) * 0.8f;
-            float modelRadius  = b.extents.magnitude;
+            float fitSize     = Mathf.Max(worldW, worldH) * 0.8f;
+            float modelRadius = b.extents.magnitude;
             _model.transform.localScale = Vector3.one * (fitSize * 0.5f / modelRadius);
         }
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────────
+    // ── Public API ────────────────────────────────────────────────────────
 
     public void RefreshLayout(float cellSize)
     {
         Vector2Int sz = Item.CurrentSize;
         _rect.sizeDelta        = new Vector2(sz.x * cellSize, sz.y * cellSize);
         _rect.anchoredPosition = new Vector2(
-             Item.gridPosition.x * cellSize,
-            -Item.gridPosition.y * cellSize);
+             Item.gridPosition.x *  cellSize,
+            -Item.gridPosition.y *  cellSize);
 
         PlaceModel();
     }
@@ -115,34 +130,20 @@ public class InventoryItemView : MonoBehaviour,
 
     public void SetDragging(bool dragging)
     {
-        _isDragging           = dragging;
         _group.blocksRaycasts = !dragging;
-
-        // Hide the physical model while the ghost is being dragged; show on drop.
         if (_model != null) _model.SetActive(!dragging);
     }
 
-    // ── Cleanup ────────────────────────────────────────────────────────────────
-
-    void OnDestroy()
+    private void OnDestroy()
     {
         if (_model != null) Destroy(_model);
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // ── Event forwarding ──────────────────────────────────────────────────
 
-    static void SetLayerRecursive(GameObject go, int layer)
-    {
-        if (layer < 0) return;
-        foreach (Transform t in go.GetComponentsInChildren<Transform>(true))
-            t.gameObject.layer = layer;
-    }
-
-    // ── Event forwarding ───────────────────────────────────────────────────────
-
-    public void OnBeginDrag(PointerEventData e)    => Owner.OnItemBeginDrag(this, e);
-    public void OnDrag(PointerEventData e)          => Owner.OnItemDrag(this, e);
-    public void OnEndDrag(PointerEventData e)       => Owner.OnItemEndDrag(this, e);
+    public void OnBeginDrag(PointerEventData e) => Owner.OnItemBeginDrag(this, e);
+    public void OnDrag(PointerEventData e)      => Owner.OnItemDrag(this, e);
+    public void OnEndDrag(PointerEventData e)   => Owner.OnItemEndDrag(this, e);
 
     public void OnPointerClick(PointerEventData e)
     {

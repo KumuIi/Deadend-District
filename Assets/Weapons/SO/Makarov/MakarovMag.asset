@@ -14,7 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MagazineSO
   itemName: MakarovMag
   gridSize: {x: 1, y: 2}
+  cellOffsets: []
   modelPrefab: {fileID: 919132149155446097, guid: 3338c533e28134847a9e7a45dd4be7a9, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
-  caliber: 9x18
+  modelOrientationOffset: {x: 0, y: 0, z: 0}
+  gridRotationAxis: {x: 0, y: 90, z: 0}
+  caliber: {fileID: 0}
   capacity: 8

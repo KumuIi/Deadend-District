@@ -2,42 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// PlayerMotor — kinematic character controller.
-///
-/// ══ REQUIRED UNITY SETUP ════════════════════════════════════════════════
-///
-///   Player GameObject (pivot = FEET — this is where y=0 sits on the floor)
-///   ├── Rigidbody
-///   │     Is Kinematic    = ✓ ON
-///   │     Interpolation   = Interpolate
-///   │     Freeze Rotation = X✓  Y✓  Z✓
-///   │     Collision Det.  = Continuous (recommended)
-///   │
-///   ├── CapsuleCollider
-///   │     Direction = Y-Axis
-///   │     Height    = 2.0
-///   │     Radius    = 0.3
-///   │     Center    = (0, 1.0, 0)   ← MUST be (0, Height/2, 0)
-///   │
-///   ├── PlayerInput    (script)
-///   ├── PlayerMotor    (script)  ← this file
-///   │
-///   └── CameraRig  (child GameObject)
-///         LocalPosition = (0, 1.65, 0)
-///         Camera + CameraController here
-///
-/// ══ CAPSULE GEOMETRY ════════════════════════════════════════════════════
-///
-///   pivot = feet = rb.position
-///
-///   GeomCenter(fp) = fp + up * _halfH              →  fp.y + 1.0
-///   GeomBottom(fp) = fp + up * _radius             →  fp.y + 0.3  (lower cyan gizmo)
-///   GeomTop(fp)    = fp + up * (height - _radius)  →  fp.y + 1.7  (upper cyan gizmo)
-///
-/// ══ GROUND PROBE GEOMETRY ═══════════════════════════════════════════════
-///
-///   SphereCast origin    = GeomCenter  (fp.y + _halfH)
-///   probeDist            = (_halfH - _radius) + config.groundCheckExtra
-///
+
 /// ══ COLLISION PIPELINE (FixedUpdate each tick) ═══════════════════════════
 ///  1.  CheckGround
 ///  2.  HandleCrouch
