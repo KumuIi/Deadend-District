@@ -87,6 +87,7 @@ public class GunController : MonoBehaviour
     // ── Private refs ───────────────────────────────────────────────────────
 
     private Transform _playerCam;
+    private PlayerMotor _playerMotor;
     private GunSway _sway;
     private AudioSource _audio;
     private ParticleSystem _muzzleFlash;
@@ -128,10 +129,26 @@ public class GunController : MonoBehaviour
     /// <summary>Called by WeaponManager.Awake() while this object is disabled.</summary>
     public void Initialize(WeaponManager mgr)
     {
-        _playerCam = mgr.PlayerCam;
+        _playerCam   = mgr.PlayerCam;
+        _playerMotor = mgr.PlayerMotor;
         _sway = GetComponent<GunSway>();
         _sway.Initialize(gunPivot, mgr.PlayerMotor, mgr.PlayerCam, mgr.CameraController, this);
     }
+
+    private void OnEnable()
+    {
+        if (_playerMotor != null && weaponData != null)
+            _playerMotor.WeaponWeightMultiplier = WeightToMult(weaponData.weight);
+    }
+
+    private void OnDisable()
+    {
+        if (_playerMotor != null)
+            _playerMotor.WeaponWeightMultiplier = 1f;
+    }
+
+    private static float WeightToMult(float w) =>
+        1f / Mathf.Sqrt(Mathf.Max(0.01f, w));
 
     // ── Magazine API ───────────────────────────────────────────────────────
 

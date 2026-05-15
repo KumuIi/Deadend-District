@@ -89,6 +89,14 @@ public class PlayerMotor : MonoBehaviour
     // ─── Speed modifier ───────────────────────────────────────────────────
     public float SpeedMultiplier { get; set; } = 1f;
 
+    // ─── Weapon weight ────────────────────────────────────────────────────
+    /// <summary>Set by GunController on equip/unequip. Persists across FixedUpdate cycles.</summary>
+    public float WeaponWeightMultiplier { get; set; } = 1f;
+
+    // ─── Events ───────────────────────────────────────────────────────────
+    /// <summary>Fired once per jump, from FixedUpdate, the frame the jump velocity is applied.</summary>
+    public event System.Action OnJumped;
+
     // ─── Depenetration buffers ────────────────────────────────────────────
     private readonly Collider[] _overlapBuffer = new Collider[16];
     private readonly Vector3[]  _pushNormals   = new Vector3[24];
@@ -279,9 +287,10 @@ public class PlayerMotor : MonoBehaviour
         _input.ConsumeJump();
         if (canJump)
         {
-            _velocity.y      = config.jumpForce;
+            _velocity.y      = config.jumpForce * WeaponWeightMultiplier;
             _jumpedThisFrame = true;
             _coyoteTimer     = config.coyoteTime + 1f;
+            OnJumped?.Invoke();
         }
     }
 
@@ -293,7 +302,7 @@ public class PlayerMotor : MonoBehaviour
         bool sprint   = _input.SprintHeld && move.y > 0f && !_isCrouching;
         float targetSpeed = (_isCrouching ? config.crouchSpeed
                             : sprint      ? config.sprintSpeed
-                                          : config.walkSpeed) * SpeedMultiplier;
+                                          : config.walkSpeed) * SpeedMultiplier * WeaponWeightMultiplier;
 
         Vector3 fwd   = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
         Vector3 right = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;

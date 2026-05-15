@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4c0ea56f85195944b48a433af6e5a54, type: 3}
   m_Name: MakarovMag
   m_EditorClassIdentifier: Assembly-CSharp::MagazineSO
-  itemName: MakarovMag
+  itemName: Makarov Magazine
   gridSize: {x: 1, y: 2}
   cellOffsets: []
   modelPrefab: {fileID: 919132149155446097, guid: 3338c533e28134847a9e7a45dd4be7a9, type: 3}

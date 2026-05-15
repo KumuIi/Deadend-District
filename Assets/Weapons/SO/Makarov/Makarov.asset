@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Makarov
   m_EditorClassIdentifier: Assembly-CSharp::WeaponSO
   itemName: Makarov
-  gridSize: {x: 2, y: 1}
+  gridSize: {x: 2, y: 2}
   cellOffsets: []
   modelPrefab: {fileID: 919132149155446097, guid: a19ffdb9431f0924ba6aeda4c3895614, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
@@ -29,6 +29,7 @@ MonoBehaviour:
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  weight: 1
   reloadTime: 2
   reloadMagEjectTime: 0.3
   reloadMagInsertTime: 1.2

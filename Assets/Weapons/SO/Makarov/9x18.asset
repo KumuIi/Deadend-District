@@ -12,8 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec04b26b92055c043b9939ae2e0fb776, type: 3}
   m_Name: 9x18
   m_EditorClassIdentifier: Assembly-CSharp::AmmunitionSO
-  ammoName: 9x18
+  itemName: 9x18 ammo
+  gridSize: {x: 3, y: 2}
+  cellOffsets: []
+  modelPrefab: {fileID: 1000013580012832, guid: a50af88759b02d74b8328377b33ab3e8, type: 3}
+  itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
+  modelOrientationOffset: {x: 0, y: 0, z: 0}
+  gridRotationAxis: {x: 0, y: 0, z: 1}
   caliber: {fileID: 11400000, guid: 7b6eede7fd2b5a94b8e25469cd746b7c, type: 2}
+  stackSize: 30
   damage: 25
   velocity: 375
   damageFalloff:
