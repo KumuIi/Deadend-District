@@ -378,6 +378,8 @@ public class PlayerMotor : MonoBehaviour
         if (Physics.SphereCast(origin, _radius, Vector3.down, out RaycastHit hit,
                 probeDist, config.groundMask, QueryTriggerInteraction.Ignore))
         {
+            float snapDelta = hit.point.y - feetPos.y;
+            if (snapDelta > config.maxStepHeight) return; // ← too tall, don't snap
             feetPos.y   = hit.point.y;
             _velocity.y = 0f;
         }
@@ -449,9 +451,7 @@ public class PlayerMotor : MonoBehaviour
                         _capsule, feetPos, transform.rotation,
                         _overlapBuffer[i], _overlapBuffer[i].transform.position, _overlapBuffer[i].transform.rotation,
                         out Vector3 dir, out float dist)) continue;
-                if (_grounded && dir.y > 0.5f) feetPos.y += dist + SkinWidth;
-                else feetPos += dir * (dist + SkinWidth);
-                pushed = true;
+                feetPos += dir * (dist + SkinWidth);
                 if (_normalCount < _pushNormals.Length) _pushNormals[_normalCount++] = dir;
                 if (dir.y < -0.1f) _hitCeiling = true;
             }
