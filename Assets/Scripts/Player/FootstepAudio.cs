@@ -111,19 +111,13 @@ public class FootstepAudio : MonoBehaviour
                 Mathf.Round(_bobTimer / Mathf.PI) * Mathf.PI,
                 Time.deltaTime * 8f);
 
-        int step = Mathf.FloorToInt(_bobTimer / Mathf.PI);
-        if (shouldStep && step != _lastStep)
-        {
-            _lastStep = step;
-            PlayRandom(GetSurfaceClips(), _stepVolume);
-        }
-
         // ── Air time accumulation ───────────────────────────────────────
         if (!grounded)
             _airTime += Time.deltaTime;
 
         // ── Landing detection ───────────────────────────────────────────
-        if (grounded && !_wasGrounded)
+        bool justLanded = grounded && !_wasGrounded;
+        if (justLanded)
         {
             if (_airTime >= _minLandAirTime)
             {
@@ -133,6 +127,16 @@ public class FootstepAudio : MonoBehaviour
             }
             _airTime = 0f;
         }
+
+        // ── Step (skipped on landing frame to avoid doubling) ───────────
+        int step = Mathf.FloorToInt(_bobTimer / Mathf.PI);
+        if (!justLanded && shouldStep && step != _lastStep)
+        {
+            _lastStep = step;
+            PlayRandom(GetSurfaceClips(), _stepVolume);
+        }
+        else if (justLanded)
+            _lastStep = step;
 
         _wasGrounded = grounded;
     }
