@@ -1,6 +1,18 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+
+/// <summary>Result returned by the drag-interaction callback when an item is dropped on another item.</summary>
+public enum DragInteractionResult
+{
+    /// <summary>No interaction matched — fall through to normal placement logic.</summary>
+    NotHandled,
+    /// <summary>Interaction consumed the dragged item (e.g. empty ammo box, magazine loaded into weapon).</summary>
+    HandledConsumeDragged,
+    /// <summary>Interaction handled but the dragged item should be returned to its origin (e.g. partial ammo load).</summary>
+    HandledReturnDragged,
+}
 
 /// <summary>
 /// Handles all drag state for the inventory grid.
@@ -16,6 +28,12 @@ public sealed class InventoryDragController
     private readonly RectTransform        _itemsLayer;
     private readonly RectTransform        _dragLayer;
     private readonly float                _cellSize;
+
+    /// <summary>
+    /// Optional callback fired when the dragged item is released over a cell already occupied
+    /// by a different item. Return value controls what happens to the dragged view.
+    /// </summary>
+    public Func<ItemInstance, ItemInstance, DragInteractionResult> OnDroppedOnItem;
 
     // ── Drag state ────────────────────────────────────────────────────────
     private InventoryItemView _draggedView;
@@ -95,6 +113,35 @@ public sealed class InventoryDragController
                 cell.Value - new Vector2Int(view.Item.CurrentSize.x / 2,
                                            view.Item.CurrentSize.y / 2),
                 view.Item.CurrentSize);
+
+            // Check if dropping on top of another item
+            ItemInstance target = _grid.GetAt(cell.Value);
+            if (target != null && OnDroppedOnItem != null)
+            {
+                var result = OnDroppedOnItem(view.Item, target);
+                if (result != DragInteractionResult.NotHandled)
+                {
+                    if (result == DragInteractionResult.HandledConsumeDragged)
+                    {
+                        // InventoryUI already removed the item from its view dictionary;
+                        // destroy the dragged GameObject here.
+                        view.transform.SetParent(_itemsLayer, true);
+                        view.SetDragging(false);
+                        UnityEngine.Object.Destroy(view.gameObject);
+                    }
+                    else // HandledReturnDragged
+                    {
+                        view.Item.isRotated = _dragOriginRotated;
+                        _grid.TryPlace(view.Item, _dragOriginPos);
+                        view.transform.SetParent(_itemsLayer, true);
+                        view.SetDragging(false);
+                        view.RefreshLayout(_cellSize);
+                    }
+                    _draggedView = null;
+                    return;
+                }
+            }
+
             placed = _grid.TryPlace(view.Item, snapPos);
         }
 

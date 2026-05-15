@@ -64,21 +64,22 @@ public class PlayerMotor : MonoBehaviour
     private float _slideSpeed;
 
     // FIX: grace timer — player must be touching steep ground for this many
-    // seconds before slope mode activates. Prevents single-frame triggering
-    // at the flat→slope boundary.
+    // seconds before slope mode activates.
     private float _steepGroundTimer;
     private const float SteepGroundGrace = 0.08f;
 
     // ─── Crouch ───────────────────────────────────────────────────────────
     private bool  _isCrouching;
     private float _currentHeight;
+    // FIX: separate visual offset for crouch so the visual child (and camera)
+    // follows the capsule shrinking downward, independent of step smoothing.
+    private float _crouchVisualOffset;
 
     // ─── Step visual ──────────────────────────────────────────────────────
     private float _stepLerpOffset;
     private float _visualBaseY;
 
-    // FIX: cooldown so TryStepUp cannot fire two frames in a row,
-    // breaking the teleport-up → slide-back loop.
+    // FIX: cooldown so TryStepUp cannot fire two frames in a row.
     private float _stepCooldown;
     private const float StepCooldownTime = 0.1f;
 
@@ -118,6 +119,10 @@ public class PlayerMotor : MonoBehaviour
     public Vector3 HorizontalVelocity => new Vector3(_velocity.x, 0f, _velocity.z);
     public bool    CanJump            => (_grounded || _coyoteTimer <= config.coyoteTime)
                                          && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame;
+
+    // FIX: expose normalized crouch progress (0 = standing, 1 = fully crouched)
+    // so CameraController can lerp camera height without snapping.
+    public float CrouchProgress => Mathf.InverseLerp(config.standHeight, config.crouchHeight, _currentHeight);
 
     // ─────────────────────────────────────────────────────────────────────
 
@@ -159,7 +164,6 @@ public class PlayerMotor : MonoBehaviour
         if (_input.JumpPressed && _jumpBufferTimer <= 0f)
             _jumpBufferTimer = config.jumpBufferTime;
 
-        // FIX: tick step cooldown in Update so it drains even during lag frames
         if (_stepCooldown > 0f)
             _stepCooldown -= Time.deltaTime;
     }
@@ -216,10 +220,6 @@ public class PlayerMotor : MonoBehaviour
 
         _groundAngle = hit ? Vector3.Angle(_groundHit.normal, Vector3.up) : 0f;
 
-        // FIX: _steepGround uses a grace timer so a single-frame brush
-        // against a steep slope does not instantly flip the player into
-        // slide mode. The timer only increments while the probe is actually
-        // hitting steep geometry; it resets the moment that contact is lost.
         bool rawSteep = hit && _groundAngle >= config.maxSlopeAngle;
         if (rawSteep)
             _steepGroundTimer += Time.fixedDeltaTime;
@@ -240,7 +240,9 @@ public class PlayerMotor : MonoBehaviour
 
         if (_isCrouching && !wantCrouch)
         {
-            float   clearance  = config.standHeight - config.crouchHeight;
+            // FIX: use _currentHeight instead of config.crouchHeight so the
+            // clearance is accurate mid-lerp, preventing false lock-in.
+            float   clearance  = config.standHeight - _currentHeight;
             Vector3 castOrigin = GeomTop(_rb.position);
             if (Physics.SphereCast(castOrigin, _radius, Vector3.up, out _,
                     clearance, config.collisionMask, QueryTriggerInteraction.Ignore))
@@ -249,9 +251,15 @@ public class PlayerMotor : MonoBehaviour
 
         _isCrouching = wantCrouch;
 
-        float targetH = _isCrouching ? config.crouchHeight : config.standHeight;
+        float targetH  = _isCrouching ? config.crouchHeight : config.standHeight;
+        float prevH    = _currentHeight;
         _currentHeight = Mathf.Lerp(_currentHeight, targetH, config.crouchLerpSpeed * Time.fixedDeltaTime);
         ApplyCapsuleGeometry(_currentHeight);
+
+        // FIX: accumulate the visual offset so LateUpdate can push the visual
+        // child (and the camera parented to it) downward as we crouch.
+        // The offset equals how far the top of the capsule has moved down.
+        _crouchVisualOffset = _currentHeight - config.standHeight;
     }
 
     // ─── Gravity ──────────────────────────────────────────────────────────
@@ -414,9 +422,6 @@ public class PlayerMotor : MonoBehaviour
     // ─── Snap to ground ───────────────────────────────────────────────────
     void SnapToGround(ref Vector3 feetPos)
     {
-        // FIX: do not snap while in slope mode — this was the primary cause
-        // of the oscillation. When sliding, gravity already handles vertical
-        // movement; forcing a snap on top of it caused the bounce.
         if (!_grounded || _velocity.y > 0f || _jumpedThisFrame || _inSlopeMode) return;
 
         Vector3 origin    = GeomCenter(feetPos);
@@ -432,77 +437,71 @@ public class PlayerMotor : MonoBehaviour
 
     // ─── Step up ──────────────────────────────────────────────────────────
     void TryStepUp(ref Vector3 feetPos)
-{
-    if (!_grounded || _jumpedThisFrame) return;
-    if (_stepCooldown > 0f) return;
+    {
+        if (!_grounded || _jumpedThisFrame) return;
+        if (_stepCooldown > 0f) return;
 
-    Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
-    if (horiz.sqrMagnitude < 0.001f) return;
+        Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
+        if (horiz.sqrMagnitude < 0.001f) return;
 
-    Vector3 dir    = horiz.normalized;
-    float   ankleY = feetPos.y + SkinWidth * 2f;
-    float   topY   = feetPos.y + config.maxStepHeight;
+        Vector3 dir    = horiz.normalized;
+        float   ankleY = feetPos.y + SkinWidth * 2f;
+        float   topY   = feetPos.y + config.maxStepHeight;
 
-    // 1. Low ray: must hit something nearly vertical (a wall/step face).
-    //    normal.y > 0.25 means it's a slope, not a step — already filtered.
-    if (!Physics.Raycast(new Vector3(feetPos.x, ankleY, feetPos.z), dir,
-            out RaycastHit lowHit, _radius + StepCheckDepth,
-            config.collisionMask, QueryTriggerInteraction.Ignore)) return;
-    if (lowHit.normal.y > 0.25f) return;
+        if (!Physics.Raycast(new Vector3(feetPos.x, ankleY, feetPos.z), dir,
+                out RaycastHit lowHit, _radius + StepCheckDepth,
+                config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+        if (lowHit.normal.y > 0.25f) return;
 
-    // 2. High ray: must be CLEAR above the step — no wall continues upward.
-    if (Physics.Raycast(new Vector3(feetPos.x, topY, feetPos.z), dir,
-            _radius + StepCheckDepth, config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+        if (Physics.Raycast(new Vector3(feetPos.x, topY, feetPos.z), dir,
+                _radius + StepCheckDepth, config.collisionMask, QueryTriggerInteraction.Ignore)) return;
 
-    // 3. FIX: cast the downward probe from directly above the hit point,
-    //    not from an arbitrary forward offset. This ensures we land exactly
-    //    on the step surface and not on a distant slope.
-    Vector3 probeOrigin = new Vector3(
-        lowHit.point.x + dir.x * SkinWidth,   // just past the step face
-        topY,
-        lowHit.point.z + dir.z * SkinWidth);
+        Vector3 probeOrigin = new Vector3(
+            lowHit.point.x + dir.x * SkinWidth,
+            topY,
+            lowHit.point.z + dir.z * SkinWidth);
 
-    if (!Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit topHit,
-            config.maxStepHeight + SkinWidth, config.collisionMask, QueryTriggerInteraction.Ignore)) return;
-    if (Vector3.Angle(topHit.normal, Vector3.up) >= config.maxSlopeAngle) return;
+        if (!Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit topHit,
+                config.maxStepHeight + SkinWidth, config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+        if (Vector3.Angle(topHit.normal, Vector3.up) >= config.maxSlopeAngle) return;
 
-    float stepH = topHit.point.y - feetPos.y;
+        float stepH = topHit.point.y - feetPos.y;
 
-    // FIX: reject if the detected surface is not meaningfully above the feet.
-    // Without this, a nearly-flat slope registers as a tiny step every frame.
-    if (stepH < SkinWidth * 4f || stepH > config.maxStepHeight) return;
+        if (stepH < SkinWidth * 4f || stepH > config.maxStepHeight) return;
+        if (topHit.normal.y < 0.9f) return;
 
-    // FIX: the top surface must be approximately flat — measured from the
-    // downward hit normal. Rejects sloped tops masquerading as step surfaces.
-    if (topHit.normal.y < 0.9f) return;
+        Vector3 steppedPos = new Vector3(feetPos.x, topHit.point.y, feetPos.z);
+        if (Physics.CheckCapsule(
+                GeomBottom(steppedPos), GeomTop(steppedPos), _radius - SkinWidth,
+                config.collisionMask, QueryTriggerInteraction.Ignore)) return;
 
-    // Verify capsule fits at the new position.
-    Vector3 steppedPos = new Vector3(feetPos.x, topHit.point.y, feetPos.z);
-    if (Physics.CheckCapsule(
-            GeomBottom(steppedPos), GeomTop(steppedPos), _radius - SkinWidth,
-            config.collisionMask, QueryTriggerInteraction.Ignore)) return;
+        feetPos.y     = topHit.point.y;
+        _velocity.y   = 0f;
+        _stepCooldown = StepCooldownTime;
 
-    feetPos.y     = topHit.point.y;
-    _velocity.y   = 0f;
-    _stepCooldown = StepCooldownTime;
+        Transform vis = transform.childCount > 0 ? transform.GetChild(0) : null;
+        float cur = vis != null ? vis.localPosition.y - _visualBaseY : 0f;
+        _stepLerpOffset = Mathf.Clamp(cur - stepH, -config.maxStepHeight, 0f);
+    }
 
-    Transform vis = transform.childCount > 0 ? transform.GetChild(0) : null;
-    float cur = vis != null ? vis.localPosition.y - _visualBaseY : 0f;
-    _stepLerpOffset = Mathf.Clamp(cur - stepH, -config.maxStepHeight, 0f);
-}
-
+    // ─── Visual child (camera rig) smooth update ──────────────────────────
     void LateUpdate()
     {
         if (transform.childCount == 0) return;
         Transform vis = transform.GetChild(0);
-        if (Mathf.Approximately(_stepLerpOffset, 0f))
+
+        // FIX: combine step smoothing offset AND crouch visual offset so
+        // the camera rig follows both stair-climbing and capsule shrink.
+        float targetY = _visualBaseY + _crouchVisualOffset;
+
+        if (!Mathf.Approximately(_stepLerpOffset, 0f))
         {
-            Vector3 lp = vis.localPosition;
-            if (!Mathf.Approximately(lp.y, _visualBaseY)) { lp.y = _visualBaseY; vis.localPosition = lp; }
-            return;
+            _stepLerpOffset = Mathf.MoveTowards(_stepLerpOffset, 0f, StepSmoothSpeed * Time.deltaTime);
         }
-        _stepLerpOffset = Mathf.MoveTowards(_stepLerpOffset, 0f, StepSmoothSpeed * Time.deltaTime);
-        Vector3 p = vis.localPosition; p.y = _visualBaseY + _stepLerpOffset; vis.localPosition = p;
+
+        Vector3 p = vis.localPosition;
+        p.y = targetY + _stepLerpOffset;
+        vis.localPosition = p;
     }
 
     // ─── Safety depenetration ─────────────────────────────────────────────
@@ -583,7 +582,7 @@ public class PlayerMotor : MonoBehaviour
             {
                 Vector3 d = horiz.normalized;
                 Gizmos.color = Color.cyan;
-                Gizmos.DrawRay(new Vector3(fp.x, fp.y + SkinWidth * 2f,          fp.z), d * (_radius + StepCheckDepth));
+                Gizmos.DrawRay(new Vector3(fp.x, fp.y + SkinWidth * 2f,       fp.z), d * (_radius + StepCheckDepth));
                 Gizmos.color = Color.white;
                 Gizmos.DrawRay(new Vector3(fp.x, fp.y + config.maxStepHeight, fp.z), d * (_radius + StepCheckDepth));
             }

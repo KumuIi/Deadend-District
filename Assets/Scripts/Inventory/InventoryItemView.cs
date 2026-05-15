@@ -148,7 +148,7 @@ public sealed class InventoryItemView : MonoBehaviour,
     public void OnPointerClick(PointerEventData e)
     {
         if (e.button == PointerEventData.InputButton.Right)
-            Owner.OnItemRotate(this);
+            Owner.OnItemRightClick(this, e);
     }
 
     public void OnPointerEnter(PointerEventData e) => Owner.SetHovered(this);

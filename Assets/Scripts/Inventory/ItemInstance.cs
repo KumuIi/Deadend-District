@@ -9,6 +9,12 @@ using UnityEngine;
 /// </summary>
 public class ItemInstance
 {
+    /// <summary>
+    /// Unique identity for this specific runtime item.
+    /// Two guns of the same type have the same ItemSO but different InstanceIds.
+    /// </summary>
+    public readonly System.Guid InstanceId = System.Guid.NewGuid();
+
     /// <summary>The immutable ScriptableObject definition for this item.</summary>
     public readonly ItemSO data;
 

@@ -30,6 +30,10 @@ public sealed class InventoryUI : MonoBehaviour
     public int   gridHeight = 10;
     public float cellSize   = 64f;
 
+    [Header("=== Weapon Integration ===")]
+    [Tooltip("Assign WeaponManager so 'Equip' and 'Remove Magazine' context menu actions work.")]
+    public WeaponManager weaponManager;
+
     [Header("=== Colours ===")]
     [Tooltip("Keep alpha low (0.15–0.3) so 3D models are visible behind the cells.")]
     public Color cellNormal    = new Color(0.18f, 0.18f, 0.24f, 0.20f);
@@ -77,6 +81,15 @@ public sealed class InventoryUI : MonoBehaviour
     private InventoryDragController _drag;
     private InventoryHighlighter    _highlighter;
     private InventoryItemView       _hoveredView;
+    private InventoryTooltip        _tooltip;
+    private InventoryContextMenu    _contextMenu;
+
+    /// <summary>
+    /// The specific WeaponItemInstance whose state is currently loaded into the active GunController.
+    /// C# reference equality (wi == _equippedItem) is all we need — each WeaponItemInstance
+    /// is a unique heap object even when two items share the same WeaponSO.
+    /// </summary>
+    private WeaponItemInstance _equippedItem;
 
     /// <summary>Read-only access to spawned views — used by InventoryOrientationTester.</summary>
     public IReadOnlyDictionary<ItemInstance, InventoryItemView> Views => _views;
@@ -121,6 +134,24 @@ public sealed class InventoryUI : MonoBehaviour
 
         _drag = new InventoryDragController(
             Grid, _highlighter, _canvas, _itemsLayer, _dragLayer, cellSize);
+
+        _drag.OnDroppedOnItem = HandleDragInteraction;
+
+        if (_canvas != null)
+        {
+            _tooltip     = new InventoryTooltip(_canvas);
+            _contextMenu = new InventoryContextMenu(_canvas);
+
+            _contextMenu.OnEquip          = ContextMenu_Equip;
+            _contextMenu.OnUnequip        = ContextMenu_Unequip;
+            _contextMenu.OnRemoveMagazine = ContextMenu_RemoveMagazine;
+            _contextMenu.OnDrop           = ContextMenu_Drop;
+
+            // C# reference equality: each WeaponItemInstance is a unique object even
+            // if two items share the same WeaponSO. No GUID needed for runtime checks.
+            _contextMenu.IsItemEquipped = item =>
+                item is WeaponItemInstance wi && wi == _equippedItem;
+        }
     }
 
     private void Start()
@@ -138,6 +169,13 @@ public sealed class InventoryUI : MonoBehaviour
             _canvas.worldCamera == null)
             Debug.LogWarning("[InventoryUI] Canvas Render Camera is not assigned — " +
                              "set it to your player camera in the Canvas Inspector.");
+    }
+
+    private void Update()
+    {
+        // Keep tooltip position glued to the cursor while hovering
+        if (_hoveredView != null && IsOpen)
+            _tooltip?.UpdatePosition(Input.mousePosition);
     }
 
     private void OnDestroy()
@@ -196,6 +234,13 @@ public sealed class InventoryUI : MonoBehaviour
             view.SetModelVisible(open);
         }
 
+        if (!open)
+        {
+            _tooltip?.Hide();
+            _contextMenu?.Hide();
+            _hoveredView = null;
+        }
+
         if (open) GameInputState.Block();
         else      GameInputState.Unblock();
     }
@@ -244,7 +289,198 @@ public sealed class InventoryUI : MonoBehaviour
         view.RefreshLayout(cellSize);
     }
 
-    public void SetHovered(InventoryItemView view) => _hoveredView = view;
+    public void SetHovered(InventoryItemView view)
+    {
+        _hoveredView = view;
+        if (view != null)
+            _tooltip?.Show(view.Item, Input.mousePosition);
+        else
+            _tooltip?.Hide();
+    }
+
+    /// <summary>Shows the context menu for the right-clicked item.</summary>
+    public void OnItemRightClick(InventoryItemView view, UnityEngine.EventSystems.PointerEventData e)
+    {
+        _contextMenu?.Show(view.Item, e.position);
+    }
+
+    // ── Context menu actions ──────────────────────────────────────────────
+
+    private void ContextMenu_Equip(ItemInstance item)
+    {
+        if (weaponManager == null || !(item is WeaponItemInstance wi)) return;
+
+        GunController match = null;
+        int matchIdx = -1;
+
+        // 1. Cached reference from a previous equip of any item with this WeaponSO.
+        //    The GunController is a shared runner — all Makarov items use the same one.
+        if (wi.LinkedGun != null)
+        {
+            for (int i = 0; i < weaponManager.Weapons.Count; i++)
+                if (weaponManager.Weapons[i] == wi.LinkedGun) { match = weaponManager.Weapons[i]; matchIdx = i; break; }
+        }
+
+        // 2. WeaponSO match among registered weapons (first equip of this weapon type).
+        if (match == null)
+        {
+            for (int i = 0; i < weaponManager.Weapons.Count; i++)
+                if (weaponManager.Weapons[i].weaponData == wi.WeaponDef) { match = weaponManager.Weapons[i]; matchIdx = i; break; }
+        }
+
+        // 3. Scene-wide search (gun not yet registered with WeaponManager).
+        if (match == null)
+        {
+            foreach (var gun in FindObjectsOfType<GunController>(true))
+            {
+                if (gun.weaponData == wi.WeaponDef)
+                {
+                    weaponManager.AddWeapon(gun);
+                    match    = gun;
+                    matchIdx = weaponManager.Weapons.Count - 1;
+                    break;
+                }
+            }
+        }
+
+        if (match == null)
+        {
+            Debug.LogWarning($"[InventoryUI] Equip: no scene GunController with WeaponSO '{wi.WeaponDef?.itemName}' found.");
+            return;
+        }
+
+        wi.LinkedGun            = match;  // cache for future equip calls
+        _equippedItem           = wi;     // this C# object is now the active item
+        match.inventoryManaged  = true;
+        match.OnReloadRequested = HandleInventoryReload;
+
+        // Load this item's magazine into the GunController before enabling it.
+        // RuntimeMag is shared by reference — ConsumeRound() updates both automatically.
+        if (wi.LoadedMagazine != null)
+            match.InsertMagazine(wi.LoadedMagazine.RuntimeMag);
+        else
+            match.EjectMagazine();
+
+        weaponManager.Equip(matchIdx);
+    }
+
+    private void ContextMenu_Unequip(ItemInstance item)
+    {
+        if (weaponManager == null) return;
+        _equippedItem = null;
+        weaponManager.EquipNothing();
+    }
+
+    private void ContextMenu_RemoveMagazine(ItemInstance item)
+    {
+        if (!(item is WeaponItemInstance wi)) return;
+        MagazineItemInstance mag = wi.EjectMagazine();
+        if (mag == null) return;
+
+        // Only sync the live gun if this specific WeaponItemInstance is the active one.
+        bool isEquipped = wi == _equippedItem;
+        if (isEquipped) wi.LinkedGun.EjectMagazine();
+
+        if (TryPickup(mag) == PickupResult.NoSpace)
+        {
+            // Inventory full — put the magazine back
+            wi.LoadMagazine(mag);
+            if (isEquipped) wi.LinkedGun.InsertMagazine(mag.RuntimeMag);
+            Debug.LogWarning("[InventoryUI] Remove Magazine: no free space in inventory.");
+        }
+    }
+
+    private void HandleInventoryReload(GunController gun)
+    {
+        // _equippedItem is the C# object whose state is currently in the GunController.
+        WeaponItemInstance wi = _equippedItem;
+        if (wi == null || wi.LinkedGun != gun) return;
+
+        // Find the fullest compatible non-empty magazine in inventory
+        MagazineItemInstance bestMag = null;
+        foreach (var item in Grid.PlacedItems)
+        {
+            if (!(item is MagazineItemInstance mag)) continue;
+            if (mag.MagDef.caliber != wi.WeaponDef.caliber) continue;
+            if (mag.RuntimeMag.IsEmpty) continue;
+            if (bestMag == null || mag.RuntimeMag.BulletCount > bestMag.RuntimeMag.BulletCount)
+                bestMag = mag;
+        }
+
+        if (bestMag == null)
+        {
+            Debug.Log("[InventoryUI] Reload: no compatible magazine found in inventory.");
+            return;
+        }
+
+        // Eject the current magazine from both inventory record and live gun
+        MagazineItemInstance oldMag = wi.EjectMagazine();
+        gun.EjectMagazine();
+
+        // Return the old magazine to inventory if it still has rounds
+        if (oldMag != null && !oldMag.RuntimeMag.IsEmpty)
+            TryPickup(oldMag);
+
+        // Remove the new magazine from inventory, record it in the weapon, and start reload
+        RemoveItem(bestMag);
+        wi.BeginReloadWith(bestMag);
+        gun.StartReload(bestMag.RuntimeMag);
+    }
+
+    private void ContextMenu_Drop(ItemInstance item)
+    {
+        // If dropping the currently equipped weapon, unequip it first.
+        if (item is WeaponItemInstance droppedWeapon && droppedWeapon == _equippedItem)
+        {
+            _equippedItem = null;
+            weaponManager?.EquipNothing();
+        }
+        // Future: spawn a world item at the player's feet. For now: remove permanently.
+        RemoveItem(item);
+    }
+
+    // ── Drag interaction handler ──────────────────────────────────────────
+
+    /// <summary>
+    /// Called by InventoryDragController when an item is dropped on top of another item.
+    /// Handles ammo → magazine loading and magazine → weapon loading.
+    /// </summary>
+    private DragInteractionResult HandleDragInteraction(ItemInstance dragged, ItemInstance target)
+    {
+        // ── Ammo box → Magazine ───────────────────────────────────────────
+        if (dragged is AmmoItemInstance ammo && target is MagazineItemInstance mag)
+        {
+            if (ammo.AmmoDef.caliber != mag.MagDef.caliber) return DragInteractionResult.NotHandled;
+
+            int space = mag.MagDef.capacity - mag.RuntimeMag.BulletCount;
+            if (space <= 0) return DragInteractionResult.NotHandled;
+
+            int taken = ammo.TakeRounds(space);
+            for (int i = 0; i < taken; i++)
+                mag.RuntimeMag.LoadRound(ammo.AmmoDef);
+
+            if (ammo.IsEmpty)
+            {
+                // Remove the empty box from the views dict; drag controller destroys its GameObject
+                _views.Remove(ammo);
+                return DragInteractionResult.HandledConsumeDragged;
+            }
+            return DragInteractionResult.HandledReturnDragged;
+        }
+
+        // ── Magazine → Weapon ─────────────────────────────────────────────
+        if (dragged is MagazineItemInstance magazine && target is WeaponItemInstance weapon)
+        {
+            if (!weapon.LoadMagazine(magazine)) return DragInteractionResult.NotHandled;
+            // If this weapon is currently equipped, push the magazine into the live GunController.
+            if (weapon == _equippedItem && weapon.LinkedGun != null)
+                weapon.LinkedGun.InsertMagazine(magazine.RuntimeMag);
+            _views.Remove(magazine);
+            return DragInteractionResult.HandledConsumeDragged;
+        }
+
+        return DragInteractionResult.NotHandled;
+    }
 
     // ── View management ───────────────────────────────────────────────────
 

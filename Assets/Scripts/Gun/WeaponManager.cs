@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
 /// <summary>
 /// Holds all player-level references and manages equip/unequip.
@@ -23,11 +24,23 @@ public class WeaponManager : MonoBehaviour
     [Tooltip("Drag in gun GameObjects already placed under the player. All start disabled.")]
     [SerializeField] private GunController[] _initialWeapons;
 
+    [Header("=== Empty Hands ===")]
+    [Tooltip("A hands-only GunController active when nothing is equipped. Assign its WeaponSO with only feel/IK data filled in — no caliber or magazine needed.")]
+    public GunController emptyHandsGun;
+
     [Header("=== IK Constraint Targets ===")]
     [Tooltip("The Transform the right-hand IK constraint uses as its target.")]
     public Transform rightHandIKTarget;
     [Tooltip("The Transform the left-hand IK constraint uses as its target.")]
     public Transform leftHandIKTarget;
+
+    [Header("=== Animation Rigging ===")]
+    [Tooltip("Assign the RigBuilder on the player's Animator. It is rebuilt after every weapon switch so IK targets take effect.")]
+    public RigBuilder rigBuilder;
+    [Tooltip("TwoBoneIKConstraint for the right arm. When assigned, ApplyIKTargets sets its Target directly to the gun's rightHandGrip.")]
+    public TwoBoneIKConstraint rightArmConstraint;
+    [Tooltip("TwoBoneIKConstraint for the left arm. When assigned, ApplyIKTargets sets its Target directly to the gun's leftHandGrip.")]
+    public TwoBoneIKConstraint leftArmConstraint;
 
     // ── Public accessors ───────────────────────────────────────────────────
 
@@ -49,17 +62,40 @@ public class WeaponManager : MonoBehaviour
 
     private void Awake()
     {
-        if (_initialWeapons != null)
+        // Detach IK targets from any gun grip they may still be parented to
+        // from a previous play session (ApplyIKTargets ran and was saved into the scene).
+        if (rightHandIKTarget) rightHandIKTarget.SetParent(transform, false);
+        if (leftHandIKTarget)  leftHandIKTarget.SetParent(transform, false);
+
+        // Initialise the empty-hands gun (not a regular slot weapon).
+        if (emptyHandsGun != null)
         {
+            emptyHandsGun.gameObject.SetActive(false);
+            emptyHandsGun.Initialize(this);
+            emptyHandsGun.inventoryManaged = true; // no auto-reload, no free-mag
+        }
+
+        // Build a set of guns that will be properly registered below.
+        var initialSet = new HashSet<GunController>();
+        if (_initialWeapons != null)
+            foreach (var g in _initialWeapons)
+                if (g != null) initialSet.Add(g);
+
+        // Deactivate every scene GunController that is NOT in _initialWeapons.
+        // emptyHandsGun is excluded — it was already handled above.
+        foreach (var gun in FindObjectsOfType<GunController>(true))
+            if (!initialSet.Contains(gun) && gun != emptyHandsGun)
+                gun.gameObject.SetActive(false);
+
+        if (_initialWeapons != null)
             foreach (GunController gun in _initialWeapons)
                 RegisterWeapon(gun);
-        }
     }
 
     private void Start()
     {
-        if (_weapons.Count > 0)
-            Equip(0);
+        if (_weapons.Count > 0) Equip(0);
+        else                    EquipNothing();
     }
 
     // ── Weapon registration ────────────────────────────────────────────────
@@ -114,22 +150,55 @@ public class WeaponManager : MonoBehaviour
         CurrentWeapon = null;
     }
 
+    /// <summary>Switches to the empty-hands gun (or holsters if none is assigned).</summary>
+    public void EquipNothing()
+    {
+        if (CurrentWeapon != null)
+        {
+            CurrentWeapon.gameObject.SetActive(false);
+            CurrentWeapon = null;
+        }
+
+        if (emptyHandsGun == null) return;
+
+        CurrentWeapon = emptyHandsGun;
+        CurrentWeapon.gameObject.SetActive(true);
+        ApplyIKTargets(CurrentWeapon);
+    }
+
     // ── IK ─────────────────────────────────────────────────────────────────
 
     private void ApplyIKTargets(GunController gun)
     {
-        if (rightHandIKTarget && gun.rightHandGrip)
+        // Preferred path: set constraint Target directly so the grip transform IS the target.
+        if (rightArmConstraint != null && gun.rightHandGrip)
+        {
+            var d = rightArmConstraint.data;
+            d.target = gun.rightHandGrip;
+            rightArmConstraint.data = d;
+        }
+        else if (rightHandIKTarget && gun.rightHandGrip)
         {
             rightHandIKTarget.SetParent(gun.rightHandGrip, false);
             rightHandIKTarget.localPosition = Vector3.zero;
             rightHandIKTarget.localRotation = Quaternion.identity;
         }
 
-        if (leftHandIKTarget && gun.leftHandGrip)
+        if (leftArmConstraint != null && gun.leftHandGrip)
+        {
+            var d = leftArmConstraint.data;
+            d.target = gun.leftHandGrip;
+            leftArmConstraint.data = d;
+        }
+        else if (leftHandIKTarget && gun.leftHandGrip)
         {
             leftHandIKTarget.SetParent(gun.leftHandGrip, false);
             leftHandIKTarget.localPosition = Vector3.zero;
             leftHandIKTarget.localRotation = Quaternion.identity;
         }
+
+        // Animation Rigging caches constraint data at build time.
+        // Must rebuild after changing IK target parents or constraint data at runtime.
+        rigBuilder?.Build();
     }
 }

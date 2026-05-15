@@ -107,6 +107,22 @@ public class GunController : MonoBehaviour
     private int _burstShotsRemaining;
     private float _nextBurstShotTime;
 
+    // ── Inventory integration ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Set to true by the inventory system when this gun is managed through inventory.
+    /// Disables the auto-load-from-defaultMagazineType in Start() and the free-reload
+    /// fallback in HandleReloadInput(), so ammo state is fully owned by the inventory.
+    /// </summary>
+    [HideInInspector] public bool inventoryManaged;
+
+
+    /// <summary>
+    /// Invoked when the player presses R and the gun is inventory-managed.
+    /// InventoryUI subscribes to this at equip time to perform the magazine search and reload.
+    /// </summary>
+    public System.Action<GunController> OnReloadRequested;
+
     // ── Injection ──────────────────────────────────────────────────────────
 
     /// <summary>Called by WeaponManager.Awake() while this object is disabled.</summary>
@@ -177,8 +193,8 @@ public class GunController : MonoBehaviour
             _muzzleFlash.Stop();
         }
 
-        // Auto-load debug magazine if no inventory has provided one yet.
-        if (_currentMagazine == null && weaponData?.defaultMagazineType != null)
+        // Auto-load debug magazine only when NOT managed by the inventory system.
+        if (!inventoryManaged && _currentMagazine == null && weaponData?.defaultMagazineType != null)
             StartReload();
     }
 
@@ -224,7 +240,11 @@ public class GunController : MonoBehaviour
 
     private void HandleReloadInput()
     {
-        if (!GameInputState.GameplayBlocked && GameInputState.ReloadPressed && !IsReloading)
+        if (GameInputState.GameplayBlocked || IsReloading || !GameInputState.ReloadPressed) return;
+
+        if (inventoryManaged)
+            OnReloadRequested?.Invoke(this);
+        else
             StartReload();
     }
 

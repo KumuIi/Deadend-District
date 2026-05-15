@@ -1,16 +1,21 @@
 using UnityEngine;
 
 /// <summary>
-/// Stateless data asset for a single ammunition type.
-/// Assign a CaliberSO to link it to compatible weapons and magazines.
+/// Data asset for a single ammunition type.
+/// Extends ItemSO so ammo boxes can be placed in the inventory grid.
+/// Assign the same CaliberSO to link it to compatible weapons and magazines.
+///
+/// Migration note: rename any existing "ammoName" field value to "itemName" in the Inspector.
 /// </summary>
 [CreateAssetMenu(fileName = "NewAmmo", menuName = "Deadend District/Ammunition")]
-public class AmmunitionSO : ScriptableObject
+public class AmmunitionSO : ItemSO
 {
-    [Header("=== Identity ===")]
-    public string ammoName = "9x19 FMJ";
+    [Header("=== Ammo ===")]
     [Tooltip("Must reference the same CaliberSO as the weapon and magazine.")]
     public CaliberSO caliber;
+
+    [Tooltip("How many rounds are in one inventory box of this type.")]
+    public int stackSize = 30;
 
     [Header("=== Ballistics ===")]
     public float damage = 25f;
