@@ -40,7 +40,8 @@ public class PlayerMotor : MonoBehaviour
     private float _slopeSpeed;
     private float _slideSpeed;
 
-    private float _stepCooldown;
+    private float   _stepCooldown;
+    private Vector3 _preCollisionHoriz;
 
     private const float SteepGroundGrace  = 0.08f;
     private const float SkinWidth         = 0.01f;
@@ -71,7 +72,8 @@ public class PlayerMotor : MonoBehaviour
     public float   VerticalVelocity       => _velocity.y;
     public Vector3 HorizontalVelocity     => new Vector3(_velocity.x, 0f, _velocity.z);
     public bool    CanJump                => (_grounded || _coyoteTimer <= config.coyoteTime)
-                                             && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame;
+                                             && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame
+                                             && !_isCrouching;
     public float   CrouchProgress         => Mathf.InverseLerp(config.standHeight, config.crouchHeight, _currentHeight);
     public float   SpeedMultiplier        { get; set; } = 1f;
     public float   WeaponWeightMultiplier { get; set; } = 1f;
@@ -118,7 +120,10 @@ public class PlayerMotor : MonoBehaviour
             _jumpBufferTimer -= Time.deltaTime;
 
         if (_input.JumpPressed && _jumpBufferTimer <= 0f)
+        {
             _jumpBufferTimer = config.jumpBufferTime;
+            _input.ConsumeJump();
+        }
 
         if (_stepCooldown > 0f)
             _stepCooldown -= Time.deltaTime;
@@ -126,9 +131,7 @@ public class PlayerMotor : MonoBehaviour
 
     void FixedUpdate()
     {
-        SpeedMultiplier  = 1f;
         _jumpedThisFrame = false;
-        _hitCeiling      = false;
 
         if (!Mathf.Approximately(_pendingYaw, 0f))
         {
@@ -142,6 +145,10 @@ public class PlayerMotor : MonoBehaviour
         HandleJump();
         HandleSteepSlope();
         HandleMovement();
+
+        _hitCeiling = false;
+
+        _preCollisionHoriz = new Vector3(_velocity.x, 0f, _velocity.z);
 
         Vector3 moveDelta = new Vector3(_velocity.x, 0f, _velocity.z) * Time.fixedDeltaTime;
         moveDelta = CollideAndSlide(_rb.position, moveDelta, false, false);
@@ -222,15 +229,12 @@ public class PlayerMotor : MonoBehaviour
         if (_jumpBufferTimer <= 0f) return;
         bool canJump = (_grounded || _coyoteTimer <= config.coyoteTime)
                        && !_inSlopeMode && !_hitCeiling && !_steepGround && !_isCrouching;
+        if (!canJump) return;
         _jumpBufferTimer = 0f;
-        _input.ConsumeJump();
-        if (canJump)
-        {
-            _velocity.y      = config.jumpForce * WeaponWeightMultiplier;
-            _jumpedThisFrame = true;
-            _coyoteTimer     = config.coyoteTime + 1f;
-            OnJumped?.Invoke();
-        }
+        _velocity.y      = config.jumpForce * WeaponWeightMultiplier;
+        _jumpedThisFrame = true;
+        _coyoteTimer     = config.coyoteTime + 1f;
+        OnJumped?.Invoke();
     }
 
     // ─── Movement ─────────────────────────────────────────────────────────
@@ -328,8 +332,7 @@ public class PlayerMotor : MonoBehaviour
         Vector3 newFeetPos = feetPos + snapVel;
         Vector3 leftover   = vel - snapVel;
 
-        Vector3 slideNormal = (GeomCenter(newFeetPos) - ch.point).normalized;
-        if (slideNormal.sqrMagnitude < 0.001f) slideNormal = ch.normal;
+        Vector3 slideNormal = ch.normal;
 
         if (isGravPass)
         {
@@ -379,7 +382,7 @@ public class PlayerMotor : MonoBehaviour
                 probeDist, config.groundMask, QueryTriggerInteraction.Ignore))
         {
             float snapDelta = hit.point.y - feetPos.y;
-            if (snapDelta > config.maxStepHeight) return; // ← too tall, don't snap
+            if (snapDelta > config.maxStepHeight) return;
             feetPos.y   = hit.point.y;
             _velocity.y = 0f;
         }
@@ -454,6 +457,7 @@ public class PlayerMotor : MonoBehaviour
                 feetPos += dir * (dist + SkinWidth);
                 if (_normalCount < _pushNormals.Length) _pushNormals[_normalCount++] = dir;
                 if (dir.y < -0.1f) _hitCeiling = true;
+                pushed = true;
             }
             if (!pushed) break;
         }
