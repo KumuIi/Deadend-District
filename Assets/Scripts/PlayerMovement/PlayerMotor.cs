@@ -1,114 +1,55 @@
 using UnityEngine;
 
-/// <summary>
-/// PlayerMotor — kinematic character controller.
-
-/// ══ COLLISION PIPELINE (FixedUpdate each tick) ═══════════════════════════
-///  1.  CheckGround
-///  2.  HandleCrouch
-///  3.  HandleGravity
-///  4.  HandleJump
-///  5.  HandleSteepSlope
-///  6.  HandleMovement
-///  7.  CollideAndSlide  (two-pass: horizontal + vertical)
-///  8.  TryStepUp
-///  9.  SnapToGround
-///  10. SafetyDepenetrate
-///  11. MovePosition
-/// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CapsuleCollider))]
 [RequireComponent(typeof(PlayerInput))]
 public class PlayerMotor : MonoBehaviour
 {
-    // ─── Inspector ────────────────────────────────────────────────────────
     [SerializeField] private PlayerMovementConfig config;
 
-    [Header("Mouse Look (Yaw only — Pitch handled by CameraController)")]
+    [Header("Mouse Look")]
     [SerializeField] private float mouseSensitivity = 2f;
 
-    // ─── Components ───────────────────────────────────────────────────────
     private Rigidbody       _rb;
     private PlayerInput     _input;
     private CapsuleCollider _capsule;
 
-    // ─── Capsule geometry ─────────────────────────────────────────────────
-    private float _halfH;
-    private float _radius;
-
-    Vector3 GeomCenter(Vector3 fp) => fp + Vector3.up * _halfH;
-    Vector3 GeomBottom(Vector3 fp) => fp + Vector3.up * _radius;
-    Vector3 GeomTop   (Vector3 fp) => fp + Vector3.up * (_halfH * 2f - _radius);
-
-    // ─── Velocity ─────────────────────────────────────────────────────────
+    private float   _halfH;
+    private float   _radius;
     private Vector3 _velocity;
+    private float   _pendingYaw;
 
-    // ─── Ground state ─────────────────────────────────────────────────────
     private bool       _grounded;
-    private bool       _steepGround;
-    private float      _groundAngle;
     private RaycastHit _groundHit;
+    private float      _groundAngle;
+    private bool       _steepGround;
+    private float      _coyoteTimer;
+    private bool       _jumpedThisFrame;
+    private bool       _hitCeiling;
+    private bool       _inSlopeMode;
+    private float      _steepGroundTimer;
 
-    // ─── Ceiling ──────────────────────────────────────────────────────────
-    private bool _hitCeiling;
-
-    // ─── Jump ─────────────────────────────────────────────────────────────
-    private float _coyoteTimer;
+    private bool  _isCrouching;
+    private float _currentHeight;
+    private float _crouchVisualOffset;
     private float _jumpBufferTimer;
-    private bool  _jumpedThisFrame;
+    private float _visualBaseY;
+    private float _stepLerpOffset;
 
-    // ─── Slope ────────────────────────────────────────────────────────────
-    private bool  _inSlopeMode;
     private bool  _isSliding;
     private float _slopeSpeed;
     private float _slideSpeed;
 
-    // FIX: grace timer — player must be touching steep ground for this many
-    // seconds before slope mode activates.
-    private float _steepGroundTimer;
-    private const float SteepGroundGrace = 0.08f;
-
-    // ─── Crouch ───────────────────────────────────────────────────────────
-    private bool  _isCrouching;
-    private float _currentHeight;
-    // FIX: separate visual offset for crouch so the visual child (and camera)
-    // follows the capsule shrinking downward, independent of step smoothing.
-    private float _crouchVisualOffset;
-
-    // ─── Step visual ──────────────────────────────────────────────────────
-    private float _stepLerpOffset;
-    private float _visualBaseY;
-
-    // FIX: cooldown so TryStepUp cannot fire two frames in a row.
     private float _stepCooldown;
-    private const float StepCooldownTime = 0.1f;
 
-    // ─── Rotation ─────────────────────────────────────────────────────────
-    private float _pendingYaw;
-
-    // ─── Speed modifier ───────────────────────────────────────────────────
-    public float SpeedMultiplier { get; set; } = 1f;
-
-    // ─── Weapon weight ────────────────────────────────────────────────────
-    /// <summary>Set by GunController on equip/unequip. Persists across FixedUpdate cycles.</summary>
-    public float WeaponWeightMultiplier { get; set; } = 1f;
-
-    // ─── Events ───────────────────────────────────────────────────────────
-    /// <summary>Fired once per jump, from FixedUpdate, the frame the jump velocity is applied.</summary>
-    public event System.Action OnJumped;
-
-    // ─── Depenetration buffers ────────────────────────────────────────────
-    private readonly Collider[] _overlapBuffer = new Collider[16];
-    private readonly Vector3[]  _pushNormals   = new Vector3[24];
-    private int _normalCount;
-
-    // ─── Constants ────────────────────────────────────────────────────────
+    private const float SteepGroundGrace  = 0.08f;
     private const float SkinWidth         = 0.01f;
     private const float VeryCloseDistance = 0.005f;
     private const int   MaxBounces        = 3;
     private const int   MaxDepenetration  = 3;
-    private const float StepCheckDepth    = 0.2f;
     private const float StepSmoothSpeed   = 12f;
+    private const float StepCooldownTime  = 0.1f;
+    private const float StepCheckDepth    = 0.2f;
     private const float SlideMaxSpeed     = 10f;
     private const float SlopeDrainMin     = 2f;
     private const float SlopeDrainMax     = 20f;
@@ -118,22 +59,30 @@ public class PlayerMotor : MonoBehaviour
     private const float SlideStopThr      = 0.1f;
     private const float StrafeDeadzone    = 0.1f;
 
-    // ─── Public API ───────────────────────────────────────────────────────
-    public bool    IsGrounded         => _grounded;
-    public bool    IsCrouching        => _isCrouching;
-    public bool    IsSprinting        => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching;
-    public bool    IsMoving           => new Vector3(_velocity.x, 0f, _velocity.z).sqrMagnitude > 0.01f;
-    public float   VerticalVelocity   => _velocity.y;
-    public Vector3 HorizontalVelocity => new Vector3(_velocity.x, 0f, _velocity.z);
-    public bool    CanJump            => (_grounded || _coyoteTimer <= config.coyoteTime)
-                                         && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame;
+    private readonly Collider[] _overlapBuffer = new Collider[16];
+    private readonly Vector3[]  _pushNormals   = new Vector3[24];
+    private int _normalCount;
 
-    // FIX: expose normalized crouch progress (0 = standing, 1 = fully crouched)
-    // so CameraController can lerp camera height without snapping.
-    public float CrouchProgress => Mathf.InverseLerp(config.standHeight, config.crouchHeight, _currentHeight);
+    // ─── Public API ───────────────────────────────────────────────────────
+    public bool    IsGrounded             => _grounded;
+    public bool    IsCrouching            => _isCrouching;
+    public bool    IsSprinting            => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching;
+    public bool    IsMoving               => new Vector3(_velocity.x, 0f, _velocity.z).sqrMagnitude > 0.01f;
+    public float   VerticalVelocity       => _velocity.y;
+    public Vector3 HorizontalVelocity     => new Vector3(_velocity.x, 0f, _velocity.z);
+    public bool    CanJump                => (_grounded || _coyoteTimer <= config.coyoteTime)
+                                             && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame;
+    public float   CrouchProgress         => Mathf.InverseLerp(config.standHeight, config.crouchHeight, _currentHeight);
+    public float   SpeedMultiplier        { get; set; } = 1f;
+    public float   WeaponWeightMultiplier { get; set; } = 1f;
+    public event System.Action OnJumped;
+
+    // ─── Geometry helpers ─────────────────────────────────────────────────
+    Vector3 GeomCenter(Vector3 fp) => fp + Vector3.up * _halfH;
+    Vector3 GeomBottom(Vector3 fp) => fp + Vector3.up * _radius;
+    Vector3 GeomTop   (Vector3 fp) => fp + Vector3.up * (_halfH * 2f - _radius);
 
     // ─────────────────────────────────────────────────────────────────────
-
     void Awake()
     {
         _rb      = GetComponent<Rigidbody>();
@@ -160,7 +109,6 @@ public class PlayerMotor : MonoBehaviour
     }
 
     // ─────────────────────────────────────────────────────────────────────
-
     void Update()
     {
         if (!GameInputState.GameplayBlocked)
@@ -207,12 +155,12 @@ public class PlayerMotor : MonoBehaviour
         {
             _velocity.x = moveDelta.x / Time.fixedDeltaTime;
             _velocity.z = moveDelta.z / Time.fixedDeltaTime;
-            _velocity.y = gravDelta.y  / Time.fixedDeltaTime;
+            _velocity.y = gravDelta.y / Time.fixedDeltaTime;
         }
 
-        TryStepUp(ref newFeetPos);
         SnapToGround(ref newFeetPos);
         SafetyDepenetrate(ref newFeetPos);
+        TryStepUp(ref newFeetPos);
         _rb.MovePosition(newFeetPos);
     }
 
@@ -229,10 +177,8 @@ public class PlayerMotor : MonoBehaviour
         _groundAngle = hit ? Vector3.Angle(_groundHit.normal, Vector3.up) : 0f;
 
         bool rawSteep = hit && _groundAngle >= config.maxSlopeAngle;
-        if (rawSteep)
-            _steepGroundTimer += Time.fixedDeltaTime;
-        else
-            _steepGroundTimer = 0f;
+        if (rawSteep) _steepGroundTimer += Time.fixedDeltaTime;
+        else          _steepGroundTimer  = 0f;
 
         _steepGround = _steepGroundTimer >= SteepGroundGrace;
         _grounded    = hit && !_steepGround;
@@ -248,8 +194,6 @@ public class PlayerMotor : MonoBehaviour
 
         if (_isCrouching && !wantCrouch)
         {
-            // FIX: use _currentHeight instead of config.crouchHeight so the
-            // clearance is accurate mid-lerp, preventing false lock-in.
             float   clearance  = config.standHeight - _currentHeight;
             Vector3 castOrigin = GeomTop(_rb.position);
             if (Physics.SphereCast(castOrigin, _radius, Vector3.up, out _,
@@ -257,16 +201,11 @@ public class PlayerMotor : MonoBehaviour
                 wantCrouch = true;
         }
 
-        _isCrouching = wantCrouch;
-
+        _isCrouching   = wantCrouch;
         float targetH  = _isCrouching ? config.crouchHeight : config.standHeight;
-        float prevH    = _currentHeight;
         _currentHeight = Mathf.Lerp(_currentHeight, targetH, config.crouchLerpSpeed * Time.fixedDeltaTime);
         ApplyCapsuleGeometry(_currentHeight);
 
-        // FIX: accumulate the visual offset so LateUpdate can push the visual
-        // child (and the camera parented to it) downward as we crouch.
-        // The offset equals how far the top of the capsule has moved down.
         _crouchVisualOffset = _currentHeight - config.standHeight;
     }
 
@@ -298,11 +237,11 @@ public class PlayerMotor : MonoBehaviour
     void HandleMovement()
     {
         if (_inSlopeMode) return;
-        Vector2 move  = _input.MoveInput;
-        bool sprint   = _input.SprintHeld && move.y > 0f && !_isCrouching;
-        float targetSpeed = (_isCrouching ? config.crouchSpeed
-                            : sprint      ? config.sprintSpeed
-                                          : config.walkSpeed) * SpeedMultiplier * WeaponWeightMultiplier;
+        Vector2 move    = _input.MoveInput;
+        bool    sprint  = _input.SprintHeld && move.y > 0f && !_isCrouching;
+        float   targetSpeed = (_isCrouching ? config.crouchSpeed
+                              : sprint      ? config.sprintSpeed
+                                            : config.walkSpeed) * SpeedMultiplier * WeaponWeightMultiplier;
 
         Vector3 fwd   = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
         Vector3 right = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
@@ -368,7 +307,7 @@ public class PlayerMotor : MonoBehaviour
     }
     void ExitSlope() { _inSlopeMode = false; _isSliding = false; _slideSpeed = 0f; _slopeSpeed = 0f; }
 
-    // ─── Collide and Slide (Fauerby) ──────────────────────────────────────
+    // ─── Collide and Slide ────────────────────────────────────────────────
     Vector3 CollideAndSlide(Vector3 feetPos, Vector3 vel, bool isGravPass, bool allowGroundSet,
                              int depth = 0, Vector3 prevSlidePlane = default)
     {
@@ -475,7 +414,6 @@ public class PlayerMotor : MonoBehaviour
         if (Vector3.Angle(topHit.normal, Vector3.up) >= config.maxSlopeAngle) return;
 
         float stepH = topHit.point.y - feetPos.y;
-
         if (stepH < SkinWidth * 4f || stepH > config.maxStepHeight) return;
         if (topHit.normal.y < 0.9f) return;
 
@@ -493,26 +431,6 @@ public class PlayerMotor : MonoBehaviour
         _stepLerpOffset = Mathf.Clamp(cur - stepH, -config.maxStepHeight, 0f);
     }
 
-    // ─── Visual child (camera rig) smooth update ──────────────────────────
-    void LateUpdate()
-    {
-        if (transform.childCount == 0) return;
-        Transform vis = transform.GetChild(0);
-
-        // FIX: combine step smoothing offset AND crouch visual offset so
-        // the camera rig follows both stair-climbing and capsule shrink.
-        float targetY = _visualBaseY + _crouchVisualOffset;
-
-        if (!Mathf.Approximately(_stepLerpOffset, 0f))
-        {
-            _stepLerpOffset = Mathf.MoveTowards(_stepLerpOffset, 0f, StepSmoothSpeed * Time.deltaTime);
-        }
-
-        Vector3 p = vis.localPosition;
-        p.y = targetY + _stepLerpOffset;
-        vis.localPosition = p;
-    }
-
     // ─── Safety depenetration ─────────────────────────────────────────────
     void SafetyDepenetrate(ref Vector3 feetPos)
     {
@@ -522,8 +440,6 @@ public class PlayerMotor : MonoBehaviour
             int count = Physics.OverlapCapsuleNonAlloc(
                 GeomBottom(feetPos), GeomTop(feetPos), _radius,
                 _overlapBuffer, config.collisionMask, QueryTriggerInteraction.Ignore);
-            if (count == _overlapBuffer.Length)
-                Debug.LogWarning("[PlayerMotor] Overlap buffer full — increase size.");
 
             bool pushed = false;
             for (int i = 0; i < count; i++)
@@ -541,7 +457,9 @@ public class PlayerMotor : MonoBehaviour
             }
             if (!pushed) break;
         }
+
         if (_hitCeiling && _velocity.y > 0f) _velocity.y = 0f;
+
         for (int i = 0; i < _normalCount; i++)
         {
             Vector3 pd = _pushNormals[i];
@@ -560,47 +478,19 @@ public class PlayerMotor : MonoBehaviour
         }
     }
 
-    // ─── Gizmos ───────────────────────────────────────────────────────────
-    void OnDrawGizmosSelected()
+    // ─── LateUpdate ───────────────────────────────────────────────────────
+    void LateUpdate()
     {
-        if (!Application.isPlaying) return;
-        Vector3 fp = _rb.position;
+        if (transform.childCount == 0) return;
+        Transform vis = transform.GetChild(0);
 
-        float probeDist = (_halfH - _radius) + config.groundCheckExtra;
-        Gizmos.color = _grounded ? Color.green : _steepGround ? Color.yellow : Color.red;
-        Vector3 gc = GeomCenter(fp);
-        Gizmos.DrawWireSphere(gc, _radius);
-        Gizmos.DrawWireSphere(gc + Vector3.down * probeDist, _radius);
-        Gizmos.DrawLine(gc, gc + Vector3.down * probeDist);
+        float targetY = _visualBaseY + _crouchVisualOffset;
 
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(GeomBottom(fp), _radius);
-        Gizmos.DrawWireSphere(GeomTop(fp),    _radius);
+        if (!Mathf.Approximately(_stepLerpOffset, 0f))
+            _stepLerpOffset = Mathf.MoveTowards(_stepLerpOffset, 0f, StepSmoothSpeed * Time.deltaTime);
 
-        if (_grounded || _steepGround)
-        {
-            Gizmos.color = _steepGround ? Color.red : Color.green;
-            Gizmos.DrawWireSphere(_groundHit.point, 0.05f);
-            Gizmos.DrawRay(_groundHit.point, _groundHit.normal * 0.5f);
-        }
-
-        if (_grounded)
-        {
-            Vector3 horiz = new Vector3(_velocity.x, 0f, _velocity.z);
-            if (horiz.sqrMagnitude > 0.001f)
-            {
-                Vector3 d = horiz.normalized;
-                Gizmos.color = Color.cyan;
-                Gizmos.DrawRay(new Vector3(fp.x, fp.y + SkinWidth * 2f,       fp.z), d * (_radius + StepCheckDepth));
-                Gizmos.color = Color.white;
-                Gizmos.DrawRay(new Vector3(fp.x, fp.y + config.maxStepHeight, fp.z), d * (_radius + StepCheckDepth));
-            }
-        }
-
-        if (_isCrouching)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(GeomTop(fp), _radius * 0.5f);
-        }
+        Vector3 p = vis.localPosition;
+        p.y = targetY + _stepLerpOffset;
+        vis.localPosition = p;
     }
 }
