@@ -134,6 +134,15 @@ public class FootstepAudio : MonoBehaviour
         {
             _lastStep = step;
             PlayRandom(GetSurfaceClips(), _stepVolume);
+
+            float stepRadius = sprinting ? 8f : 4f;
+            StimulusSystem.Instance?.Broadcast(new Stimulus(
+                StimulusType.Sound,
+                transform.position,
+                radius:    stepRadius,
+                intensity: sprinting ? 0.6f : 0.3f,
+                source:    gameObject,
+                instigator: gameObject));
         }
         else if (justLanded)
             _lastStep = step;

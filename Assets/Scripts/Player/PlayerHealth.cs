@@ -78,4 +78,16 @@ public sealed class PlayerHealth : MonoBehaviour
         _currentEnergy = Mathf.Min(maxEnergy, _currentEnergy + amount);
         OnEnergyChanged?.Invoke();
     }
+
+    /// <summary>
+    /// Sets health and energy to exact absolute values. Only for save/load.
+    /// Fires change events so HUD updates correctly.
+    /// </summary>
+    public void LoadFromSave(float health, float energy)
+    {
+        _currentHealth = Mathf.Clamp(health, 0f, maxHealth);
+        _currentEnergy = Mathf.Clamp(energy, 0f, maxEnergy);
+        OnHealthChanged?.Invoke();
+        OnEnergyChanged?.Invoke();
+    }
 }

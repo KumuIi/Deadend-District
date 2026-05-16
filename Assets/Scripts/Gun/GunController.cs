@@ -427,6 +427,16 @@ public class GunController : MonoBehaviour
         if (_muzzleFlash) _muzzleFlash.Play();
         if (weaponData.gunshotClip) _audio.PlayOneShot(weaponData.gunshotClip);
 
+        // TODO: replace range * 0.6f with a dedicated WeaponSO.hearingRadius field once
+        // suppressor/subsonic support is needed — AI hearing radius should be decoupled from ballistic range.
+        StimulusSystem.Instance?.Broadcast(new Stimulus(
+            StimulusType.Sound,
+            muzzlePoint ? muzzlePoint.position : transform.position,
+            radius:    weaponData.range * 0.6f,
+            intensity: weaponData.baseDamage,
+            source:    gameObject,
+            instigator: _playerMotor ? _playerMotor.gameObject : gameObject));
+
         EjectCasing();
 
         _boltTarget   = -weaponData.boltTravelDistance;

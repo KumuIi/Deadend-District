@@ -261,6 +261,33 @@ public sealed class InventoryUI : MonoBehaviour
     public System.Collections.Generic.List<InventoryGrid.GridSaveEntry> GetSaveData() =>
         Grid.GetSaveData();
 
+    /// <summary>
+    /// Removes all items and destroys all views. Call before loading from a save file.
+    /// Does not close the panel.
+    /// </summary>
+    public void ClearAll()
+    {
+        foreach (var view in _views.Values)
+            if (view != null) Destroy(view.gameObject);
+        _views.Clear();
+        foreach (var item in new List<ItemInstance>(Grid.PlacedItems))
+            Grid.Remove(item);
+    }
+
+    /// <summary>
+    /// Clears the grid, loads entries from save data, and spawns views for each placed item.
+    /// Call on scene load after all SOs are available via <paramref name="resolver"/>.
+    /// </summary>
+    public void LoadFromSaveData(
+        System.Collections.Generic.List<InventoryGrid.GridSaveEntry> entries,
+        IItemSOResolver resolver)
+    {
+        ClearAll();
+        Grid.LoadFromSaveData(entries, resolver);
+        foreach (var item in Grid.PlacedItems)
+            SpawnView(item);
+    }
+
     // ── Internal callbacks (called by InventoryItemView) ──────────────────
 
     public void OnItemBeginDrag(InventoryItemView view, PointerEventData e) =>
