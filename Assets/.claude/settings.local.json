@@ -4,7 +4,10 @@
       "Bash(codemoot build *)",
       "Bash(codemoot debate *)",
       "Bash(codemoot review *)",
-      "Skill(build)"
+      "Skill(build)",
+      "Bash(ls Scripts/Quest/)",
+      "Bash(ls Scripts/AI/)",
+      "Bash(git add *)"
     ]
   }
 }

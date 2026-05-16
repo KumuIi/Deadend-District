@@ -163,11 +163,9 @@ public class InventoryGrid
                 continue;
             }
 
-            var item = new ItemInstance(so)
-            {
-                gridPosition = new Vector2Int(entry.gridX, entry.gridY),
-                isRotated    = entry.isRotated,
-            };
+            var item = ItemInstanceFactory.Create(so);
+            item.gridPosition = new Vector2Int(entry.gridX, entry.gridY);
+            item.isRotated    = entry.isRotated;
 
             if (!TryPlace(item, item.gridPosition))
                 Debug.LogWarning($"[InventoryGrid] Could not place '{entry.soName}' at " +

@@ -88,6 +88,9 @@ public class WorldStateManager : MonoBehaviour
         return fallback;
     }
 
+    /// <summary>Returns true if the key has ever been written (regardless of type).</summary>
+    public bool HasKey(string key) => !string.IsNullOrEmpty(key) && _state.ContainsKey(key);
+
     // ── Bulk access (for SaveSystem) ───────────────────────────────────────
 
     /// <summary>Returns a shallow copy of the entire state for serialization.</summary>

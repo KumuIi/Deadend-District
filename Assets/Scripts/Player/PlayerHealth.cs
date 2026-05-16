@@ -31,6 +31,9 @@ public sealed class PlayerHealth : MonoBehaviour
     public UnityEvent OnHealthChanged;
     public UnityEvent OnEnergyChanged;
 
+    /// <summary>Fired with the actual damage dealt (clamped, never negative) after health is reduced.</summary>
+    public event System.Action<float> OnDamaged;
+
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     private void Awake()
@@ -53,8 +56,11 @@ public sealed class PlayerHealth : MonoBehaviour
     public void TakeDamage(float amount)
     {
         if (IsDead || amount <= 0f) return;
+        float before = _currentHealth;
         _currentHealth = Mathf.Max(0f, _currentHealth - amount);
+        float dealt = before - _currentHealth;
         OnHealthChanged?.Invoke();
+        OnDamaged?.Invoke(dealt);
         if (IsDead) OnDeath?.Invoke();
     }
 
