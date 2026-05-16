@@ -14,6 +14,7 @@ public static class ItemDropSpawner
     private const float SphereCastRadius = 0.15f;
 
     public static bool TryDrop(ItemInstance item, Transform origin,
+                                Vector3 throwDirection,
                                 float throwForce        = 5f,
                                 float spinForce         = 3f,
                                 int   interactableLayer = 6,
@@ -25,7 +26,7 @@ public static class ItemDropSpawner
             return false;
         }
 
-        var spawnPos = FindSafeSpawnPoint(origin, obstacleMask);
+        var spawnPos = FindSafeSpawnPoint(origin, throwDirection, obstacleMask);
 
         var go = new GameObject($"Dropped_{item.data.itemName}");
         go.layer = interactableLayer; // must match PlayerInteractor's interaction mask
@@ -53,23 +54,23 @@ public static class ItemDropSpawner
         var loot = go.AddComponent<LootItemWorld>();
         loot.Initialize(item);
 
-        // Throw forward and add tumble spin
-        rb.AddForce(origin.forward * throwForce, ForceMode.Impulse);
+        // Throw in the camera look direction and add tumble spin
+        rb.AddForce(throwDirection.normalized * throwForce, ForceMode.Impulse);
         rb.AddTorque(Random.insideUnitSphere * spinForce, ForceMode.Impulse);
 
         return true;
     }
 
-    private static Vector3 FindSafeSpawnPoint(Transform origin, int obstacleMask)
+    private static Vector3 FindSafeSpawnPoint(Transform origin, Vector3 direction, int obstacleMask)
     {
-        var   ray  = new Ray(origin.position, origin.forward);
+        var   ray  = new Ray(origin.position, direction);
         float dist = SpawnReach;
 
         if (Physics.SphereCast(ray, SphereCastRadius, out var hit, SpawnReach,
                                obstacleMask, QueryTriggerInteraction.Ignore))
             dist = Mathf.Max(SpawnMinDist, hit.distance - SphereCastRadius);
 
-        return origin.position + origin.forward * dist;
+        return origin.position + direction.normalized * dist;
     }
 
     private static void AddBoundsCollider(GameObject root, int layer)

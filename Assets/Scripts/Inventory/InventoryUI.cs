@@ -427,8 +427,12 @@ public sealed class InventoryUI : MonoBehaviour
 
     private void ContextMenu_Drop(ItemInstance item)
     {
+        // Use Camera.main.forward so pitch (looking up/down) is always respected,
+        // regardless of what transform is assigned to _dropOrigin.
+        var throwDir = Camera.main != null ? Camera.main.transform.forward : _dropOrigin.forward;
+
         // Spawn first — only commit state changes if it succeeds
-        if (!ItemDropSpawner.TryDrop(item, _dropOrigin, _dropThrowForce,
+        if (!ItemDropSpawner.TryDrop(item, _dropOrigin, throwDir, _dropThrowForce,
                                      interactableLayer: _droppedItemLayer,
                                      obstacleMask: Physics.DefaultRaycastLayers))
         {
