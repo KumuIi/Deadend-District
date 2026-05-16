@@ -10,7 +10,18 @@ public class LootItemWorld : MonoBehaviour, IInteractable
     [SerializeField] private bool   _emitSoundOnPickup;
     [SerializeField] private float  _soundRadius = 8f;
 
-    private InventoryUI _inventory;
+    private ItemInstance _instance; // set when spawned from inventory drop
+    private InventoryUI  _inventory;
+
+    /// <summary>
+    /// Called by ItemDropSpawner when spawning a dropped inventory item.
+    /// Preserves the live ItemInstance (loaded mag, ammo count, etc.).
+    /// </summary>
+    public void Initialize(ItemInstance instance)
+    {
+        _instance = instance;
+        _itemSO   = instance?.data;
+    }
 
     private void Start()
     {
@@ -19,14 +30,15 @@ public class LootItemWorld : MonoBehaviour, IInteractable
             Debug.LogWarning("[LootItemWorld] No InventoryUI found in scene.", this);
     }
 
-    public bool   CanInteract(GameObject interactor) => _itemSO != null && _inventory != null;
-    public string GetPrompt(GameObject interactor)   => $"Pick up {(_itemSO != null ? _itemSO.name : "item")}";
+    public bool   CanInteract(GameObject interactor) => (_itemSO != null) && _inventory != null;
+    public string GetPrompt(GameObject interactor)   => $"Pick up {(_itemSO != null ? _itemSO.itemName : "item")}";
 
     public void Interact(GameObject interactor)
     {
         if (_itemSO == null || _inventory == null) return;
 
-        var instance = ItemInstanceFactory.Create(_itemSO);
+        // Use the live instance when dropped from inventory; create fresh for scene-placed loot
+        var instance = _instance ?? ItemInstanceFactory.Create(_itemSO);
         if (_inventory.TryPickup(instance) == PickupResult.NoSpace)
         {
             Debug.Log("[LootItemWorld] Inventory full.");

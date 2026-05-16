@@ -14,6 +14,8 @@ public class WeaponSwitcher : MonoBehaviour
         if (weaponManager == null) return;
 
         int count   = weaponManager.Weapons.Count;
+        if (count == 0) return; // all weapons dropped — nothing to switch to
+
         int current = GetCurrentIndex();
 
         // Number keys 1–9

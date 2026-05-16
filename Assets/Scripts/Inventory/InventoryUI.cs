@@ -56,6 +56,14 @@ public sealed class InventoryUI : MonoBehaviour
     [Tooltip("Layer used exclusively for inventory models. Create a layer named 'InventoryItems'.")]
     public int modelLayer = 31;
 
+    [Header("=== Drop Settings ===")]
+    [Tooltip("Origin transform for item drops (assign player camera). Falls back to Camera.main.")]
+    [SerializeField] private Transform _dropOrigin;
+    [Tooltip("Forward throw force in m/s.")]
+    [SerializeField] private float _dropThrowForce = 5f;
+    [Tooltip("Layer the dropped item's collider is placed on — must match PlayerInteractor's interaction mask. Default 6 = InteractI.")]
+    [SerializeField] private int _droppedItemLayer = 6;
+
     [Header("=== Prefabs (optional) ===")]
     [Tooltip("Simple Image prefab for grid cells. Leave null to auto-create.")]
     public GameObject cellPrefab;
@@ -163,6 +171,9 @@ public sealed class InventoryUI : MonoBehaviour
             return;
         }
         mainCam.cullingMask |= 1 << modelLayer;
+
+        if (_dropOrigin == null)
+            _dropOrigin = mainCam.transform;
 
         if (_canvas != null &&
             _canvas.renderMode == RenderMode.ScreenSpaceCamera &&
@@ -405,13 +416,33 @@ public sealed class InventoryUI : MonoBehaviour
 
     private void ContextMenu_Drop(ItemInstance item)
     {
-        // If dropping the currently equipped weapon, unequip it first.
-        if (item is WeaponItemInstance droppedWeapon && droppedWeapon == _equippedItem)
+        // Spawn first — only commit state changes if it succeeds
+        if (!ItemDropSpawner.TryDrop(item, _dropOrigin, _dropThrowForce,
+                                     interactableLayer: _droppedItemLayer,
+                                     obstacleMask: Physics.DefaultRaycastLayers))
         {
-            _equippedItem = null;
-            weaponManager?.EquipNothing();
+            Debug.LogWarning($"[InventoryUI] Drop failed for '{item.data?.itemName}' — item kept in inventory.");
+            return;
         }
-        // Future: spawn a world item at the player's feet. For now: remove permanently.
+
+        // Clean up weapon state after successful spawn
+        if (item is WeaponItemInstance droppedWeapon)
+        {
+            // Unequip only if this is the currently active weapon
+            if (droppedWeapon == _equippedItem)
+            {
+                _equippedItem = null;
+                weaponManager?.EquipNothing();
+            }
+
+            // Always remove from switchable list — applies even to holstered weapons
+            if (droppedWeapon.LinkedGun != null)
+            {
+                weaponManager?.RemoveWeapon(droppedWeapon.LinkedGun);
+                droppedWeapon.LinkedGun = null;
+            }
+        }
+
         RemoveItem(item);
     }
 
