@@ -3,7 +3,8 @@
     "allow": [
       "Bash(codemoot build *)",
       "Bash(codemoot debate *)",
-      "Bash(codemoot review *)"
+      "Bash(codemoot review *)",
+      "Skill(build)"
     ]
   }
 }

@@ -1,5 +1,5 @@
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Bottom-right HUD panel showing current weapon name and loaded ammo count.
@@ -27,15 +27,13 @@ public sealed class WeaponHUD : MonoBehaviour
     public Color ammoColor    = new Color(1.00f, 0.85f, 0.35f, 1f);
     public Color nameColor    = new Color(0.88f, 0.88f, 0.88f, 1f);
 
-    private Text _ammoText;
-    private Text _nameText;
+    private TextMeshProUGUI _ammoText;
+    private TextMeshProUGUI _nameText;
 
     private void Awake()
     {
         Canvas canvas = GetComponentInParent<Canvas>();
         if (canvas == null) { Debug.LogError("[WeaponHUD] Must be inside a Canvas."); return; }
-
-        Font font = GetFont();
 
         // Create a self-contained panel directly under the Canvas
         var panel = new GameObject("WeaponHUDPanel", typeof(RectTransform));
@@ -49,7 +47,7 @@ public sealed class WeaponHUD : MonoBehaviour
         rt.anchoredPosition = new Vector2(-paddingRight, paddingBottom);
 
         // Ammo count — top half, larger
-        _ammoText = NewText("AmmoCount", panel.transform, font, ammoFontSize, ammoColor);
+        _ammoText = NewText("AmmoCount", panel.transform, ammoFontSize, ammoColor);
         var ammoRT       = _ammoText.GetComponent<RectTransform>();
         ammoRT.anchorMin = new Vector2(0f, 0.45f);
         ammoRT.anchorMax = Vector2.one;
@@ -57,7 +55,7 @@ public sealed class WeaponHUD : MonoBehaviour
         ammoRT.offsetMax = Vector2.zero;
 
         // Weapon name — bottom half, smaller
-        _nameText = NewText("WeaponName", panel.transform, font, nameFontSize, nameColor);
+        _nameText = NewText("WeaponName", panel.transform, nameFontSize, nameColor);
         var nameRT       = _nameText.GetComponent<RectTransform>();
         nameRT.anchorMin = Vector2.zero;
         nameRT.anchorMax = new Vector2(1f, 0.45f);
@@ -78,23 +76,16 @@ public sealed class WeaponHUD : MonoBehaviour
         _nameText.text = gun.weaponData != null ? gun.weaponData.itemName : gun.name;
     }
 
-    private static Text NewText(string goName, Transform parent, Font font, int size, Color color)
+    private static TextMeshProUGUI NewText(string goName, Transform parent, int size, Color color)
     {
-        var go = new GameObject(goName, typeof(RectTransform), typeof(Text));
+        var go = new GameObject(goName, typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent, false);
-        var t             = go.GetComponent<Text>();
-        t.font            = font;
-        t.fontSize        = size;
-        t.color           = color;
-        t.alignment       = TextAnchor.MiddleRight;
-        t.supportRichText = false;
-        t.raycastTarget   = false;
+        var t           = go.GetComponent<TextMeshProUGUI>();
+        t.fontSize      = size;
+        t.color         = color;
+        t.alignment     = TextAlignmentOptions.MidlineRight;
+        t.richText      = false;
+        t.raycastTarget = false;
         return t;
-    }
-
-    private static Font GetFont()
-    {
-        Font f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        return f != null ? f : Resources.GetBuiltinResource<Font>("Arial.ttf");
     }
 }

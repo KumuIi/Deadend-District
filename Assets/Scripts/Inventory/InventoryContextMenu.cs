@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -89,9 +90,8 @@ public sealed class InventoryContextMenu
 
         _panelRT.sizeDelta = new Vector2(ButtonW, ButtonH * entries.Count);
 
-        Font font = GetFont();
         for (int i = 0; i < entries.Count; i++)
-            AddButton(entries[i].label, i, font, entries[i].action);
+            AddButton(entries[i].label, i, entries[i].action);
 
         // Position at cursor
         Camera cam = _canvas.renderMode != RenderMode.ScreenSpaceOverlay ? _canvas.worldCamera : null;
@@ -113,7 +113,7 @@ public sealed class InventoryContextMenu
         _bgDismiss.SetActive(false);
     }
 
-    private void AddButton(string label, int index, Font font, Action onClick)
+    private void AddButton(string label, int index, Action onClick)
     {
         var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button));
         go.transform.SetParent(_panel.transform, false);
@@ -135,27 +135,20 @@ public sealed class InventoryContextMenu
         btn.colors = colors;
         btn.onClick.AddListener(() => onClick());
 
-        var textGO = new GameObject("Label", typeof(RectTransform), typeof(Text));
+        var textGO = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
         textGO.transform.SetParent(go.transform, false);
 
-        var trt          = textGO.GetComponent<RectTransform>();
-        trt.anchorMin    = Vector2.zero;
-        trt.anchorMax    = Vector2.one;
-        trt.offsetMin    = new Vector2(12f, 0f);
-        trt.offsetMax    = Vector2.zero;
+        var trt       = textGO.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = new Vector2(12f, 0f);
+        trt.offsetMax = Vector2.zero;
 
-        var t               = textGO.GetComponent<Text>();
-        t.text              = label;
-        t.font              = font;
-        t.fontSize          = 13;
-        t.color             = new Color(0.90f, 0.90f, 0.90f, 1f);
-        t.alignment         = TextAnchor.MiddleLeft;
-        t.raycastTarget     = false;
-    }
-
-    private static Font GetFont()
-    {
-        Font f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        return f != null ? f : Resources.GetBuiltinResource<Font>("Arial.ttf");
+        var t           = textGO.GetComponent<TextMeshProUGUI>();
+        t.text          = label;
+        t.fontSize      = 13;
+        t.color         = new Color(0.90f, 0.90f, 0.90f, 1f);
+        t.alignment     = TextAlignmentOptions.MidlineLeft;
+        t.raycastTarget = false;
     }
 }

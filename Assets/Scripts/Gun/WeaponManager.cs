@@ -81,11 +81,18 @@ public class WeaponManager : MonoBehaviour
             foreach (var g in _initialWeapons)
                 if (g != null) initialSet.Add(g);
 
-        // Deactivate every scene GunController that is NOT in _initialWeapons.
-        // emptyHandsGun is excluded — it was already handled above.
+        // Discover every scene GunController (including inactive ones), populate the
+        // Registry, and deactivate any that aren't in _initialWeapons.
+        // GunController.Awake() can't reliably self-register because WeaponManager
+        // deactivates guns before their Awake() slot fires (exec order 0 vs 10000).
         foreach (var gun in FindObjectsOfType<GunController>(true))
+        {
+            if (gun.weaponData != null)
+                GunController.Registry[gun.weaponData] = gun;
+
             if (!initialSet.Contains(gun) && gun != emptyHandsGun)
                 gun.gameObject.SetActive(false);
+        }
 
         if (_initialWeapons != null)
             foreach (GunController gun in _initialWeapons)
@@ -164,6 +171,53 @@ public class WeaponManager : MonoBehaviour
         CurrentWeapon = emptyHandsGun;
         CurrentWeapon.gameObject.SetActive(true);
         ApplyIKTargets(CurrentWeapon);
+    }
+
+    /// <summary>
+    /// Finds the GunController matching <paramref name="wi"/>, loads its magazine, and equips it.
+    /// Lookup order: cached LinkedGun → registered weapons → WeaponRegistry.
+    /// Returns false if no matching controller exists.
+    /// </summary>
+    public bool EquipFromInventory(WeaponItemInstance wi, System.Action<GunController> reloadCallback)
+    {
+        GunController match = null;
+        int matchIdx = -1;
+
+        // 1. Cached reference from a previous equip of this instance.
+        if (wi.LinkedGun != null)
+            for (int i = 0; i < _weapons.Count; i++)
+                if (_weapons[i] == wi.LinkedGun) { match = _weapons[i]; matchIdx = i; break; }
+
+        // 2. WeaponSO match among already-registered weapons (first equip of this type).
+        if (match == null)
+            for (int i = 0; i < _weapons.Count; i++)
+                if (_weapons[i].weaponData == wi.WeaponDef) { match = _weapons[i]; matchIdx = i; break; }
+
+        // 3. Registry fallback — all scene guns self-register in Awake.
+        if (match == null && GunController.Registry.TryGetValue(wi.WeaponDef, out var reg))
+        {
+            AddWeapon(reg);
+            match = reg;
+            matchIdx = _weapons.Count - 1;
+        }
+
+        if (match == null)
+        {
+            Debug.LogWarning($"[WeaponManager] EquipFromInventory: no GunController for '{wi.WeaponDef?.itemName}'.");
+            return false;
+        }
+
+        wi.LinkedGun            = match;
+        match.inventoryManaged  = true;
+        match.OnReloadRequested = reloadCallback;
+
+        if (wi.LoadedMagazine != null)
+            match.InsertMagazine(wi.LoadedMagazine.RuntimeMag);
+        else
+            match.EjectMagazine();
+
+        Equip(matchIdx);
+        return true;
     }
 
     // ── IK ─────────────────────────────────────────────────────────────────

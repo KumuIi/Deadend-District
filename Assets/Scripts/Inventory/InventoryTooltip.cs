@@ -1,5 +1,5 @@
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Cursor-following tooltip that shows item stats on hover.
@@ -8,9 +8,9 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class InventoryTooltip
 {
-    private readonly RectTransform _rt;
-    private readonly Text          _text;
-    private readonly Canvas        _canvas;
+    private readonly RectTransform   _rt;
+    private readonly TextMeshProUGUI _text;
+    private readonly Canvas          _canvas;
 
     public InventoryTooltip(Canvas canvas)
     {
@@ -21,48 +21,40 @@ public sealed class InventoryTooltip
         go.transform.SetParent(canvas.transform, false);
 
         _rt           = go.GetComponent<RectTransform>();
-        _rt.anchorMin = new Vector2(0.5f, 0.5f);   // explicit: relative to canvas centre
+        _rt.anchorMin = new Vector2(0.5f, 0.5f);
         _rt.anchorMax = new Vector2(0.5f, 0.5f);
         _rt.pivot     = new Vector2(0f, 1f);        // top-left follows cursor
 
         go.GetComponent<CanvasGroup>().blocksRaycasts = false;
 
-        // Text with drop shadow
-        var textGO = new GameObject("Text", typeof(RectTransform), typeof(Text), typeof(Shadow));
+        var textGO = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
         textGO.transform.SetParent(go.transform, false);
 
-        var trt          = textGO.GetComponent<RectTransform>();
-        trt.anchorMin    = Vector2.zero;
-        trt.anchorMax    = Vector2.one;
-        trt.offsetMin    = Vector2.zero;
-        trt.offsetMax    = Vector2.zero;
-        // Let the Text component drive the size by fitting its own content
-        trt.sizeDelta    = new Vector2(220f, 0f);
+        var trt       = textGO.GetComponent<RectTransform>();
+        trt.anchorMin = Vector2.zero;
+        trt.anchorMax = Vector2.one;
+        trt.offsetMin = Vector2.zero;
+        trt.offsetMax = Vector2.zero;
+        trt.sizeDelta = new Vector2(220f, 0f);
 
-        _text                  = textGO.GetComponent<Text>();
-        _text.font             = GetFont();
-        _text.fontSize         = 13;
-        _text.lineSpacing      = 1.4f;
-        _text.color            = Color.white;
-        _text.alignment        = TextAnchor.UpperLeft;
-        _text.supportRichText  = true;
-        _text.horizontalOverflow = HorizontalWrapMode.Wrap;
-        _text.verticalOverflow   = VerticalWrapMode.Overflow;
-        _text.raycastTarget    = false;
-
-        var shadow                = textGO.GetComponent<Shadow>();
-        shadow.effectColor        = new Color(0f, 0f, 0f, 0.85f);
-        shadow.effectDistance     = new Vector2(1f, -1f);
-        shadow.useGraphicAlpha    = true;
+        _text                    = textGO.GetComponent<TextMeshProUGUI>();
+        _text.font               = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        _text.fontSize           = 13;
+        _text.color              = Color.white;
+        _text.alignment          = TextAlignmentOptions.TopLeft;
+        _text.richText           = true;
+        _text.enableWordWrapping = true;
+        _text.overflowMode       = TextOverflowModes.Overflow;
+        _text.raycastTarget      = false;
 
         go.SetActive(false);
     }
 
     public void Show(ItemInstance item, Vector2 screenPos)
     {
+        _rt.gameObject.SetActive(true);   // activate before positioning so anchor is applied immediately
         _text.text = BuildText(item);
         MoveToScreen(screenPos);
-        _rt.gameObject.SetActive(true);
         _rt.transform.SetAsLastSibling();
     }
 
@@ -72,14 +64,21 @@ public sealed class InventoryTooltip
 
     private void MoveToScreen(Vector2 screenPos)
     {
-        Camera cam = null;
-        if (_canvas.renderMode != RenderMode.ScreenSpaceOverlay)
-            cam = _canvas.worldCamera != null ? _canvas.worldCamera : Camera.main;
+        var canvasRT = (RectTransform)_canvas.transform;
+        Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : (_canvas.worldCamera != null ? _canvas.worldCamera : Camera.main);
 
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            _canvas.GetComponent<RectTransform>(), screenPos, cam, out Vector2 local);
-        // Tiny offset so the tip of the cursor doesn't sit directly under the first line
-        _rt.anchoredPosition = local + new Vector2(12f, -8f);
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                canvasRT, screenPos, cam, out Vector2 local))
+            return;
+
+        Rect r = canvasRT.rect;
+        _rt.anchorMin = new Vector2(
+            Mathf.InverseLerp(r.xMin, r.xMax, local.x),
+            Mathf.InverseLerp(r.yMin, r.yMax, local.y));
+        _rt.anchorMax        = _rt.anchorMin;
+        _rt.anchoredPosition = Vector2.zero;
     }
 
     private string BuildText(ItemInstance item)
@@ -124,10 +123,4 @@ public sealed class InventoryTooltip
         FireMode.Burst    => "Burst",
         _                 => mode.ToString(),
     };
-
-    private static Font GetFont()
-    {
-        Font f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        return f != null ? f : Resources.GetBuiltinResource<Font>("Arial.ttf");
-    }
 }

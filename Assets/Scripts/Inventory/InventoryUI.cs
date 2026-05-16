@@ -309,59 +309,8 @@ public sealed class InventoryUI : MonoBehaviour
     private void ContextMenu_Equip(ItemInstance item)
     {
         if (weaponManager == null || !(item is WeaponItemInstance wi)) return;
-
-        GunController match = null;
-        int matchIdx = -1;
-
-        // 1. Cached reference from a previous equip of any item with this WeaponSO.
-        //    The GunController is a shared runner — all Makarov items use the same one.
-        if (wi.LinkedGun != null)
-        {
-            for (int i = 0; i < weaponManager.Weapons.Count; i++)
-                if (weaponManager.Weapons[i] == wi.LinkedGun) { match = weaponManager.Weapons[i]; matchIdx = i; break; }
-        }
-
-        // 2. WeaponSO match among registered weapons (first equip of this weapon type).
-        if (match == null)
-        {
-            for (int i = 0; i < weaponManager.Weapons.Count; i++)
-                if (weaponManager.Weapons[i].weaponData == wi.WeaponDef) { match = weaponManager.Weapons[i]; matchIdx = i; break; }
-        }
-
-        // 3. Scene-wide search (gun not yet registered with WeaponManager).
-        if (match == null)
-        {
-            foreach (var gun in FindObjectsOfType<GunController>(true))
-            {
-                if (gun.weaponData == wi.WeaponDef)
-                {
-                    weaponManager.AddWeapon(gun);
-                    match    = gun;
-                    matchIdx = weaponManager.Weapons.Count - 1;
-                    break;
-                }
-            }
-        }
-
-        if (match == null)
-        {
-            Debug.LogWarning($"[InventoryUI] Equip: no scene GunController with WeaponSO '{wi.WeaponDef?.itemName}' found.");
-            return;
-        }
-
-        wi.LinkedGun            = match;  // cache for future equip calls
-        _equippedItem           = wi;     // this C# object is now the active item
-        match.inventoryManaged  = true;
-        match.OnReloadRequested = HandleInventoryReload;
-
-        // Load this item's magazine into the GunController before enabling it.
-        // RuntimeMag is shared by reference — ConsumeRound() updates both automatically.
-        if (wi.LoadedMagazine != null)
-            match.InsertMagazine(wi.LoadedMagazine.RuntimeMag);
-        else
-            match.EjectMagazine();
-
-        weaponManager.Equip(matchIdx);
+        if (weaponManager.EquipFromInventory(wi, HandleInventoryReload))
+            _equippedItem = wi;
     }
 
     private void ContextMenu_Unequip(ItemInstance item)

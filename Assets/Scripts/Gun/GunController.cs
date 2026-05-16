@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -107,6 +108,15 @@ public class GunController : MonoBehaviour
 
     private int _burstShotsRemaining;
     private float _nextBurstShotTime;
+
+    // ── Static registry ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// All scene GunControllers keyed by their WeaponSO, populated during Awake.
+    /// Replaces FindObjectsOfType lookups in the inventory equip path.
+    /// </summary>
+    public static readonly Dictionary<WeaponSO, GunController> Registry
+        = new Dictionary<WeaponSO, GunController>();
 
     // ── Inventory integration ──────────────────────────────────────────────
 
