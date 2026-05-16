@@ -21,6 +21,7 @@ using UnityEngine.UI;
 ///   3. Optionally assign cellPrefab / itemViewPrefab, or leave null to auto-generate.
 ///   4. Add InventoryInputHandler to the same GameObject for keyboard control.
 /// </summary>
+[DefaultExecutionOrder(5)] // must run after CameraController (default order 0)
 public sealed class InventoryUI : MonoBehaviour
 {
     // ── Inspector ─────────────────────────────────────────────────────────
@@ -187,6 +188,16 @@ public sealed class InventoryUI : MonoBehaviour
         // Keep tooltip position glued to the cursor while hovering
         if (_hoveredView != null && IsOpen)
             _tooltip?.UpdatePosition(Input.mousePosition);
+    }
+
+    private void LateUpdate()
+    {
+        // Re-place models every frame while open so they track the camera-driven canvas.
+        // ForceUpdateCanvases called once here; PlaceModel skips it to avoid N canvas flushes.
+        if (!IsOpen || _views.Count == 0) return;
+        Canvas.ForceUpdateCanvases();
+        foreach (var view in _views.Values)
+            view.PlaceModel(forceCanvasUpdate: false);
     }
 
     private void OnDestroy()

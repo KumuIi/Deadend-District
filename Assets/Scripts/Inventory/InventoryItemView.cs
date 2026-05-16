@@ -32,6 +32,11 @@ public sealed class InventoryItemView : MonoBehaviour,
     private CanvasGroup   _group;
     private GameObject    _model;
 
+    // Cached to avoid per-frame GetComponentsInChildren traversal
+    private readonly Vector3[] _corners = new Vector3[4];
+    private float _cachedModelRadius;
+    private bool  _cachedIsRotated;
+
     // ── Initialisation ────────────────────────────────────────────────────
 
     public void Initialize(ItemInstance item, InventoryUI owner, int modelLayer, float cellSize)
@@ -69,18 +74,17 @@ public sealed class InventoryItemView : MonoBehaviour,
     /// (i.e. AFTER the first three steps are applied). Default axis (0,0,1) = panel normal,
     /// so the model spins flat on the panel surface — matching the grid's width/height swap.
     /// </summary>
-    public void PlaceModel()
+    public void PlaceModel(bool forceCanvasUpdate = true)
     {
         if (_model == null) return;
 
-        Canvas.ForceUpdateCanvases();
+        if (forceCanvasUpdate) Canvas.ForceUpdateCanvases();
 
-        var corners = new Vector3[4];
-        _rect.GetWorldCorners(corners);
+        _rect.GetWorldCorners(_corners);
 
-        Vector3 center = (corners[0] + corners[1] + corners[2] + corners[3]) * 0.25f;
-        float worldW   = Vector3.Distance(corners[0], corners[3]);
-        float worldH   = Vector3.Distance(corners[0], corners[1]);
+        Vector3 center = (_corners[0] + _corners[1] + _corners[2] + _corners[3]) * 0.25f;
+        float worldW   = Vector3.Distance(_corners[0], _corners[3]);
+        float worldH   = Vector3.Distance(_corners[0], _corners[1]);
 
         // ── Build rotation in explicit layers ────────────────────────────
         Quaternion panelTilt    = _rect.rotation;
@@ -88,7 +92,6 @@ public sealed class InventoryItemView : MonoBehaviour,
         Quaternion perItemOff   = Quaternion.Euler(Item.data.modelOrientationOffset);
 
         // Grid rotation: 90° around the per-item axis (default Z = panel normal).
-        // AngleAxis works in LOCAL space here because we compose it AFTER the offset.
         Quaternion gridRotation = Item.isRotated
             ? Quaternion.AngleAxis(90f, Item.data.gridRotationAxis.normalized)
             : Quaternion.identity;
@@ -96,17 +99,23 @@ public sealed class InventoryItemView : MonoBehaviour,
         _model.transform.rotation = panelTilt * flatOnPanel * perItemOff * gridRotation;
         _model.transform.position = center - _rect.forward * 0.004f;
 
-        // Scale: fit bounding sphere to 80% of longest world-space dimension
-        _model.transform.localScale = Vector3.one;
-        var b = new Bounds(_model.transform.position, Vector3.zero);
-        foreach (var r in _model.GetComponentsInChildren<Renderer>(true))
-            b.Encapsulate(r.bounds);
-
-        if (b.extents != Vector3.zero)
+        // Recompute radius only when grid rotation changes — the mesh bounds at scale=1
+        // are constant for a given rotation, so no traversal needed every frame.
+        if (_cachedModelRadius == 0f || Item.isRotated != _cachedIsRotated)
         {
-            float fitSize     = Mathf.Max(worldW, worldH) * 0.8f;
-            float modelRadius = b.extents.magnitude;
-            _model.transform.localScale = Vector3.one * (fitSize * 0.5f / modelRadius);
+            _model.transform.localScale = Vector3.one;
+            var b = new Bounds(_model.transform.position, Vector3.zero);
+            foreach (var r in _model.GetComponentsInChildren<Renderer>(true))
+                b.Encapsulate(r.bounds);
+
+            _cachedModelRadius = b.extents == Vector3.zero ? 0f : b.extents.magnitude;
+            _cachedIsRotated   = Item.isRotated;
+        }
+
+        if (_cachedModelRadius > 0f)
+        {
+            float fitSize = Mathf.Max(worldW, worldH) * 0.8f;
+            _model.transform.localScale = Vector3.one * (fitSize * 0.5f / _cachedModelRadius);
         }
     }
 
