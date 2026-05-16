@@ -59,7 +59,7 @@ public sealed class InventoryContextMenu
         _panel.transform.SetParent(canvas.transform, false);
 
         _panelRT       = _panel.GetComponent<RectTransform>();
-        _panelRT.pivot = new Vector2(0f, 1f);
+        _panelRT.pivot = new Vector2(1f, 1f);
 
         _panel.GetComponent<Image>().color = new Color(0.07f, 0.07f, 0.11f, 0.97f);
         _panel.GetComponent<CanvasGroup>().blocksRaycasts = true;
@@ -93,11 +93,7 @@ public sealed class InventoryContextMenu
         for (int i = 0; i < entries.Count; i++)
             AddButton(entries[i].label, i, entries[i].action);
 
-        // Position at cursor
-        Camera cam = _canvas.renderMode != RenderMode.ScreenSpaceOverlay ? _canvas.worldCamera : null;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            _canvas.GetComponent<RectTransform>(), screenPos, cam, out Vector2 local);
-        _panelRT.anchoredPosition = local;
+        CanvasUtils.MoveToScreenPoint(_panelRT, _canvas, screenPos);
 
         // Dismiss BG first in Z, panel on top
         _bgDismiss.SetActive(true);

@@ -23,7 +23,8 @@ public sealed class InventoryTooltip
         _rt           = go.GetComponent<RectTransform>();
         _rt.anchorMin = new Vector2(0.5f, 0.5f);
         _rt.anchorMax = new Vector2(0.5f, 0.5f);
-        _rt.pivot     = new Vector2(0f, 1f);        // top-left follows cursor
+        _rt.pivot     = new Vector2(1f, 1f);        // top-right follows cursor; box extends left
+        _rt.sizeDelta = new Vector2(220f, 120f);    // fixed size; text overflows vertically if longer
 
         go.GetComponent<CanvasGroup>().blocksRaycasts = false;
 
@@ -35,13 +36,13 @@ public sealed class InventoryTooltip
         trt.anchorMax = Vector2.one;
         trt.offsetMin = Vector2.zero;
         trt.offsetMax = Vector2.zero;
-        trt.sizeDelta = new Vector2(220f, 0f);
+        trt.sizeDelta = Vector2.zero;               // pure stretch — fills the container exactly
 
         _text                    = textGO.GetComponent<TextMeshProUGUI>();
         _text.font               = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
         _text.fontSize           = 13;
         _text.color              = Color.white;
-        _text.alignment          = TextAlignmentOptions.TopLeft;
+        _text.alignment          = TextAlignmentOptions.TopRight;
         _text.richText           = true;
         _text.enableWordWrapping = true;
         _text.overflowMode       = TextOverflowModes.Overflow;
@@ -62,24 +63,8 @@ public sealed class InventoryTooltip
 
     public void Hide() => _rt.gameObject.SetActive(false);
 
-    private void MoveToScreen(Vector2 screenPos)
-    {
-        var canvasRT = (RectTransform)_canvas.transform;
-        Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay
-            ? null
-            : (_canvas.worldCamera != null ? _canvas.worldCamera : Camera.main);
-
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                canvasRT, screenPos, cam, out Vector2 local))
-            return;
-
-        Rect r = canvasRT.rect;
-        _rt.anchorMin = new Vector2(
-            Mathf.InverseLerp(r.xMin, r.xMax, local.x),
-            Mathf.InverseLerp(r.yMin, r.yMax, local.y));
-        _rt.anchorMax        = _rt.anchorMin;
-        _rt.anchoredPosition = Vector2.zero;
-    }
+    private void MoveToScreen(Vector2 screenPos) =>
+        CanvasUtils.MoveToScreenPoint(_rt, _canvas, screenPos);
 
     private string BuildText(ItemInstance item)
     {
