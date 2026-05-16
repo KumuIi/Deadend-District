@@ -320,6 +320,9 @@ MonoBehaviour:
   tiltX: 0
   tiltY: 25
   modelLayer: 31
+  _dropOrigin: {fileID: 4867285197931795854}
+  _dropThrowForce: 5
+  _droppedItemLayer: 6
   cellPrefab: {fileID: 0}
   itemViewPrefab: {fileID: 0}
 --- !u!223 &7540430925693762199
@@ -1994,6 +1997,7 @@ GameObject:
   - component: {fileID: 8513197903761160587}
   - component: {fileID: 1182267514845902459}
   - component: {fileID: 2488752882836611764}
+  - component: {fileID: 7505696192110024240}
   m_Layer: 0
   m_Name: '[Player]'
   m_TagString: Player
@@ -2016,6 +2020,7 @@ Transform:
   m_Children:
   - {fileID: 4297102381319490913}
   - {fileID: 2355197963388634524}
+  - {fileID: 4867285197931795854}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!136 &2176749562006859693
@@ -2356,6 +2361,27 @@ MonoBehaviour:
   Motor: {fileID: 3513889191098211496}
   Health: {fileID: 4772443847941390725}
   _catalog: {fileID: 11400000, guid: 3ade3c6abbe883b4fb5956b6abdc6ac9, type: 2}
+--- !u!114 &7505696192110024240
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1efe487501cb72d45aac5a405fb0abfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InteractionHighlightUI
+  _interactor: {fileID: 8513197903761160587}
+  _camera: {fileID: 8539914166893846076}
+  _bracketLength: 18
+  _bracketThickness: 2.5
+  _padding: 14
+  _bracketColor: {r: 1, g: 0, b: 0.010436535, a: 1}
+  _promptFontSize: 14
+  _promptOffsetY: 10
+  _fadeSpeed: 10
 --- !u!1 &6631947371988985609
 GameObject:
   m_ObjectHideFlags: 0
@@ -3107,6 +3133,37 @@ Transform:
   m_Children:
   - {fileID: 3092252662156558218}
   m_Father: {fileID: 6836438868803091633}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7969247051361177290
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4867285197931795854}
+  m_Layer: 0
+  m_Name: DropOrigin
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4867285197931795854
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7969247051361177290}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.282, z: 0.086}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7486249704204675625}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8032130165296573383
 GameObject:
