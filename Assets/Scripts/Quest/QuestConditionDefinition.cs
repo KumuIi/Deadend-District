@@ -12,7 +12,7 @@ using UnityEngine;
 [Serializable]
 public class QuestConditionDefinition
 {
-    public string          wsmKey;
+    [WsmKey] public string wsmKey;
     public string          description;
     public QuestValueType  valueType  = QuestValueType.Bool;
     public QuestComparison comparison = QuestComparison.Equals;

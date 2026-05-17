@@ -1,7 +1,7 @@
 # Quest System & WorldState Writer Toolkit — Dev Reference
 
 Two cooperating layers: **QuestManager** observes world facts, **WorldState writers** produce them.
-QuestManager never contains quest-specific logic. Everything that *creates* a fact (detection, pickups, deaths, timers) lives on the world object that owns the behavior.
+QuestManager never contains quest-specific logic. Everything that *creates* a fact (detection, pickups, deaths, timers) lives on the world object that owns the behaviour.
 
 ---
 
@@ -10,236 +10,353 @@ QuestManager never contains quest-specific logic. Everything that *creates* a fa
 ```
 NPC dialogue  ─┐
 AI detection  ─┤─ WorldState writers ─→ WorldStateManager (KV store) ─→ QuestManager ─→ QuestStatus
-Item pickup   ─┤                                                                          (Inactive/Active/Succeeded/Failed)
+Item pickup   ─┤
 Timer expiry  ─┘
 ```
 
-QuestManager subscribes to `WorldStateManager.OnStateChanged`. When any key changes, it evaluates all active quests. No polling, no per-frame checks.
+QuestManager subscribes to `WorldStateManager.OnStateChanged`. On any key change it re-evaluates all registered quests. No polling, no per-frame work (expiry tracking is the only Update logic).
 
 ---
 
 ## Quest Lifecycle
 
 ```
-Inactive ──(activeCondition true)──→ Active ──(any failCondition true)──→ Failed
-                                        │
-                                        └──(all objectives true)──────────→ Succeeded
+Inactive ──(requiredQuests done + activeCondition)──→ Active
+                                                          │
+                    ┌─────────────────────────────────────┤
+                    ↓                                     │
+              any globalFailCondition true          outcomes[] present?
+                    │                                     │
+                    → Failed                     yes      │      no
+                                                  ↓       │       ↓
+                                          first outcome  all mandatory
+                                          condition true  objectives true
+                                               │                │
+                                        outcome.terminalStatus  → Succeeded
+                                     (Succeeded / Failed / Expired)
 ```
 
-- **Inactive**: only `activeCondition` is watched. Objectives and fail conditions are ignored.
-- **Active**: fail conditions are checked first on every WSM change. If any is true → Failed immediately. Then all objectives checked; if all true → Succeeded.
-- **Succeeded / Failed**: terminal. Further WSM changes are ignored unless status is manually reset.
+**Statuses:** `Inactive` `Active` `Succeeded` `Failed` `Expired` `Cancelled`
 
-On transition, QuestManager sets a WSM flag:
-- `quest.{questId}.active` = true
-- `quest.{questId}.succeeded` = true
-- `quest.{questId}.failed` = true
+- `Expired` — soft timeout (quest ran out of time, not "failure" in narrative terms)
+- `Cancelled` — removed by mutual exclusion (`cancelOnActivate`) or an outcome's `cancelQuests`
+
+On every status transition QuestManager writes a WSM flag:
+```
+quest.{questId}.active    = true
+quest.{questId}.succeeded = true
+quest.{questId}.failed    = true
+quest.{questId}.expired   = true
+quest.{questId}.cancelled = true
+```
+Repeatable quests clear these flags when they reset.
+
+---
+
+## Creating a Quest
+
+**Right-click Project → Create → Quest → Quest Definition**
+
+The `questId` is auto-generated (stable GUID, hidden in inspector). **Never edit it by hand.**
+
+> ⚠️ **If you duplicate a QuestSO asset (Ctrl+D):** right-click the copy → **Reset Quest ID**. Duplicates share the same GUID and one will be silently skipped by QuestManager.
 
 ---
 
 ## QuestSO Fields
 
+### Display
 | Field | Purpose |
 |---|---|
-| `questId` | **Stable, never change after saving.** Used as save key. e.g. `"get_blackbox"` |
-| `title` | Display name |
-| `activeCondition` | Quest activates when this is true. Leave `wsmKey` empty to start Active immediately. |
-| `objectives[]` | All must be true → Succeeded |
-| `failConditions[]` | Any one true → Failed. Checked before objectives. |
+| `title` | Shown in journal / debug logs |
+| `description` | Quest summary text |
 
-Each condition (`QuestConditionDefinition`) has:
-
-| Field | Values |
+### Activation
+| Field | Purpose |
 |---|---|
-| `wsmKey` | The WorldStateManager key to watch |
-| `valueType` | Bool / Int / Float / String |
-| `comparison` | Equals / NotEquals / GreaterThan / GreaterOrEqual / LessThan / LessOrEqual |
-| `expected*` | Fill the field matching your valueType |
+| `requiredQuests[]` | All must be `Succeeded` before this quest can activate. **Drag SO refs — no strings.** |
+| `activeCondition` | Optional extra WSM gate. Leave `wsmKey` empty to activate as soon as requiredQuests are done. |
+| `cancelOnActivate[]` | When THIS quest activates, immediately cancel these quests. Use for faction/mutually-exclusive pairs. |
 
-**Bool/String:** only Equals and NotEquals are meaningful. Numeric comparisons return false.  
-**Float Equals:** uses 0.001 epsilon. Prefer GreaterOrEqual for thresholds.  
-**Missing key:** evaluates to false (not default value). A `NotEquals` condition on a key that was never written will NOT pass.
+### Simple Path — Objectives
+| Field | Purpose |
+|---|---|
+| `objectives[]` | `QuestObjectiveDefinition` list. All mandatory ones must pass → Succeeded. Leave empty if using Outcomes. |
+
+Each **QuestObjectiveDefinition** has:
+
+| Field | Purpose |
+|---|---|
+| `description` | Override display text (leave empty to show condition description) |
+| `condition` | WSM check that marks it complete |
+| `optional` | Doesn't block success; still appears in journal as bonus task |
+| `hidden` | HUD hides this objective until it completes or `revealCondition` passes |
+| `revealCondition` | WSM check that reveals a hidden objective early (e.g. player finds a clue) |
+
+### Branching Path — Outcomes
+| Field | Purpose |
+|---|---|
+| `outcomes[]` | When non-empty, overrides objectives. Checked in array order — first match fires. |
+
+Each **QuestOutcomeDefinition** has:
+
+| Field | Purpose |
+|---|---|
+| `label` | Editor label only: "Kill", "Spare", "Escape" |
+| `condition` | WSM check for this outcome |
+| `terminalStatus` | `Succeeded` / `Failed` / `Expired` |
+| `activateQuests[]` | TryActivate these quests (prerequisites still checked) |
+| `cancelQuests[]` | Cancel these quests |
+| `failQuests[]` | Fail these quests |
+
+### Fail Conditions (simple shortcut)
+| Field | Purpose |
+|---|---|
+| `globalFailConditions[]` | Any one true → immediately `Failed`, no branching. Use for: escort died, player detected, time ran out. If the failure needs to open another questline, use an Outcome with `terminalStatus=Failed` instead. |
+
+### Fail Propagation
+| Field | Purpose |
+|---|---|
+| `failsWithMe[]` | When this quest fails, immediately fail these too. Cycle-safe. |
+
+### Expiration
+| Field | Purpose |
+|---|---|
+| `canExpire` | Enable soft expiry |
+| `expirationSeconds` | Seconds of active time before status → `Expired` |
+
+### Repeatable / Contract
+| Field | Purpose |
+|---|---|
+| `isRepeatable` | Quest can reset and run again |
+| `resetCondition` | WSM check that triggers the reset (e.g. a new in-game day flag). Does **not** clear gameplay WSM keys like kill counters — reset those via UnityEvents on quest success. |
 
 ---
 
-## Creating a Quest (no scripting required for most cases)
+## Quest Authoring Examples
 
-**Step 1** — Right-click in Project → **Create → Quest → Quest Definition**
-
-**Step 2** — Fill in:
+### Simple linear quest
 ```
-questId:         "infiltrate_factory"          ← stable, snake_case
-title:           "Infiltrate the Factory"
-activeCondition: key="quest.infiltrate_factory.active"  type=Bool  comparison=Equals  expectedBool=true
-objectives[0]:   key="zone.factory.entered"             type=Bool  comparison=Equals  expectedBool=true
-objectives[1]:   key="item.evidence.collected"          type=Bool  comparison=Equals  expectedBool=true
-failConditions[0]: key="quest.infiltrate_factory.detected"  type=Bool  comparison=Equals  expectedBool=true
+QuestSO: "Find the Battery"
+  requiredQuests: []
+  objectives:
+    [0] condition: item.blue_battery.found == true
+        description: "Find the blue battery"
 ```
 
-**Step 3** — Drag the asset into `QuestManager` → **Quests** list in the Inspector.
+### Questline chain (bring item back)
+```
+QuestSO: "Return the Battery"
+  requiredQuests: [FindTheBattery_SO]   ← drag, no string
+  objectives:
+    [0] condition: npc.trader.battery_delivered == true
+```
 
-**Step 4** — Place WorldState writer components in the scene to set those keys (see below).
+### Stealth quest (fail if detected)
+```
+QuestSO: "Infiltrate the Hospital"
+  objectives:
+    [0] condition: hospital.entered == true
+    [1] condition: hospital.documents.found == true
+  globalFailConditions:
+    [0] condition: quest.infiltrate.detected == true
+         ↑ written by WorldStateOnAIState on guards
+```
+
+### Kill or spare branching
+```
+QuestSO: "Deal With Viktor"
+  outcomes:
+    [0] label=Kill   condition: npc.viktor.dead==true    terminalStatus=Succeeded
+        activateQuests: [BountyCompleteQuest]
+        cancelQuests:   [RedemptionPathQuest]
+    [1] label=Spare  condition: npc.viktor.spared==true  terminalStatus=Succeeded
+        activateQuests: [RedemptionPathQuest]
+        cancelQuests:   [BountyCompleteQuest]
+    [2] label=Escape condition: npc.viktor.escaped==true terminalStatus=Failed
+        activateQuests: [ChaseToWarehouseQuest]
+```
+
+### Escort without target dying
+```
+QuestSO: "Escort Viktor Out"
+  objectives:
+    [0] condition: zone.extraction.reached == true
+  globalFailConditions:
+    [0] condition: npc.viktor.dead == true
+         ↑ written by WorldStateOnDeath on Viktor's health component
+```
+
+### Repeatable daily contract
+```
+QuestSO: "Raider Hunt Contract"
+  isRepeatable: true
+  resetCondition: game.day.changed == true
+  objectives:
+    [0] condition: combat.raiders_killed >= 5
+         ↑ WorldStateCounter on each raider prefab
+```
+
+### Expiring timed quest
+```
+QuestSO: "Defuse the Bomb"
+  canExpire: true
+  expirationSeconds: 120
+  objectives:
+    [0] condition: bomb.defused == true
+```
+
+### Faction mutual exclusion
+```
+QuestSO: "Join the Corporation"
+  cancelOnActivate: [JoinTheRebels_SO]
+
+QuestSO: "Join the Rebels"
+  cancelOnActivate: [JoinTheCorporation_SO]
+```
+
+### Hidden secret objective (Dishonored chaos-style)
+```
+QuestSO: "Clear the Block"
+  objectives:
+    [0] condition: zone.block.cleared == true
+        description: "Clear the block"
+    [1] condition: combat.civilians_killed >= 1
+        hidden: true
+        description: "Killed civilians"   ← revealed only when it completes
+```
+
+---
+
+## WSM Key Registry
+
+Instead of typing raw strings into every inspector field, use the **WsmKeyRegistrySO**:
+
+1. **Create once:** `Assets › Create › WSM › Key Registry` → save as `WsmKeyRegistry.asset`
+2. **Add your keys** in the asset: set `displayName`, `key` (dot notation), `type`, `category`
+3. Every `[WsmKey]` field in the inspector (all writer + condition fields) now shows a **searchable popup**
+
+**Unknown key?** A ⚠ icon appears plus an `+ Add` button — click it to register the key without leaving the inspector.
+
+**Deprecated key?** Tick `deprecated` in the registry — it stays in the dropdown greyed out so old assets still work while new ones can't accidentally pick it.
+
+> The registry is **editor-only**. It has zero runtime cost and zero risk to save data.
 
 ---
 
 ## WorldState Writer Toolkit
 
-These components set WSM keys from scene events. They know nothing about quests.
+These components write WSM keys from scene events. They have no knowledge of quests.
 
 ### WorldStateWriter
-**The primitive.** All other writers use the same write logic.  
-Set `_key`, `_valueType`, `_value`, then call `Write()` from a UnityEvent or code.
+**The primitive.** Call `Write()` from a UnityEvent, `writeOnStart`, or code.
 
-```
-Options:
-  writeOnStart  → writes immediately when scene loads
-  onlyOnce      → ignores Write() calls after the first
-```
-
-**Wire to a UnityEvent on any component** (button, animation event, dialogue system, etc.)
+| Field | Purpose |
+|---|---|
+| `_key` | WSM key to write (`[WsmKey]` dropdown) |
+| `_valueType` | Bool / Int / Float / String |
+| `_value` | Fill the matching value field |
+| `writeOnStart` | Write on scene Start |
+| `onlyOnce` | Ignore subsequent Write() calls after the first |
 
 ---
 
 ### WorldStateTriggerVolume
-**Zone entry → write key.**  
-Requires a Collider with `Is Trigger = true` on the same GameObject.
+**Zone entry → write key.** Requires a Collider with `Is Trigger = true` on the same GameObject.
 
-```
-_requiredTag   → only fires for objects with this tag (default: "Player")
-_onlyOnce      → fire once even if player enters multiple times (default: true)
-```
+| Field | Purpose |
+|---|---|
+| `_requiredTag` | Only fire for objects with this tag (default: "Player") |
+| `_onlyOnce` | Fire only on first entry (default: true) |
 
-Set `_key = "zone.factory.entered"`, `_boolValue = true`.
+Compose with `WorldStateWriter` on the same object — the trigger calls `writer.Write()`.
 
 ---
 
 ### WorldStateOnAIState
-**AI detection → write key.**  
-Subscribe to a specific `AIPerception` reaching a threshold state.
+**AI detection → write key.**
 
-```
-_target             → AIPerception to watch
-_triggerState       → fire when this state is reached (e.g. Alert)
-_fireOnHigherStates → also fire for states above triggerState (Alert fires on Combat too)
-_onlyOnce           → fire once (default: true)
-```
+| Field | Purpose |
+|---|---|
+| `_target` | `AIPerception` to watch |
+| `_triggerState` | Fire when this state is reached (e.g. Alert) |
+| `_fireOnHigherStates` | Also fire for states above trigger (Alert fires on Combat too) |
+| `_onlyOnce` | Fire once (default: true) |
 
-Example: `_triggerState = Alert` → sets `"quest.infiltrate_factory.detected" = true` the moment any guard spots the player.
+Compose with `WorldStateWriter`. Example: any guard going Alert sets `quest.infiltrate.detected = true`.
 
 ---
 
 ### WorldStateTimer
-**Countdown → write key.**  
-ISaveable — remaining time persists across save/load.
+**Countdown → write key.** ISaveable — remaining time persists across save/load.
 
-```
-_duration     → seconds
-_startOnAwake → begin counting immediately
-_saveId       → MUST BE UNIQUE PER TIMER IN THE SCENE (e.g. "timer.heist_escape")
-```
+| Field | Purpose |
+|---|---|
+| `_duration` | Seconds |
+| `_startOnAwake` | Begin immediately on scene load |
+| `_saveId` | **Must be unique per timer in the scene.** e.g. `"timer.heist_escape"` |
 
-> ⚠️ **Every timer in your scene needs a different `_saveId`.** Two timers with the same id will corrupt each other's save data.
+> ⚠️ Two timers with the same `_saveId` corrupt each other's save data.
 
-Call `StartTimer()` from a UnityEvent or code when the quest activates.
+Call `StartTimer()` from a UnityEvent when the quest activates. Compose with `WorldStateWriter`.
 
 ---
 
 ### WorldStateCounter
-**Count events → write int key.**  
-WSM is the source of truth — no local cache. Safe across save/load automatically.
+**Count events → write int key.**
 
-```
-_wsmKey        → e.g. "combat.raiders_killed"
-_initialValue  → starting count (written to WSM on Start if key is absent)
-_threshold     → fires OnThresholdReached when count first crosses this value
-```
+| Field | Purpose |
+|---|---|
+| `_wsmKey` | e.g. `"combat.raiders_killed"` (`[WsmKey]` dropdown) |
+| `_initialValue` | Starting value (written on Start if key absent) |
+| `_threshold` | Fires `OnThresholdReached` when count first crosses this value |
 
-Call `Increment()` from a UnityEvent. Wire it to enemy death, item collection, etc.  
-`OnThresholdReached` fires only when crossing the threshold (4→5), not on every write above it.
+Call `Increment()` from a UnityEvent on enemy death, item pickup, etc.
+`OnThresholdReached` fires only on threshold crossing (4→5), not on every write above it.
 
 ---
 
 ### WorldStateOnDeath
-**Death event → write key.**  
-Currently scoped to `PlayerHealth.OnDeath`. Will be updated when enemies get their own health system.
+**Death event → write key.** Listens to `PlayerHealth.OnDeath`.
 
-```
-_target   → PlayerHealth to watch. Leave null to use one on the same GameObject.
-```
+| Field | Purpose |
+|---|---|
+| `_target` | `PlayerHealth` to watch. Leave null for one on the same GameObject. |
+
+Compose with `WorldStateWriter`.
 
 ---
 
-## Common Patterns
-
-### NPC gives the quest
-```
-Dialogue node ends
-  → WorldStateWriter on the NPC (or dialogue manager)
-  → sets "quest.get_blackbox.active" = true
-QuestManager activates the quest automatically.
-```
-
-### Fragile item (breaks if player takes damage)
-```csharp
-// On a MonoBehaviour attached to the item or player:
-void Start()
-{
-    playerHealth.OnDamaged += OnPlayerHit;
-}
-
-void OnPlayerHit(float damage)
-{
-    if (InventoryUI.HasItem(_itemSO))
-        WorldStateManager.Instance.SetBool("quest.blackbox.intact", false);
-}
-```
-QuestSO failCondition: `"quest.blackbox.intact"` == false
-
-### Kill count quest
-```
-WorldStateCounter on each enemy prefab:
-  _wsmKey = "combat.bandits_killed"
-  → Increment() wired to enemy death event
-
-QuestSO objective: "combat.bandits_killed"  Int  GreaterOrEqual  5
-```
-
-### Timed extraction
-```
-WorldStateTimer: _saveId="timer.extraction"  _duration=120
-  → StartTimer() wired to extraction zone entered
-
-QuestSO failCondition: "quest.heist.timer_expired"  Bool  Equals  true
-WorldStateTimer's _key = "quest.heist.timer_expired"
-```
+### WorldStateOnAIState
+See above under WorldState Writer Toolkit.
 
 ---
 
 ## Things to Watch Out For
 
-**QuestId stability**  
-`questId` is used as the save key. Changing it after a save file exists leaves orphaned data and the quest resets to Inactive on load.
+**Duplicating a QuestSO asset**
+Ctrl+D copies the hidden GUID. QuestManager detects duplicates at runtime and logs an error. Fix: right-click the new asset → **Reset Quest ID**.
 
-**WSM key naming convention**  
-Follow the `"category.identifier.property"` pattern from Core README. Be consistent — WSM keys are case-insensitive for reads but `OnStateChanged` fires with the exact string you passed to `Set*()`. QuestManager uses `OrdinalIgnoreCase` comparison, so casing mismatches won't silently break things.
+**WSM key naming convention**
+Follow `"category.identifier.property"` from the Core README. Keys are case-insensitive for reads but `OnStateChanged` fires with the exact casing you used to `Set*()`. QuestManager uses `OrdinalIgnoreCase`, so mismatched casing won't silently break quests.
 
-**Activation condition and empty wsmKey**  
-If `activeCondition.wsmKey` is empty, the quest starts Active immediately on scene load. This is intentional for quests that begin automatically (tutorial, main story). If your quest should wait for an NPC, always set the key.
+**Quests with no objectives and no outcomes**
+A quest with empty `objectives[]` and empty `outcomes[]` will never succeed. This is intentional — prevents accidentally shipping auto-completing quests. Add at least one objective or one outcome.
 
-**Quests with no objectives**  
-A quest with an empty `objectives[]` array will never Succeed (returns false for AllObjectivesMet). This is intentional — prevents accidentally shipping quests that auto-complete. Add at least one objective.
+**Activation without an activeCondition**
+If `requiredQuests[]` is empty and `activeCondition.wsmKey` is empty, the quest activates immediately on scene load. Intentional for tutorial / auto-start quests. If it should wait for an NPC, set the key.
 
-**Timer saveId uniqueness**  
-See WorldStateTimer section above. This is the most common setup mistake.
+**Repeatable quests and WSM counters**
+`ResetForRepeat()` clears quest runtime state and the quest-graph WSM flags (`quest.{id}.succeeded` etc.) but does **not** reset gameplay counters like `combat.raiders_killed`. Reset those manually via `WorldStateCounter.ResetCount()` wired to `QuestManager.OnQuestSucceeded` or a UnityEvent.
 
-**WorldStateOnAIState and scene-loaded guards**  
-If the AIPerception target is on a prefab that loads after this component, `_target` may be null at OnEnable. Assign `_target` in the Inspector, not dynamically, unless you add a null check.
+**Timer saveId uniqueness**
+Every `WorldStateTimer` in the scene needs a different `_saveId`. The most common setup mistake.
 
-**One-shot writers after scene reload**  
-`onlyOnce` and `_fired` flags are runtime-only — not persisted. After a scene reload they reset. This is safe because the WSM key they wrote IS persisted (via WorldStateSaveAdapter), so the quest won't re-trigger. But `OnWritten` UnityEvents will fire again on next Write() if the scene reloads. Make sure OnWritten listeners are idempotent.
+**onlyOnce flags are runtime-only**
+`onlyOnce` / `_fired` on writer components are not saved. After a scene reload they reset. This is safe because the WSM key they wrote IS persisted — the quest won't re-trigger. But `OnWritten` UnityEvents will re-fire on the next `Write()`. Keep `OnWritten` listeners idempotent.
 
-**Fail conditions are permanent**  
-Once a quest transitions to Failed, it stays Failed. There's no built-in reset. To support retryable quests, you'll need to call `InitRuntime()` on QuestManager (or add a public `ResetQuest(string id)` method) and clear the relevant WSM keys.
+**Outcome activateQuests respects prerequisites**
+`activateQuests[]` on an outcome calls `TryActivate`, not force-activate. If the target quest has its own `requiredQuests` or `activeCondition` that aren't satisfied yet, it will stay `Inactive`. This is correct behaviour — don't expect outcomes to bypass the quest graph.
 
 ---
 
@@ -251,12 +368,16 @@ GameSystems GO (DontDestroyOnLoad):
   ✓ StimulusSystem
   ✓ SaveSystem
   ✓ WorldStateSaveAdapter
-  ✓ QuestManager  ← add your QuestSO assets to the Quests list
+  ✓ QuestManager  ← drag QuestSO assets into the Quests list
 
 Player GO:
-  ✓ PlayerHealth  (OnDamaged event now available)
+  ✓ PlayerHealth  (OnDamaged / OnDeath events available)
 
 Enemy GO (each):
   ✓ AIPerception  (assign _playerTarget + _occlusionMask)
-                  (OnStateChanged event available for WorldStateOnAIState)
+                  (OnStateChanged available for WorldStateOnAIState)
+
+Project (once):
+  ✓ WsmKeyRegistry.asset  (Assets › Create › WSM › Key Registry)
+                           Add all WSM keys here before wiring them in the inspector.
 ```

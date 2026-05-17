@@ -10,7 +10,7 @@ using UnityEngine.Events;
 public class WorldStateWriter : MonoBehaviour
 {
     [Header("Key")]
-    [SerializeField] private string        _key;
+    [SerializeField, WsmKey] private string _key;
     [SerializeField] private QuestValueType _valueType = QuestValueType.Bool;
 
     [Header("Value")]

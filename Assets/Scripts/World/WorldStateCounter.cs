@@ -10,7 +10,7 @@ using UnityEngine.Events;
 /// </summary>
 public class WorldStateCounter : MonoBehaviour
 {
-    [SerializeField] private string _wsmKey;
+    [SerializeField, WsmKey] private string _wsmKey;
     [Tooltip("Starting value written to WSM on Start if the key doesn't exist yet.")]
     [SerializeField] private int    _initialValue;
     [Tooltip("Fire OnThresholdReached when count reaches this. 0 = disabled.")]
