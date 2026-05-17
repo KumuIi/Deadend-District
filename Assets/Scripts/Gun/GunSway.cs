@@ -108,13 +108,14 @@ public class GunSway : MonoBehaviour
             _mouseTiltCurrent, tiltTarget, ref _mouseTiltVelocity, 1f / _feel.tiltSmooth);
 
         // ── Breathing ───────────────────────────────────────────────────
-        float breathT = Time.time * _feel.breatheFrequency * Mathf.PI * 2f;
-        bool isIdle = horizSpeed < _feel.walkBobSpeedThreshold && grounded;
+        float breathT    = Time.time * _feel.breatheFrequency * Mathf.PI * 2f;
+        bool  isIdle     = horizSpeed < _feel.walkBobSpeedThreshold && grounded;
+        float breathMult = Mathf.Lerp(_feel.adsBreathScale, 1f, hipWeight);
         Vector3 breatheOffset = isIdle
             ? new Vector3(
                 Mathf.Sin(breathT * 0.7f) * _feel.breatheAmplitudeX,
                 Mathf.Sin(breathT)        * _feel.breatheAmplitudeY,
-                0f) * hipWeight
+                0f) * breathMult
             : Vector3.zero;
 
         // ── Walk / sprint bob ───────────────────────────────────────────

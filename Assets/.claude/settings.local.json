@@ -8,7 +8,9 @@
       "Bash(ls Scripts/Quest/)",
       "Bash(ls Scripts/AI/)",
       "Bash(git add *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(codemoot session *)",
+      "Skill(debate)"
     ]
   }
 }

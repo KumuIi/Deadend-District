@@ -11,27 +11,7 @@ public class WeaponSwitcher : MonoBehaviour
 
     private void Update()
     {
-        if (weaponManager == null) return;
-
-        int count   = weaponManager.Weapons.Count;
-        if (count == 0) return; // all weapons dropped — nothing to switch to
-
-        int current = GetCurrentIndex();
-
-        // Number keys 1–9
-        for (int i = 0; i < count && i < 9; i++)
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i))
-            {
-                EquipAt(i);
-                return;
-            }
-        }
-
-        // Scroll wheel
-        float scroll = Input.GetAxisRaw("Mouse ScrollWheel");
-        if (scroll > 0f) EquipAt((current - 1 + count) % count);
-        if (scroll < 0f) EquipAt((current + 1) % count);
+        // Input switching intentionally disabled — will be replaced by hotbar hotkey system.
     }
 
     private int GetCurrentIndex()

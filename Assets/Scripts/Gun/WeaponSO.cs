@@ -103,6 +103,11 @@ public class WeaponSO : ItemSO
 
     [Header("=== Feel / Sway ===")]
     public WeaponFeelData feel = new WeaponFeelData();
+
+    // ── Recoil ─────────────────────────────────────────────────────────────
+
+    [Header("=== Recoil ===")]
+    public WeaponRecoilData recoil = new WeaponRecoilData();
 }
 
 /// <summary>
@@ -132,6 +137,9 @@ public class WeaponFeelData
     public float breatheAmplitudeY = 0.0015f;
     public float breatheAmplitudeX = 0.0008f;
     public float breatheFrequency = 0.8f;
+    [Range(0f, 1f)]
+    [Tooltip("How much idle breathing persists while ADS. 0 = none, 1 = full hip amount.")]
+    public float adsBreathScale = 0.3f;
 
     [Header("Walk Bob")]
     public float walkBobSpeedThreshold = 0.5f;
@@ -164,4 +172,32 @@ public class WeaponFeelData
     [Range(0f, 2f)]
     public float masterIntensity = 1f;
     public float returnSmooth = 12f;
+}
+
+[System.Serializable]
+public class WeaponRecoilData
+{
+    [Header("Hip Kick")]
+    public float kickUp    = 2f;
+    public float kickHoriz = 0.5f;
+    public float kickRoll  = 0.3f;
+
+    [Header("ADS Kick")]
+    public float adsKickUp    = 0.8f;
+    public float adsKickHoriz = 0.15f;
+    public float adsKickRoll  = 0.1f;
+
+    [Header("Spring")]
+    [Tooltip("How fast targetRecoil decays back to zero between shots.")]
+    public float targetDecaySpeed   = 10f;
+    [Tooltip("How fast currentRecoil chases targetRecoil — higher = snappier kick.")]
+    public float currentFollowSpeed = 20f;
+
+    [Header("Clamp")]
+    [Tooltip("Max accumulated vertical (pitch-up) recoil in degrees.")]
+    public float maxVertical = 15f;
+    [Tooltip("Max accumulated horizontal (yaw) recoil in degrees, both sides.")]
+    public float maxHoriz    = 5f;
+    [Tooltip("Max accumulated roll recoil in degrees, both sides.")]
+    public float maxRoll     = 3f;
 }

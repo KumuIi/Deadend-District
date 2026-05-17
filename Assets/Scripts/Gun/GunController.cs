@@ -92,6 +92,7 @@ public class GunController : MonoBehaviour
     private GunSway _sway;
     private AudioSource _audio;
     private ParticleSystem _muzzleFlash;
+    private RecoilController _recoil;
 
     // ── Private state ──────────────────────────────────────────────────────
 
@@ -149,6 +150,9 @@ public class GunController : MonoBehaviour
     {
         if (_playerMotor != null && weaponData != null)
             _playerMotor.WeaponWeightMultiplier = WeightToMult(weaponData.weight);
+
+        _recoil ??= GetComponentInParent<RecoilController>(true);
+        _recoil?.SetWeaponData(weaponData?.recoil);
     }
 
     private void OnDisable()
@@ -212,6 +216,9 @@ public class GunController : MonoBehaviour
         }
 
         _audio = GetComponent<AudioSource>();
+
+        if (!muzzlePoint)
+            Debug.LogWarning($"GunController ({name}): muzzlePoint not assigned — bullets will originate from camera. Assign the muzzle socket in the Inspector.", this);
 
         if (weaponData?.muzzleFlashPrefab && muzzlePoint)
         {
@@ -403,12 +410,23 @@ public class GunController : MonoBehaviour
         AmmunitionSO ammo = CurrentAmmo;
         _currentMagazine?.ConsumeRound();
 
-        Vector3 origin = _playerCam
-            ? _playerCam.position
-            : (muzzlePoint ? muzzlePoint.position : transform.position);
-        Vector3 direction = _playerCam
-            ? _playerCam.forward
-            : (muzzlePoint ? muzzlePoint.forward : transform.forward);
+        // Hip fire: barrel direction (muzzlePoint.forward / player body forward — level, no camera pitch).
+        // ADS: two-ray technique — camera resolves exact crosshair aim point, muzzle fires toward it.
+        // Transition blends on AdsWeight so direction matches the visual gun raise.
+        Vector3 camOrigin   = _playerCam     ? _playerCam.position          : transform.position;
+        Vector3 camForward  = _playerCam     ? _playerCam.forward            : transform.forward;
+        Vector3 hipForward  = muzzlePoint    ? muzzlePoint.forward
+                            : (_playerMotor  ? _playerMotor.transform.forward : camForward);
+
+        Vector3 aimPoint    = Physics.Raycast(camOrigin, camForward, out RaycastHit camHit,
+                                  weaponData.range, weaponData.hitLayers)
+                              ? camHit.point
+                              : camOrigin + camForward * weaponData.range;
+
+        Vector3 origin  = muzzlePoint ? muzzlePoint.position : camOrigin;
+        Vector3 toAim   = aimPoint - origin;
+        Vector3 adsDir  = toAim.sqrMagnitude > 0.001f ? toAim.normalized : camForward;
+        Vector3 direction = Vector3.Slerp(hipForward, adsDir, _adsWeight);
 
         if (Physics.Raycast(origin, direction, out RaycastHit hit, weaponData.range, weaponData.hitLayers))
         {
@@ -438,6 +456,7 @@ public class GunController : MonoBehaviour
             instigator: _playerMotor ? _playerMotor.gameObject : gameObject));
 
         EjectCasing();
+        _recoil?.AddRecoil(IsAiming);
 
         _boltTarget   = -weaponData.boltTravelDistance;
         _boltVelocity = -weaponData.boltTravelDistance / weaponData.boltBackTime;

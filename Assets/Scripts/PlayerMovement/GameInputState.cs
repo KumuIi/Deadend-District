@@ -20,12 +20,12 @@ public static class GameInputState
 {
     // ── Weapon input ───────────────────────────────────────────────────────
 
-    /// <summary>Fire button held (full-auto).</summary>
-    public static bool FireHeld      => Input.GetButton("Fire1");
-    /// <summary>Fire button pressed this frame (semi/burst).</summary>
-    public static bool FirePressed   => Input.GetButtonDown("Fire1");
-    /// <summary>Aim / ADS button held.</summary>
-    public static bool AimHeld       => Input.GetButton("Fire2");
+    /// <summary>Fire button held (full-auto) — left mouse button only.</summary>
+    public static bool FireHeld      => Input.GetMouseButton(0);
+    /// <summary>Fire button pressed this frame (semi/burst) — left mouse button only.</summary>
+    public static bool FirePressed   => Input.GetMouseButtonDown(0);
+    /// <summary>Aim / ADS button held — right mouse button.</summary>
+    public static bool AimHeld       => Input.GetMouseButton(1);
     /// <summary>Reload key pressed this frame.</summary>
     public static bool ReloadPressed => Input.GetKeyDown(KeyCode.R);
     /// <summary>Hold-open / debug bolt key held.</summary>

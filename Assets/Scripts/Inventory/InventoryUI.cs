@@ -415,8 +415,8 @@ public sealed class InventoryUI : MonoBehaviour
         MagazineItemInstance oldMag = wi.EjectMagazine();
         gun.EjectMagazine();
 
-        // Return the old magazine to inventory if it still has rounds
-        if (oldMag != null && !oldMag.RuntimeMag.IsEmpty)
+        // Always return the ejected magazine — even empty ones belong in inventory.
+        if (oldMag != null)
             TryPickup(oldMag);
 
         // Remove the new magazine from inventory, record it in the weapon, and start reload
