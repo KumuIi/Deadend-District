@@ -5,14 +5,16 @@ using UnityEngine;
 /// <summary>
 /// Generic quest evaluator. Reads WorldStateManager facts — never contains quest-specific logic.
 ///
-/// Lifecycle per quest:
-///   Inactive → watches activeCondition → Active
-///   Active   → checks failConditions (any true → Failed), then objectives (all true → Succeeded)
-///   Succeeded/Failed → terminal; sets WSM key "quest.{id}.succeeded" or "quest.{id}.failed"
+/// Evaluation order per Active quest:
+///   1. globalFailConditions — any true → Failed (no branching)
+///   2a. outcomes[]          — first matching outcome fires (if any defined)
+///   2b. objectives[]        — all mandatory met → Succeeded (used when no outcomes defined)
 ///
-/// On Start: subscribe to WorldStateManager.OnStateChanged, then evaluate current state
-/// (handles save-load where WSM is restored without firing events).
-/// On RestoreSaveData: trust saved status; do NOT re-evaluate against WSM (ordering race).
+/// Activation: all requiredQuests Succeeded AND activeCondition passes (or is empty).
+/// On activation: cancelOnActivate quests are set to Cancelled.
+/// On fail: failsWithMe propagation (cycle-safe via visited set).
+/// Expiry: tracked in Update; canExpire + expirationSeconds → status Expired.
+/// Repeatable: runtime reset when resetCondition passes (WSM flags are NOT cleared).
 /// </summary>
 public class QuestManager : MonoBehaviour, ISaveable
 {
@@ -62,6 +64,40 @@ public class QuestManager : MonoBehaviour, ISaveable
             WorldStateManager.Instance.OnStateChanged -= OnWSMChanged;
     }
 
+    private void Update()
+    {
+        foreach (var quest in _quests)
+        {
+            if (quest == null || !_runtime.TryGetValue(quest.QuestId, out var r)) continue;
+            if (r.status != QuestStatus.Active) continue;
+
+            // Expiry countdown
+            if (quest.canExpire && quest.expirationSeconds > 0f)
+            {
+                r.activeTimeElapsed += Time.deltaTime;
+                if (r.activeTimeElapsed >= quest.expirationSeconds)
+                    Transition(quest, r, QuestStatus.Expired, -1);
+            }
+
+            // Expiry only — repeatable reset is handled in the second loop below
+        }
+
+        // Repeatable: check reset condition for any finished quest (Succeeded, Expired, Failed, Cancelled)
+        foreach (var quest in _quests)
+        {
+            if (quest == null || !quest.isRepeatable) continue;
+            if (!_runtime.TryGetValue(quest.QuestId, out var r)) continue;
+            if (r.status == QuestStatus.Inactive || r.status == QuestStatus.Active) continue;
+            if (quest.resetCondition == null || string.IsNullOrEmpty(quest.resetCondition.wsmKey)) continue;
+            if (quest.resetCondition.Evaluate())
+            {
+                // Reset runtime to Inactive FIRST so EvaluateAll (triggered by WSM clear) can re-activate
+                r.ResetForRepeat();
+                ClearQuestWSMFlags(quest);
+            }
+        }
+    }
+
     // ── ISaveable ────────────────────────────────────────────────────────────
 
     public string SaveId   => "quest.manager";
@@ -75,7 +111,10 @@ public class QuestManager : MonoBehaviour, ISaveable
             dto.ids.Add(kv.Key);
             dto.statuses.Add((int)kv.Value.status);
             dto.objectives.Add(PackBools(kv.Value.objectivesComplete));
+            dto.revealed.Add(PackBools(kv.Value.objectivesRevealed));
             dto.fails.Add(PackBools(kv.Value.failConditionsTriggered));
+            dto.outcomeIndices.Add(kv.Value.resolvedOutcomeIndex);
+            dto.activeTimeElapsed.Add(kv.Value.activeTimeElapsed);
         }
         return dto;
     }
@@ -92,8 +131,11 @@ public class QuestManager : MonoBehaviour, ISaveable
             int rawStatus = i < dto.statuses.Count ? dto.statuses[i] : 0;
             r.status = Enum.IsDefined(typeof(QuestStatus), rawStatus)
                 ? (QuestStatus)rawStatus : QuestStatus.Inactive;
-            UnpackBools(i < dto.objectives.Count ? dto.objectives[i] : "", r.objectivesComplete);
-            UnpackBools(i < dto.fails.Count     ? dto.fails[i]      : "", r.failConditionsTriggered);
+            UnpackBools(i < dto.objectives.Count    ? dto.objectives[i]    : "", r.objectivesComplete);
+            UnpackBools(i < dto.revealed.Count      ? dto.revealed[i]      : "", r.objectivesRevealed);
+            UnpackBools(i < dto.fails.Count         ? dto.fails[i]         : "", r.failConditionsTriggered);
+            r.resolvedOutcomeIndex = i < dto.outcomeIndices.Count    ? dto.outcomeIndices[i]    : -1;
+            r.activeTimeElapsed    = i < dto.activeTimeElapsed.Count ? dto.activeTimeElapsed[i] : 0f;
         }
         // Do NOT call EvaluateAll() — WorldStateSaveAdapter may not have run yet.
     }
@@ -102,12 +144,7 @@ public class QuestManager : MonoBehaviour, ISaveable
 
     private void OnWSMChanged(string key, WorldStateValue oldVal, WorldStateValue newVal)
     {
-        foreach (var quest in _quests)
-        {
-            if (quest == null || string.IsNullOrEmpty(quest.questId)) continue;
-            if (!_runtime.TryGetValue(quest.questId, out var r)) continue;
-            EvaluateQuest(quest, r);
-        }
+        EvaluateAll();
     }
 
     // ── Evaluation ───────────────────────────────────────────────────────────
@@ -116,9 +153,9 @@ public class QuestManager : MonoBehaviour, ISaveable
     {
         foreach (var quest in _quests)
         {
-            if (quest == null || string.IsNullOrEmpty(quest.questId)) continue;
-            if (_runtime.TryGetValue(quest.questId, out var r))
-                EvaluateQuest(quest, r);
+            if (quest == null || string.IsNullOrEmpty(quest.QuestId)) continue;
+            if (!_runtime.TryGetValue(quest.QuestId, out var r)) continue;
+            EvaluateQuest(quest, r);
         }
     }
 
@@ -128,61 +165,183 @@ public class QuestManager : MonoBehaviour, ISaveable
         {
             case QuestStatus.Inactive:
                 if (ShouldActivate(quest))
-                    Transition(quest, r, QuestStatus.Active);
+                    Transition(quest, r, QuestStatus.Active, -1);
                 break;
 
             case QuestStatus.Active:
-                // Evaluate both arrays, then check state — decouple "changed" from "should transition"
-                EvaluateConditions(quest.failConditions, r.failConditionsTriggered);
-                EvaluateConditions(quest.objectives,     r.objectivesComplete);
-
+                // 1 — global fail conditions (simple, no branch)
+                EvaluateFailConditions(quest.globalFailConditions, r.failConditionsTriggered);
                 if (r.AnyFailTriggered())
-                { Transition(quest, r, QuestStatus.Failed); break; }
+                {
+                    Transition(quest, r, QuestStatus.Failed, -1);
+                    break;
+                }
 
-                if (r.AllObjectivesMet())
-                    Transition(quest, r, QuestStatus.Succeeded);
+                // 2a — branching outcomes (if any defined)
+                if (quest.outcomes != null && quest.outcomes.Length > 0)
+                {
+                    for (int i = 0; i < quest.outcomes.Length; i++)
+                    {
+                        var outcome = quest.outcomes[i];
+                        if (outcome == null || outcome.condition == null) continue;
+                        if (outcome.condition.Evaluate())
+                        {
+                            Transition(quest, r, TerminalToQuestStatus(outcome.terminalStatus), i);
+                            return;
+                        }
+                    }
+                    break;
+                }
+
+                // 2b — simple objectives (all mandatory must pass)
+                EvaluateObjectives(quest.objectives, r);
+                if (r.AllMandatoryObjectivesMet(quest.objectives))
+                    Transition(quest, r, QuestStatus.Succeeded, -1);
                 break;
-
-            // Terminal states — ignore further events
         }
     }
 
     private bool ShouldActivate(QuestSO quest)
     {
-        if (quest.activeCondition == null || string.IsNullOrEmpty(quest.activeCondition.wsmKey))
-            return true; // No activation condition → starts Active
-        return quest.activeCondition.Evaluate();
-    }
-
-    /// <summary>
-    /// Evaluates each condition, writes result into <paramref name="results"/>.
-    /// Returns true if the array changed (re-evaluation happened).
-    /// </summary>
-    private bool EvaluateConditions(QuestConditionDefinition[] conditions, bool[] results)
-    {
-        if (conditions == null || conditions.Length == 0) return false;
-        bool changed = false;
-        for (int i = 0; i < conditions.Length && i < results.Length; i++)
+        // All required quests must be succeeded
+        if (quest.requiredQuests != null)
         {
-            bool was = results[i];
-            results[i] = conditions[i]?.Evaluate() ?? false;
-            if (results[i] != was) changed = true;
+            foreach (var req in quest.requiredQuests)
+            {
+                if (req == null) continue;
+                if (!_runtime.TryGetValue(req.QuestId, out var rs) || rs.status != QuestStatus.Succeeded)
+                    return false;
+            }
         }
-        return changed;
+        // Optional WSM gate
+        if (quest.activeCondition != null && !string.IsNullOrEmpty(quest.activeCondition.wsmKey))
+            return quest.activeCondition.Evaluate();
+        return true;
     }
 
-    private void Transition(QuestSO quest, QuestRuntimeState r, QuestStatus next)
+    private void EvaluateFailConditions(QuestConditionDefinition[] conditions, bool[] results)
     {
-        r.status = next;
-        string flag = next == QuestStatus.Succeeded ? $"quest.{quest.questId}.succeeded"
-                    : next == QuestStatus.Failed    ? $"quest.{quest.questId}.failed"
-                    : next == QuestStatus.Active    ? $"quest.{quest.questId}.active"
-                    : null;
-        if (flag != null) WorldStateManager.Instance.SetBool(flag, true);
-        Debug.Log($"[QuestManager] '{quest.title}' → {next}");
+        if (conditions == null || conditions.Length == 0) return;
+        for (int i = 0; i < conditions.Length && i < results.Length; i++)
+            results[i] = conditions[i]?.Evaluate() ?? false;
+    }
 
-        // If we just activated, immediately evaluate objectives/fail
-        if (next == QuestStatus.Active) EvaluateQuest(quest, r);
+    private void EvaluateObjectives(QuestObjectiveDefinition[] defs, QuestRuntimeState r)
+    {
+        if (defs == null) return;
+        for (int i = 0; i < defs.Length && i < r.objectivesComplete.Length; i++)
+        {
+            var def = defs[i];
+            if (def == null) continue;
+            r.objectivesComplete[i] = def.condition?.Evaluate() ?? false;
+
+            // Reveal check
+            if (!r.objectivesRevealed[i] && def.hidden)
+            {
+                if (r.objectivesComplete[i])
+                    r.objectivesRevealed[i] = true; // auto-reveal on completion
+                else if (def.revealCondition != null && !string.IsNullOrEmpty(def.revealCondition.wsmKey))
+                    r.objectivesRevealed[i] = def.revealCondition.Evaluate();
+            }
+            else if (!def.hidden)
+            {
+                r.objectivesRevealed[i] = true; // non-hidden objectives always revealed
+            }
+        }
+    }
+
+    private void Transition(QuestSO quest, QuestRuntimeState r, QuestStatus next, int outcomeIndex)
+    {
+        r.status               = next;
+        r.resolvedOutcomeIndex = outcomeIndex;
+        if (next == QuestStatus.Active) r.activeTimeElapsed = 0f;
+
+        string outcomeLabel = outcomeIndex >= 0 && quest.outcomes != null && outcomeIndex < quest.outcomes.Length
+            ? $" [{quest.outcomes[outcomeIndex].label}]" : "";
+        Debug.Log($"[QuestManager] '{quest.title}' → {next}{outcomeLabel}");
+
+        // Write WSM flag for this quest's new status
+        if (WorldStateManager.Instance != null)
+        {
+            string flag = next switch
+            {
+                QuestStatus.Active    => $"quest.{quest.QuestId}.active",
+                QuestStatus.Succeeded => $"quest.{quest.QuestId}.succeeded",
+                QuestStatus.Failed    => $"quest.{quest.QuestId}.failed",
+                QuestStatus.Expired   => $"quest.{quest.QuestId}.expired",
+                QuestStatus.Cancelled => $"quest.{quest.QuestId}.cancelled",
+                _                     => null
+            };
+            if (flag != null) WorldStateManager.Instance.SetBool(flag, true);
+        }
+
+        // On activation: cancel mutually exclusive quests
+        if (next == QuestStatus.Active)
+        {
+            if (quest.cancelOnActivate != null)
+                foreach (var q in quest.cancelOnActivate)
+                    CancelQuest(q);
+
+            // Immediately evaluate objectives/outcomes now that we're active
+            EvaluateQuest(quest, r);
+            return;
+        }
+
+        // On any terminal status: fire outcome downstream effects
+        if (outcomeIndex >= 0 && quest.outcomes != null && outcomeIndex < quest.outcomes.Length)
+        {
+            var outcome = quest.outcomes[outcomeIndex];
+            if (outcome.activateQuests != null)
+                foreach (var q in outcome.activateQuests) TryActivateQuest(q);
+            if (outcome.cancelQuests != null)
+                foreach (var q in outcome.cancelQuests) CancelQuest(q);
+            if (outcome.failQuests != null)
+                foreach (var q in outcome.failQuests) PropagateFailure(q, new HashSet<string>());
+        }
+
+        // On fail: propagate failsWithMe — single visited set shared across the whole chain
+        if (next == QuestStatus.Failed && quest.failsWithMe != null)
+        {
+            var visited = new HashSet<string> { quest.QuestId };
+            foreach (var q in quest.failsWithMe)
+                PropagateFailure(q, visited);
+        }
+    }
+
+    private void TryActivateQuest(QuestSO quest)
+    {
+        if (quest == null || !_runtime.TryGetValue(quest.QuestId, out var r)) return;
+        if (r.status != QuestStatus.Inactive) return;
+        if (ShouldActivate(quest))
+            Transition(quest, r, QuestStatus.Active, -1);
+    }
+
+    private void CancelQuest(QuestSO quest)
+    {
+        if (quest == null || !_runtime.TryGetValue(quest.QuestId, out var r)) return;
+        if (r.status == QuestStatus.Active || r.status == QuestStatus.Inactive)
+            Transition(quest, r, QuestStatus.Cancelled, -1);
+    }
+
+    private void PropagateFailure(QuestSO quest, HashSet<string> visited)
+    {
+        if (quest == null || visited.Contains(quest.QuestId)) return;
+        visited.Add(quest.QuestId);
+
+        if (!_runtime.TryGetValue(quest.QuestId, out var r)) return;
+        // Never overwrite terminal states — only propagate to active/inactive quests
+        if (r.status != QuestStatus.Active && r.status != QuestStatus.Inactive) return;
+
+        // Set directly to avoid Transition creating a second visited set and firing outcome effects
+        r.status               = QuestStatus.Failed;
+        r.resolvedOutcomeIndex = -1;
+        Debug.Log($"[QuestManager] '{quest.title}' → Failed (propagated)");
+        WorldStateManager.Instance?.SetBool($"quest.{quest.QuestId}.failed", true);
+
+        // Continue with the same visited set
+        if (quest.failsWithMe != null)
+            foreach (var q in quest.failsWithMe)
+                PropagateFailure(q, visited);
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -190,10 +349,22 @@ public class QuestManager : MonoBehaviour, ISaveable
     public QuestStatus GetStatus(string questId) =>
         _runtime.TryGetValue(questId, out var r) ? r.status : QuestStatus.Inactive;
 
+    public QuestStatus GetStatus(QuestSO quest) =>
+        quest != null ? GetStatus(quest.QuestId) : QuestStatus.Inactive;
+
     public bool IsObjectiveComplete(string questId, int index)
     {
         if (!_runtime.TryGetValue(questId, out var r)) return false;
         return index >= 0 && index < r.objectivesComplete.Length && r.objectivesComplete[index];
+    }
+
+    public bool IsObjectiveComplete(QuestSO quest, int index) =>
+        quest != null && IsObjectiveComplete(quest.QuestId, index);
+
+    public bool IsObjectiveRevealed(QuestSO quest, int index)
+    {
+        if (quest == null || !_runtime.TryGetValue(quest.QuestId, out var r)) return false;
+        return index >= 0 && index < r.objectivesRevealed.Length && r.objectivesRevealed[index];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -201,14 +372,41 @@ public class QuestManager : MonoBehaviour, ISaveable
     private void InitRuntime()
     {
         _runtime.Clear();
+        var seen = new HashSet<string>();
         foreach (var quest in _quests)
         {
-            if (quest == null || string.IsNullOrEmpty(quest.questId)) continue;
-            int failCount = quest.failConditions?.Length ?? 0;
-            int objCount  = quest.objectives?.Length     ?? 0;
-            _runtime[quest.questId] = new QuestRuntimeState(quest.questId, objCount, failCount);
+            if (quest == null || string.IsNullOrEmpty(quest.QuestId)) continue;
+            if (!seen.Add(quest.QuestId))
+            {
+                Debug.LogError($"[QuestManager] Duplicate QuestId '{quest.QuestId}' on '{quest.name}'. " +
+                               "Did you duplicate the asset? Right-click it → Reset Quest ID.", quest);
+                continue;
+            }
+            int failCount = quest.globalFailConditions?.Length ?? 0;
+            int objCount  = quest.objectives?.Length           ?? 0;
+            _runtime[quest.QuestId] = new QuestRuntimeState(quest.QuestId, objCount, failCount);
         }
     }
+
+    /// <summary>Clears quest-graph WSM flags written by Transition. Called before a repeatable reset.</summary>
+    private void ClearQuestWSMFlags(QuestSO quest)
+    {
+        if (WorldStateManager.Instance == null) return;
+        var id = quest.QuestId;
+        WorldStateManager.Instance.SetBool($"quest.{id}.active",    false);
+        WorldStateManager.Instance.SetBool($"quest.{id}.succeeded", false);
+        WorldStateManager.Instance.SetBool($"quest.{id}.failed",    false);
+        WorldStateManager.Instance.SetBool($"quest.{id}.expired",   false);
+        WorldStateManager.Instance.SetBool($"quest.{id}.cancelled", false);
+    }
+
+    private static QuestStatus TerminalToQuestStatus(QuestTerminalStatus t) => t switch
+    {
+        QuestTerminalStatus.Succeeded => QuestStatus.Succeeded,
+        QuestTerminalStatus.Failed    => QuestStatus.Failed,
+        QuestTerminalStatus.Expired   => QuestStatus.Expired,
+        _                             => QuestStatus.Succeeded,
+    };
 
     private static string PackBools(bool[] arr)
     {
@@ -227,9 +425,12 @@ public class QuestManager : MonoBehaviour, ISaveable
     [Serializable]
     private class QuestManagerDTO
     {
-        public List<string> ids       = new List<string>();
-        public List<int>    statuses  = new List<int>();
-        public List<string> objectives = new List<string>();
-        public List<string> fails      = new List<string>();
+        public List<string> ids                = new List<string>();
+        public List<int>    statuses           = new List<int>();
+        public List<string> objectives         = new List<string>();
+        public List<string> revealed           = new List<string>();
+        public List<string> fails              = new List<string>();
+        public List<int>    outcomeIndices     = new List<int>();
+        public List<float>  activeTimeElapsed  = new List<float>();
     }
 }
