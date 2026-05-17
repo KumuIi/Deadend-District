@@ -44,6 +44,13 @@ public class GunSway : MonoBehaviour
     private float _mouseTiltCurrent;
     private float _mouseTiltVelocity;
 
+    private Vector3 _adsInertiaOffset;
+    private Vector3 _adsInertiaVelocity;
+    private Vector3 _prevLocalVel;
+
+    private Vector3 _adsMouseLagTarget;
+    private Vector3 _adsMouseLagCurrent;
+
     private Vector3 _restPos;
     private Quaternion _restRot;
 
@@ -176,13 +183,35 @@ public class GunSway : MonoBehaviour
         _wasGrounded          = grounded;
         _lastVerticalVelocity = vertVel;
 
+        // ── ADS walking jolt — acceleration-based: steady speed = no offset ─
+        Vector3 localVel = _playerCam
+            ? _playerCam.InverseTransformDirection(_playerMotor.HorizontalVelocity)
+            : Vector3.zero;
+        Vector3 accel = dt > 0.0001f ? (localVel - _prevLocalVel) / dt : Vector3.zero;
+        _prevLocalVel = localVel;
+        Vector3 inertiaTarget = Vector3.ClampMagnitude(
+            new Vector3(-accel.x, -accel.z * 0.4f, 0f) * _feel.adsInertiaAmount,
+            _feel.adsInertiaMaxDelta) * adsWeight;
+        _adsInertiaOffset = Vector3.SmoothDamp(
+            _adsInertiaOffset, inertiaTarget, ref _adsInertiaVelocity, _feel.adsInertiaSmooth);
+
+        // ── ADS mouse lag — sights trail behind camera rotation ──────────
+        _adsMouseLagTarget.x -= mouseY * _feel.adsMouseLagAmount * adsWeight;
+        _adsMouseLagTarget.y += mouseX * _feel.adsMouseLagAmount * adsWeight;
+        _adsMouseLagTarget    = Vector3.ClampMagnitude(_adsMouseLagTarget, _feel.adsMouseLagMax);
+        _adsMouseLagTarget    = Vector3.Lerp(_adsMouseLagTarget, Vector3.zero, _feel.adsMouseLagDecay * dt);
+        _adsMouseLagCurrent   = Vector3.Lerp(_adsMouseLagCurrent, _adsMouseLagTarget, _feel.adsMouseLagFollow * dt);
+
         // ── Compose target ──────────────────────────────────────────────
         Vector3 targetPos = _restPos
             + (swayOffset + breatheOffset + bobOffset) * _feel.masterIntensity
-            + new Vector3(0f, (_airborneOffset + _landOffset) * _feel.masterIntensity, 0f);
+            + new Vector3(0f, (_airborneOffset + _landOffset) * _feel.masterIntensity, 0f)
+            + _adsInertiaOffset;
 
-        float totalZ  = (_mouseTiltCurrent + _sprintTiltCurrent) * _feel.masterIntensity + leanTilt;
-        Quaternion targetRot = _restRot * Quaternion.Euler(0f, 0f, totalZ);
+        float totalZ = (_mouseTiltCurrent + _sprintTiltCurrent) * _feel.masterIntensity + leanTilt;
+        Quaternion lagRot  = Quaternion.Euler(_adsMouseLagCurrent.x, _adsMouseLagCurrent.y, 0f);
+        Quaternion rollRot = Quaternion.Euler(0f, 0f, totalZ);
+        Quaternion targetRot = _restRot * lagRot * rollRot;
 
         // ── Smooth to target ────────────────────────────────────────────
         _currentPos = Vector3.SmoothDamp(_currentPos, targetPos, ref _posVelocity, 1f / _feel.returnSmooth);

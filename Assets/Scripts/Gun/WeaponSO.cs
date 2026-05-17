@@ -118,6 +118,24 @@ public class WeaponSO : ItemSO
 [System.Serializable]
 public class WeaponFeelData
 {
+    [Header("ADS Mouse Lag")]
+    [Tooltip("How strongly mouse movement feeds into sight lag. Higher = more trail.")]
+    public float adsMouseLagAmount  = 0.3f;
+    [Tooltip("How fast the lag target decays back to zero when mouse stops.")]
+    public float adsMouseLagDecay   = 8f;
+    [Tooltip("How fast current sight lag chases the target. Higher = snappier catch-up.")]
+    public float adsMouseLagFollow  = 18f;
+    [Tooltip("Max degrees of sight lag — prevents wild accumulation at high sensitivity.")]
+    public float adsMouseLagMax     = 3f;
+
+    [Header("ADS Walk Jolt")]
+    [Tooltip("Acceleration-based: only start/stop of movement breaks aim, steady walking does not.")]
+    public float adsInertiaAmount   = 0.003f;
+    [Tooltip("Spring-back time in seconds.")]
+    public float adsInertiaSmooth   = 0.1f;
+    [Tooltip("Max position drift from walking jolt.")]
+    public float adsInertiaMaxDelta = 0.015f;
+
     [Header("Mouse Sway")]
     public float swayAmount = 0.04f;
     public float swaySmooth = 8f;
