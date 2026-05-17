@@ -48,8 +48,7 @@ public class GunSway : MonoBehaviour
     private Vector3 _adsInertiaVelocity;
     private Vector3 _prevLocalVel;
 
-    private Vector3 _adsMouseLagTarget;
-    private Vector3 _adsMouseLagCurrent;
+    private Vector3 _adsAimLag;
 
     private Vector3 _restPos;
     private Quaternion _restRot;
@@ -195,12 +194,14 @@ public class GunSway : MonoBehaviour
         _adsInertiaOffset = Vector3.SmoothDamp(
             _adsInertiaOffset, inertiaTarget, ref _adsInertiaVelocity, _feel.adsInertiaSmooth);
 
-        // ── ADS mouse lag — sights trail behind camera rotation ──────────
-        _adsMouseLagTarget.x -= mouseY * _feel.adsMouseLagAmount * adsWeight;
-        _adsMouseLagTarget.y += mouseX * _feel.adsMouseLagAmount * adsWeight;
-        _adsMouseLagTarget    = Vector3.ClampMagnitude(_adsMouseLagTarget, _feel.adsMouseLagMax);
-        _adsMouseLagTarget    = Vector3.Lerp(_adsMouseLagTarget, Vector3.zero, _feel.adsMouseLagDecay * dt);
-        _adsMouseLagCurrent   = Vector3.Lerp(_adsMouseLagCurrent, _adsMouseLagTarget, _feel.adsMouseLagFollow * dt);
+        // ── ADS aim lag — gun holds previous world orientation, springs to camera ─
+        // Positive mouseY = camera looks up → gun should stay down → positive local X lag.
+        // Positive mouseX = camera looks right → gun should stay left → negative local Y lag.
+        _adsAimLag.x += mouseY * _feel.adsAimLagAmount * adsWeight;
+        _adsAimLag.y -= mouseX * _feel.adsAimLagAmount * adsWeight;
+        _adsAimLag = Vector3.ClampMagnitude(_adsAimLag, _feel.adsAimLagMax);
+        float catchup = _feel.adsAimLagCatchup * (adsWeight < 0.5f ? 2f : 1f);
+        _adsAimLag = Vector3.Lerp(_adsAimLag, Vector3.zero, catchup * dt);
 
         // ── Compose target ──────────────────────────────────────────────
         Vector3 targetPos = _restPos
@@ -209,7 +210,7 @@ public class GunSway : MonoBehaviour
             + _adsInertiaOffset;
 
         float totalZ = (_mouseTiltCurrent + _sprintTiltCurrent) * _feel.masterIntensity + leanTilt;
-        Quaternion lagRot  = Quaternion.Euler(_adsMouseLagCurrent.x, _adsMouseLagCurrent.y, 0f);
+        Quaternion lagRot  = Quaternion.Euler(_adsAimLag.x * adsWeight, _adsAimLag.y * adsWeight, 0f);
         Quaternion rollRot = Quaternion.Euler(0f, 0f, totalZ);
         Quaternion targetRot = _restRot * lagRot * rollRot;
 

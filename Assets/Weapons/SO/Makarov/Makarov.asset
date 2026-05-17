@@ -52,6 +52,12 @@ MonoBehaviour:
   gunshotClip: {fileID: 8300000, guid: 2a8a853b1be954c499cc8a83851d7000, type: 3}
   defaultAmmo: {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}
   feel:
+    adsAimLagAmount: 0.4
+    adsAimLagCatchup: 5
+    adsAimLagMax: 3
+    adsInertiaAmount: 0.02
+    adsInertiaSmooth: 0.08
+    adsInertiaMaxDelta: 0.04
     swayAmount: 0.04
     swaySmooth: 8
     swayMaxDelta: 1
@@ -62,6 +68,7 @@ MonoBehaviour:
     breatheAmplitudeY: 0.0015
     breatheAmplitudeX: 0.0008
     breatheFrequency: 0.8
+    adsBreathScale: 0.3
     walkBobSpeedThreshold: 0.5
     walkBobFrequency: 1.2
     walkBobAmplitudeY: 0.006
@@ -81,3 +88,15 @@ MonoBehaviour:
     stepNudgeSmooth: 10
     masterIntensity: 1
     returnSmooth: 12
+  recoil:
+    kickUp: 20
+    kickHoriz: 20
+    kickRoll: 20
+    adsKickUp: 20
+    adsKickHoriz: 20
+    adsKickRoll: 20
+    targetDecaySpeed: 1
+    currentFollowSpeed: 20
+    maxVertical: 15
+    maxHoriz: 5
+    maxRoll: 3
