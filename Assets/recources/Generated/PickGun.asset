@@ -25,7 +25,7 @@ MonoBehaviour:
     expectedFloat: 0
     expectedString: 
   objectives:
-  - wsmKey: item.makarov.picked_up
+  - wsmKey: pickedup
     description: 
     valueType: 0
     comparison: 0
