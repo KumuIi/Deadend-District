@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fcf982e9eef07a04ca5360de6a0b53e6, type: 3}
-  m_Name: PickGun
+  m_Name: Key
   m_EditorClassIdentifier: Assembly-CSharp::QuestSO
-  questId: intro_pickup_makarov
-  title: Pick Up Your Weapon
+  questId: find_the_key
+  title: Find the Key
   description: 
   activeCondition:
-    wsmKey: 
+    wsmKey: quest.intro_pickup_makarov.succeeded
     description: 
     valueType: 0
     comparison: 0
@@ -25,11 +25,11 @@ MonoBehaviour:
     expectedFloat: 0
     expectedString: 
   objectives:
-  - wsmKey: item.makarov.picked_up
+  - wsmKey: 
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 1
+    expectedBool: 0
     expectedInt: 0
     expectedFloat: 0
     expectedString: 

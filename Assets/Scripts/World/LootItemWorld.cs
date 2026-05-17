@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 /// <summary>
 /// A world-space pickup. Implements IInteractable so PlayerInteractor shows
@@ -9,6 +10,9 @@ public class LootItemWorld : MonoBehaviour, IInteractable
     [SerializeField] private ItemSO _itemSO;
     [SerializeField] private bool   _emitSoundOnPickup;
     [SerializeField] private float  _soundRadius = 8f;
+
+    /// <summary>Fired just before the GameObject is destroyed on successful pickup.</summary>
+    public UnityEvent OnPickup;
 
     private ItemInstance _instance; // set when spawned from inventory drop
     private InventoryUI  _inventory;
@@ -57,6 +61,7 @@ public class LootItemWorld : MonoBehaviour, IInteractable
             ));
         }
 
+        OnPickup?.Invoke();
         Destroy(gameObject);
     }
 }
