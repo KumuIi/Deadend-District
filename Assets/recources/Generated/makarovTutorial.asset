@@ -27,7 +27,21 @@ MonoBehaviour:
     expectedString: 
   cancelOnActivate: []
   objectives: []
-  outcomes: []
+  outcomes:
+  - label: 
+    condition:
+      wsmKey: 
+      description: 
+      valueType: 0
+      comparison: 0
+      expectedBool: 0
+      expectedInt: 0
+      expectedFloat: 0
+      expectedString: 
+    terminalStatus: 0
+    activateQuests: []
+    cancelQuests: []
+    failQuests: []
   globalFailConditions: []
   failsWithMe: []
   canExpire: 0

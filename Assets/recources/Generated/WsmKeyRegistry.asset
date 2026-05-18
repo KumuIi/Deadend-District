@@ -12,4 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d36e067bd0d339f4c8f520e36a601f81, type: 3}
   m_Name: WsmKeyRegistry
   m_EditorClassIdentifier: Assembly-CSharp::WsmKeyRegistrySO
-  keys: []
+  keys:
+  - displayName: PickUpMakarovStart
+    key: StarterMakarov
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0

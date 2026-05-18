@@ -1215,11 +1215,34 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4313769840032947371, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
+      propertyPath: _key
+      value: StarterMakarov
+      objectReference: {fileID: 0}
+    - target: {fileID: 6216187290795211619, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
+      propertyPath: OnPickup.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 874467226}
+    - target: {fileID: 6216187290795211619, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
+      propertyPath: OnPickup.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: Write
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
+--- !u!114 &874467226 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4313769840032947371, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
+  m_PrefabInstance: {fileID: 701452695}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ba5c434bed80464ca9872a83935c0dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldStateWriter
 --- !u!4 &891147067 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 5ffcfebba4a61b645bd4a65891ba6921, type: 3}
@@ -1496,6 +1519,98 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 4000010570413510, guid: 395dcd74773407e4faa9906eedf6f75d, type: 3}
   m_PrefabInstance: {fileID: 508838065}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1372509482
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1372509486}
+  - component: {fileID: 1372509485}
+  - component: {fileID: 1372509484}
+  - component: {fileID: 1372509483}
+  m_Layer: 0
+  m_Name: EnterArea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1372509483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372509482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cc98804ea6dc9a4090b61da407d65e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldStateTriggerVolume
+  _requiredTag: Player
+  _onlyOnce: 1
+--- !u!114 &1372509484
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372509482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ba5c434bed80464ca9872a83935c0dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WorldStateWriter
+  _key: 
+  _valueType: 0
+  _boolValue: 1
+  _intValue: 0
+  _floatValue: 0
+  _stringValue: 
+  _writeOnStart: 0
+  _onlyOnce: 0
+  OnWritten:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!135 &1372509485
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372509482}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.5
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!4 &1372509486
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372509482}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.57982, y: -0.01, z: -4.4642}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &1396856797 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4833357575574198, guid: d44a5171f167d2a48a32c3c1cc428086, type: 3}
@@ -2468,3 +2583,4 @@ SceneRoots:
   - {fileID: 1939527130}
   - {fileID: 71126150}
   - {fileID: 701452695}
+  - {fileID: 1372509486}

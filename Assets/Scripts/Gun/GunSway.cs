@@ -27,6 +27,12 @@ public class GunSway : MonoBehaviour
     private Vector3 _posVelocity;
     private float _rotXVel, _rotYVel, _rotZVel;
 
+    // Model kick (visual gun mesh recoil — separate from camera recoil)
+    private Vector3 _modelKickRotTarget;
+    private Vector3 _modelKickRotCurrent;
+    private float _modelKickBackTarget;
+    private float _modelKickBackCurrent;
+
     private float _bobTimer;
     private int _lastBobStep;
     private float _stepNudgeOffset;
@@ -52,6 +58,29 @@ public class GunSway : MonoBehaviour
 
     private Vector3 _restPos;
     private Quaternion _restRot;
+
+    // ── Model kick API ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by GunController.FireShot() AFTER direction is sampled.
+    /// Adds a visual rotation + backward impulse to the gun mesh without affecting ballistics.
+    /// Ticked in LateUpdate so it's always captured in the same frame (GunController runs at order 10000).
+    /// </summary>
+    public void AddModelKick(WeaponRecoilData data, bool isAiming)
+    {
+        if (data == null) return;
+        float mult = isAiming ? data.adsModelKickMultiplier : 1f;
+
+        _modelKickRotTarget.x -= data.modelKickPitch * mult;
+        _modelKickRotTarget.y += Random.Range(-data.modelKickYawRandom, data.modelKickYawRandom) * mult;
+        _modelKickRotTarget.z += Random.Range(-data.modelKickRollRandom, data.modelKickRollRandom) * mult;
+        _modelKickBackTarget  += data.modelKickBack * mult;
+
+        _modelKickRotTarget.x = Mathf.Clamp(_modelKickRotTarget.x, -data.modelKickMaxPitch, 0f);
+        _modelKickRotTarget.y = Mathf.Clamp(_modelKickRotTarget.y, -data.modelKickMaxYaw,   data.modelKickMaxYaw);
+        _modelKickRotTarget.z = Mathf.Clamp(_modelKickRotTarget.z, -data.modelKickMaxRoll,  data.modelKickMaxRoll);
+        _modelKickBackTarget  = Mathf.Min(_modelKickBackTarget, data.modelKickBackMax);
+    }
 
     // ── Injection ──────────────────────────────────────────────────────────
 
@@ -210,9 +239,11 @@ public class GunSway : MonoBehaviour
             + _adsInertiaOffset;
 
         float totalZ = (_mouseTiltCurrent + _sprintTiltCurrent) * _feel.masterIntensity + leanTilt;
+        Quaternion restOffsetRot = Quaternion.Euler(Vector3.Lerp(
+            _feel.hipRestRotationOffset, _feel.adsRestRotationOffset, adsWeight));
         Quaternion lagRot  = Quaternion.Euler(_adsAimLag.x * adsWeight, _adsAimLag.y * adsWeight, 0f);
         Quaternion rollRot = Quaternion.Euler(0f, 0f, totalZ);
-        Quaternion targetRot = _restRot * lagRot * rollRot;
+        Quaternion targetRot = _restRot * restOffsetRot * lagRot * rollRot;
 
         // ── Smooth to target ────────────────────────────────────────────
         _currentPos = Vector3.SmoothDamp(_currentPos, targetPos, ref _posVelocity, 1f / _feel.returnSmooth);
@@ -228,7 +259,27 @@ public class GunSway : MonoBehaviour
     private void LateUpdate()
     {
         if (!_gunPivot) return;
-        _gunPivot.localPosition = _currentPos;
-        _gunPivot.localRotation = _currentRot;
+
+        // Model kick ticked here so it captures AddModelKick calls from GunController.Update (order 10000).
+        TickModelKick();
+
+        _gunPivot.localPosition = _currentPos + new Vector3(0f, 0f, -_modelKickBackCurrent);
+        _gunPivot.localRotation = _currentRot * Quaternion.Euler(_modelKickRotCurrent);
+    }
+
+    private void TickModelKick()
+    {
+        var data = _gunController?.weaponData?.recoil;
+        if (data == null) return;
+
+        float dt = Time.deltaTime;
+
+        // Target decays toward zero (return speed — same Lerp-rate convention as RecoilController).
+        _modelKickRotTarget  = Vector3.Lerp(_modelKickRotTarget,  Vector3.zero, data.modelKickReturnSpeed * dt);
+        _modelKickBackTarget = Mathf.Lerp(_modelKickBackTarget, 0f,            data.modelKickReturnSpeed * dt);
+
+        // Current chases target (follow speed — snappy kick snap).
+        _modelKickRotCurrent  = Vector3.Lerp(_modelKickRotCurrent,  _modelKickRotTarget,  data.modelKickFollowSpeed * dt);
+        _modelKickBackCurrent = Mathf.Lerp(_modelKickBackCurrent, _modelKickBackTarget, data.modelKickFollowSpeed * dt);
     }
 }

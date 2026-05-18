@@ -457,6 +457,7 @@ public class GunController : MonoBehaviour
 
         EjectCasing();
         _recoil?.AddRecoil(IsAiming);
+        _sway?.AddModelKick(weaponData.recoil, IsAiming);
 
         _boltTarget   = -weaponData.boltTravelDistance;
         _boltVelocity = -weaponData.boltTravelDistance / weaponData.boltBackTime;

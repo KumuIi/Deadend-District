@@ -108,6 +108,25 @@ public class WeaponSO : ItemSO
 
     [Header("=== Recoil ===")]
     public WeaponRecoilData recoil = new WeaponRecoilData();
+
+#if UNITY_EDITOR
+    // ── Preset (editor-only deep copy tool) ────────────────────────────────
+
+    [Header("=== Preset (Editor Only) ===")]
+    [Tooltip("Assign a WeaponPresetSO then right-click this SO and choose 'Apply Preset'.")]
+    [SerializeField] private WeaponPresetSO _preset;
+
+    [ContextMenu("Apply Preset")]
+    private void ApplyPreset()
+    {
+        if (_preset == null) { UnityEngine.Debug.LogWarning("WeaponSO: no preset assigned.", this); return; }
+        UnityEditor.Undo.RecordObject(this, "Apply Weapon Preset");
+        recoil = JsonUtility.FromJson<WeaponRecoilData>(JsonUtility.ToJson(_preset.recoil));
+        feel   = JsonUtility.FromJson<WeaponFeelData>(JsonUtility.ToJson(_preset.feel));
+        UnityEditor.EditorUtility.SetDirty(this);
+        UnityEngine.Debug.Log($"WeaponSO: applied preset '{_preset.presetName}' to '{name}'.", this);
+    }
+#endif
 }
 
 /// <summary>
@@ -118,6 +137,12 @@ public class WeaponSO : ItemSO
 [System.Serializable]
 public class WeaponFeelData
 {
+    [Header("Rest Rotation")]
+    [Tooltip("Local Euler offset applied to the gun pivot at hip-carry. Lets you tilt a pistol slightly down, angled inward, etc.")]
+    public Vector3 hipRestRotationOffset;
+    [Tooltip("Local Euler offset applied to the gun pivot while fully ADS'd. Blended from hip offset by AdsWeight.")]
+    public Vector3 adsRestRotationOffset;
+
     [Header("ADS Aim Lag")]
     [Tooltip("How much mouse movement feeds into aim lag. Higher = sights take longer to follow camera.")]
     public float adsAimLagAmount  = 0.4f;
@@ -216,4 +241,38 @@ public class WeaponRecoilData
     public float maxHoriz    = 5f;
     [Tooltip("Max accumulated roll recoil in degrees, both sides.")]
     public float maxRoll     = 3f;
+
+    [Header("Model Kick (gun mesh visual)")]
+    [Tooltip("Degrees of muzzle rise per shot on the gun mesh (separate from camera kick).")]
+    public float modelKickPitch      = 0f;
+    [Tooltip("Random yaw jitter per shot on the gun mesh.")]
+    public float modelKickYawRandom  = 0f;
+    [Tooltip("Random roll jitter per shot on the gun mesh.")]
+    public float modelKickRollRandom = 0f;
+    [Tooltip("Backward positional push (metres) per shot.")]
+    public float modelKickBack       = 0f;
+    [Tooltip("Rate at which current model kick chases target (higher = snappier). Same unit as currentFollowSpeed.")]
+    public float modelKickFollowSpeed = 25f;
+    [Tooltip("Rate at which model kick target decays to zero between shots (higher = faster settle). Same unit as targetDecaySpeed.")]
+    public float modelKickReturnSpeed = 8f;
+    [Tooltip("Multiplier applied to all model kick values while ADS.")]
+    [Range(0f, 1f)]
+    public float adsModelKickMultiplier = 0.4f;
+
+    [Header("Model Kick Clamps")]
+    public float modelKickMaxPitch = 25f;
+    public float modelKickMaxYaw   = 6f;
+    public float modelKickMaxRoll  = 6f;
+    public float modelKickBackMax  = 0.03f;
+
+    [Header("Recoil Pattern")]
+    [Tooltip("Horizontal drift per shot index (x = shot number, y = degrees). Constant 0 = pure random.")]
+    public AnimationCurve horizontalPattern = AnimationCurve.Constant(0, 100, 0);
+    [Tooltip("Extra vertical kick shaping per shot index (x = shot number, y = degrees). Constant 0 = no shaping.")]
+    public AnimationCurve verticalPattern   = AnimationCurve.Constant(0, 100, 0);
+    [Tooltip("Seconds without firing before the spray pattern resets to shot 0.")]
+    public float patternResetDelay = 0.25f;
+    [Tooltip("0 = fully pattern-driven, 1 = fully random horizontal drift.")]
+    [Range(0f, 1f)]
+    public float randomHorizScale = 1f;
 }

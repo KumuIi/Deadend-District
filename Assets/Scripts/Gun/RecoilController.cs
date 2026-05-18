@@ -16,6 +16,8 @@ public class RecoilController : MonoBehaviour
     private WeaponRecoilData _data;
     private Vector3 _targetRecoil;
     private Vector3 _currentRecoil;
+    private int   _shotIndex;
+    private float _lastShotTime;
 
     /// <summary>
     /// Swaps active weapon data and resets all recoil state so weapon
@@ -26,6 +28,8 @@ public class RecoilController : MonoBehaviour
         _data          = data;
         _targetRecoil  = Vector3.zero;
         _currentRecoil = Vector3.zero;
+        _shotIndex     = 0;
+        _lastShotTime  = 0f;
         transform.localRotation = Quaternion.identity;
     }
 
@@ -38,14 +42,28 @@ public class RecoilController : MonoBehaviour
         float horiz = isAiming ? _data.adsKickHoriz : _data.kickHoriz;
         float roll  = isAiming ? _data.adsKickRoll  : _data.kickRoll;
 
-        // X kicks upward (negative pitch), Y and Z are random per shot.
-        _targetRecoil.x -= up;
-        _targetRecoil.y += Random.Range(-horiz, horiz);
-        _targetRecoil.z += Random.Range(-roll,  roll);
+        // Reset shot index if enough time has passed since last shot.
+        if (Time.time - _lastShotTime > _data.patternResetDelay)
+            _shotIndex = 0;
+
+        // Horizontal: blend pattern curve with random spread.
+        float patternHoriz = _data.horizontalPattern?.Evaluate(_shotIndex) ?? 0f;
+        float randomHoriz  = Random.Range(-horiz, horiz);
+        float finalHoriz   = Mathf.Lerp(patternHoriz, randomHoriz, _data.randomHorizScale);
+
+        // Vertical: base up-kick plus optional per-shot shaping from curve.
+        float patternUp = _data.verticalPattern?.Evaluate(_shotIndex) ?? 0f;
+
+        _targetRecoil.x -= (up + patternUp);
+        _targetRecoil.y += finalHoriz;
+        _targetRecoil.z += Random.Range(-roll, roll);
 
         _targetRecoil.x = Mathf.Clamp(_targetRecoil.x, -_data.maxVertical, 0f);
         _targetRecoil.y = Mathf.Clamp(_targetRecoil.y, -_data.maxHoriz,    _data.maxHoriz);
         _targetRecoil.z = Mathf.Clamp(_targetRecoil.z, -_data.maxRoll,     _data.maxRoll);
+
+        _shotIndex++;
+        _lastShotTime = Time.time;
     }
 
     private void Update()
