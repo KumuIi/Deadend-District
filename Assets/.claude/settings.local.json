@@ -10,7 +10,10 @@
       "Bash(git add *)",
       "Bash(git *)",
       "Bash(codemoot session *)",
-      "Skill(debate)"
+      "Skill(debate)",
+      "Bash(Get-ChildItem -Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Recurse -File -Filter \"*.cs\")",
+      "Bash(Select-Object FullName)",
+      "Bash(Sort-Object FullName)"
     ]
   }
 }

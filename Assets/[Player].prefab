@@ -308,8 +308,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a82e121cd7d5f7c4e9f770fb7fd7a246, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryUI
-  gridWidth: 5
-  gridHeight: 10
+  gridWidth: 7
+  gridHeight: 15
   cellSize: 25
   weaponManager: {fileID: 6033725508184216472}
   cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.2}
@@ -320,7 +320,7 @@ MonoBehaviour:
   tiltX: 0
   tiltY: 25
   modelLayer: 31
-  _dropOrigin: {fileID: 0}
+  _dropOrigin: {fileID: 6052119987546144178}
   _dropThrowForce: 5
   _droppedItemLayer: 6
   cellPrefab: {fileID: 0}
@@ -3572,7 +3572,7 @@ GameObject:
   - component: {fileID: 2766828599089219978}
   - component: {fileID: 8773417110864000135}
   m_Layer: 0
-  m_Name: WeaponHud
+  m_Name: PlayerHud
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

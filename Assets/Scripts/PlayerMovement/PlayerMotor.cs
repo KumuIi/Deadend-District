@@ -257,7 +257,12 @@ public class PlayerMotor : MonoBehaviour
             ? (wish.sqrMagnitude > 0.01f ? config.acceleration : config.deceleration)
             : config.airDeceleration;
 
-        Vector3 newH = Vector3.MoveTowards(curH, wish * targetSpeed, accel * Time.fixedDeltaTime);
+        // CollideAndSlide projects horizontal movement onto the slope surface, reducing
+        // the XZ component by cos(slopeAngle). Compensate here so the reconstructed
+        // velocity after projection stays at targetSpeed along the surface.
+        float slopeComp = (_grounded && _groundHit.normal.y > 0.01f) ? 1f / _groundHit.normal.y : 1f;
+
+        Vector3 newH = Vector3.MoveTowards(curH, wish * (targetSpeed * slopeComp), accel * Time.fixedDeltaTime);
         _velocity.x  = newH.x;
         _velocity.z  = newH.z;
     }

@@ -1215,34 +1215,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4313769840032947371, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
-      propertyPath: _key
-      value: StarterMakarov
-      objectReference: {fileID: 0}
-    - target: {fileID: 6216187290795211619, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
-      propertyPath: OnPickup.m_PersistentCalls.m_Calls.Array.data[0].m_Target
-      value: 
-      objectReference: {fileID: 874467226}
-    - target: {fileID: 6216187290795211619, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
-      propertyPath: OnPickup.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: Write
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
---- !u!114 &874467226 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4313769840032947371, guid: c0247fae42fa5b246aee03f126f1a18c, type: 3}
-  m_PrefabInstance: {fileID: 701452695}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7ba5c434bed80464ca9872a83935c0dd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WorldStateWriter
 --- !u!4 &891147067 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 5ffcfebba4a61b645bd4a65891ba6921, type: 3}
