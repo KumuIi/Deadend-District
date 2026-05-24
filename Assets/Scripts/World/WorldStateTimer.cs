@@ -27,8 +27,9 @@ public class WorldStateTimer : MonoBehaviour, ISaveable
 
     // ── ISaveable ────────────────────────────────────────────────────────────
 
-    public string SaveId   => _saveId;
-    public string SaveType => "WorldStateTimer";
+    public string      SaveId    => _saveId;
+    public string      SaveType  => "WorldStateTimer";
+    public RunScopeTag SaveScope => RunScopeTag.World;
 
     private void Start()
     {

@@ -14,6 +14,12 @@ public interface ISaveable
     /// <summary>Type tag used to route data back to the correct adapter on load.</summary>
     string SaveType { get; }
 
+    /// <summary>
+    /// Determines when this data is reset relative to run lifecycle.
+    /// Profile = survives all runs. Run = clears on death/extract. World = major persistent flags. Temp = resets on sector reload.
+    /// </summary>
+    RunScopeTag SaveScope { get; }
+
     /// <summary>Called by SaveSystem when writing a save file. Return a serializable DTO.</summary>
     object CaptureSaveData();
 

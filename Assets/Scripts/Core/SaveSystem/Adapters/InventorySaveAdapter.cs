@@ -13,8 +13,9 @@ public class InventorySaveAdapter : MonoBehaviour, ISaveable
 {
     [SerializeField] private InventoryUI _inventoryUI;
 
-    public string SaveId   => "player.inventory";
-    public string SaveType => "Inventory";
+    public string      SaveId    => "player.inventory";
+    public string      SaveType  => "Inventory";
+    public RunScopeTag SaveScope => RunScopeTag.Run;
 
     private void Start()
     {

@@ -14,8 +14,9 @@ public class CyberneticController : MonoBehaviour, ISaveable
 
     [SerializeField] private CyberneticSOCatalog _catalog;
 
-    public string SaveId   => "player.cybernetics";
-    public string SaveType => "CyberneticController";
+    public string      SaveId    => "player.cybernetics";
+    public string      SaveType  => "CyberneticController";
+    public RunScopeTag SaveScope => RunScopeTag.Profile;
 
     private void Start()     => SaveSystem.Instance?.Register(this);
     private void OnEnable()  => SaveSystem.Instance?.Register(this);

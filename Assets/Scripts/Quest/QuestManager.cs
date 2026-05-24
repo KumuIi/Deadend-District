@@ -100,8 +100,9 @@ public class QuestManager : MonoBehaviour, ISaveable
 
     // ── ISaveable ────────────────────────────────────────────────────────────
 
-    public string SaveId   => "quest.manager";
-    public string SaveType => "QuestManager";
+    public string      SaveId    => "quest.manager";
+    public string      SaveType  => "QuestManager";
+    public RunScopeTag SaveScope => RunScopeTag.Profile;
 
     public object CaptureSaveData()
     {

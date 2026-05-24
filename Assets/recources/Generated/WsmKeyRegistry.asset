@@ -19,3 +19,45 @@ MonoBehaviour:
     category: Tutorial
     description: 
     deprecated: 0
+  - displayName: Player in darkness
+    key: player.in_darkness
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: player is dead
+    key: player.is_dead
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: run active
+    key: run.active
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: run extracted
+    key: run.extracted
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: run extracted
+    key: run.extracted
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: recharge station used
+    key: hub.recharge_station.used
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: recharge station
+    key: hub.recharge_station.used
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0

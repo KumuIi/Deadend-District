@@ -7,12 +7,14 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Collects data from all registered ISaveable systems, serializes to JSON, and writes
-/// to the persistent data path. Handles multiple save slots via slotName parameter.
+/// to the persistent data path. Each RunScopeTag writes its own envelope file so
+/// ClearRun() can wipe run-scoped data without touching profile or world data.
 ///
-/// Systems call Register/Unregister in their OnEnable/OnDisable. The SaveSystem
+/// Systems call Register/Unregister in their Start/OnDisable. The SaveSystem
 /// never hard-references specific gameplay systems — all coupling is via ISaveable.
 ///
-/// Future: add async I/O, cloud sync, slot metadata (screenshot, playtime).
+/// Scope file naming: save_{slot}_{scope}.json
+/// e.g. save_slot0_Run.json, save_slot0_Profile.json, save_slot0_World.json
 /// </summary>
 public class SaveSystem : MonoBehaviour
 {
@@ -25,11 +27,21 @@ public class SaveSystem : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     // ── Registry ───────────────────────────────────────────────────────────
 
     private readonly List<ISaveable> _saveables = new List<ISaveable>();
+
+    // Queued scopes to restore once all ISaveables have registered in Start().
+    private readonly HashSet<RunScopeTag> _pendingRestoreScopes = new HashSet<RunScopeTag>();
+    private string _pendingSlot;
 
     public void Register(ISaveable saveable)
     {
@@ -40,9 +52,23 @@ public class SaveSystem : MonoBehaviour
     public void Unregister(ISaveable saveable) =>
         _saveables.Remove(saveable);
 
-    // ── Save ───────────────────────────────────────────────────────────────
+    // ── Scope-aware Save ───────────────────────────────────────────────────
 
-    public void Save(string slotName = "slot0")
+    public void SaveProfile(string slotName = "slot0") => SaveScope(RunScopeTag.Profile, slotName);
+    public void SaveRun(string slotName = "slot0")     => SaveScope(RunScopeTag.Run,     slotName);
+    public void SaveWorld(string slotName = "slot0")   => SaveScope(RunScopeTag.World,   slotName);
+
+    public void SaveAll(string slotName = "slot0")
+    {
+        SaveScope(RunScopeTag.Profile, slotName);
+        SaveScope(RunScopeTag.Run,     slotName);
+        SaveScope(RunScopeTag.World,   slotName);
+    }
+
+    /// <summary>Legacy entry point — saves all scopes. Prefer SaveAll/SaveRun/etc.</summary>
+    public void Save(string slotName = "slot0") => SaveAll(slotName);
+
+    private void SaveScope(RunScopeTag scope, string slotName)
     {
         var envelope = new SaveEnvelope
         {
@@ -52,10 +78,11 @@ public class SaveSystem : MonoBehaviour
 
         foreach (var saveable in _saveables)
         {
+            if (saveable.SaveScope != scope) continue;
             try
             {
-                var dto     = saveable.CaptureSaveData();
-                var entry   = new SaveEntry
+                var dto   = saveable.CaptureSaveData();
+                var entry = new SaveEntry
                 {
                     SaveId   = saveable.SaveId,
                     SaveType = saveable.SaveType,
@@ -69,19 +96,33 @@ public class SaveSystem : MonoBehaviour
             }
         }
 
-        string path = GetSavePath(slotName);
+        string path = GetScopePath(slotName, scope);
         File.WriteAllText(path, JsonUtility.ToJson(envelope, prettyPrint: true));
-        Debug.Log($"[SaveSystem] Saved to {path}");
+        Debug.Log($"[SaveSystem] Saved {scope} scope to {path}");
     }
 
-    // ── Load ───────────────────────────────────────────────────────────────
+    // ── Scope-aware Load ───────────────────────────────────────────────────
 
-    public void Load(string slotName = "slot0")
+    public void LoadProfile(string slotName = "slot0") => LoadScope(RunScopeTag.Profile, slotName);
+    public void LoadRun(string slotName = "slot0")     => LoadScope(RunScopeTag.Run,     slotName);
+    public void LoadWorld(string slotName = "slot0")   => LoadScope(RunScopeTag.World,   slotName);
+
+    public void LoadAll(string slotName = "slot0")
     {
-        string path = GetSavePath(slotName);
+        LoadScope(RunScopeTag.Profile, slotName);
+        LoadScope(RunScopeTag.Run,     slotName);
+        LoadScope(RunScopeTag.World,   slotName);
+    }
+
+    /// <summary>Legacy entry point — loads all scopes. Prefer LoadAll/LoadRun/etc.</summary>
+    public void Load(string slotName = "slot0") => LoadAll(slotName);
+
+    private void LoadScope(RunScopeTag scope, string slotName)
+    {
+        string path = GetScopePath(slotName, scope);
         if (!File.Exists(path))
         {
-            Debug.LogWarning($"[SaveSystem] No save file at {path}");
+            Debug.Log($"[SaveSystem] No {scope} save at {path} — skipping.");
             return;
         }
 
@@ -92,29 +133,26 @@ public class SaveSystem : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[SaveSystem] Failed to parse save file: {ex.Message}");
+            Debug.LogError($"[SaveSystem] Failed to parse {scope} save: {ex.Message}");
             return;
         }
 
-        if (envelope == null || envelope.Entries == null)
+        if (envelope?.Entries == null)
         {
-            Debug.LogWarning("[SaveSystem] Save file has no entries.");
+            Debug.LogWarning($"[SaveSystem] {scope} save file has no entries.");
             return;
         }
 
-        // Build a lookup by SaveId for fast routing
         var lookup = new Dictionary<string, SaveEntry>(envelope.Entries.Count);
         foreach (var entry in envelope.Entries)
             lookup[entry.SaveId] = entry;
 
         foreach (var saveable in _saveables)
         {
+            if (saveable.SaveScope != scope) continue;
             if (!lookup.TryGetValue(saveable.SaveId, out var entry)) continue;
-
             try
             {
-                // Saveables declare their own DTO type via RestoreSaveData —
-                // they must JsonUtility.FromJson<T> internally if needed.
                 saveable.RestoreSaveData(entry.DataJson);
             }
             catch (Exception ex)
@@ -123,18 +161,65 @@ public class SaveSystem : MonoBehaviour
             }
         }
 
-        Debug.Log($"[SaveSystem] Loaded from {path} (scene: {envelope.SceneId}, version: {envelope.Version})");
+        Debug.Log($"[SaveSystem] Loaded {scope} scope from {path} (scene: {envelope.SceneId})");
     }
 
+    // ── ClearRun ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Deletes the Run-scoped save envelope. Called by RunManager on death.
+    /// Profile and World envelopes are untouched.
+    /// </summary>
+    public void ClearRun(string slotName = "slot0")
+    {
+        string path = GetScopePath(slotName, RunScopeTag.Run);
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+            Debug.Log($"[SaveSystem] Cleared Run scope save at {path}");
+        }
+    }
+
+    // ── Deferred Restore ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Queue a scope restore to fire once all ISaveables have run Start() after a scene load.
+    /// Use this when loading into a new scene — objects may not have registered yet.
+    /// </summary>
+    public void RestoreAfterSceneLoad(RunScopeTag scope, string slotName = "slot0")
+    {
+        _pendingSlot = slotName;
+        _pendingRestoreScopes.Add(scope);
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (_pendingRestoreScopes.Count == 0) return;
+        // Defer one frame so all Start() calls complete before restoring.
+        StartCoroutine(FlushPendingRestores());
+    }
+
+    private System.Collections.IEnumerator FlushPendingRestores()
+    {
+        yield return null; // wait one frame for all Start() registrations
+        foreach (var scope in _pendingRestoreScopes)
+            LoadScope(scope, _pendingSlot ?? "slot0");
+        _pendingRestoreScopes.Clear();
+        _pendingSlot = null;
+    }
+
+    // ── Slot queries ───────────────────────────────────────────────────────
+
     public bool SlotExists(string slotName = "slot0") =>
-        File.Exists(GetSavePath(slotName));
+        File.Exists(GetScopePath(slotName, RunScopeTag.Profile)) ||
+        File.Exists(GetScopePath(slotName, RunScopeTag.World))   ||
+        File.Exists(GetScopePath(slotName, RunScopeTag.Run));
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private static string GetSavePath(string slotName)
+    private static string GetScopePath(string slotName, RunScopeTag scope)
     {
-        // Sanitize slotName to prevent path traversal if it ever becomes user-controlled.
         var safe = Regex.Replace(slotName, @"[^a-zA-Z0-9_\-]", "_");
-        return Path.Combine(Application.persistentDataPath, $"save_{safe}.json");
+        return Path.Combine(Application.persistentDataPath, $"save_{safe}_{scope}.json");
     }
 }

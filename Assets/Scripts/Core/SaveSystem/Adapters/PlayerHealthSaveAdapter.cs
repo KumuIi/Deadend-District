@@ -9,8 +9,9 @@ public class PlayerHealthSaveAdapter : MonoBehaviour, ISaveable
 {
     private PlayerHealth _health;
 
-    public string SaveId   => "player.health";
-    public string SaveType => "PlayerHealth";
+    public string      SaveId    => "player.health";
+    public string      SaveType  => "PlayerHealth";
+    public RunScopeTag SaveScope => RunScopeTag.Run;
 
     private void Awake() => _health = GetComponent<PlayerHealth>();
 

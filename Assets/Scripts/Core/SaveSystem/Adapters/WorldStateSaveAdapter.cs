@@ -8,8 +8,9 @@ using UnityEngine;
 /// </summary>
 public class WorldStateSaveAdapter : MonoBehaviour, ISaveable
 {
-    public string SaveId   => "world.state";
-    public string SaveType => "WorldState";
+    public string      SaveId    => "world.state";
+    public string      SaveType  => "WorldState";
+    public RunScopeTag SaveScope => RunScopeTag.World;
 
     private void Start()
     {
