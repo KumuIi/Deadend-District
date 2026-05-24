@@ -17,59 +17,53 @@ MonoBehaviour:
     key: StarterMakarov
     type: 0
     category: Tutorial
-    description: 
+    description:
     deprecated: 0
   - displayName: Player in darkness
     key: player.in_darkness
     type: 0
-    category: Tutorial
-    description: 
+    category: Player
+    description: True when battery is depleted and player has no active light source.
     deprecated: 0
-  - displayName: player is dead
+  - displayName: Player is dead
     key: player.is_dead
     type: 0
-    category: Tutorial
-    description: 
+    category: Player
+    description: Set by RunManager on player death.
     deprecated: 0
-  - displayName: run active
+  - displayName: Run active
     key: run.active
     type: 0
-    category: Tutorial
-    description: 
+    category: Run
+    description: True while a run is in progress.
     deprecated: 0
-  - displayName: run extracted
+  - displayName: Run extracted
     key: run.extracted
     type: 0
-    category: Tutorial
-    description: 
+    category: Run
+    description: True when player successfully extracts.
     deprecated: 0
-  - displayName: run extracted
-    key: run.extracted
-    type: 0
-    category: Tutorial
-    description: 
-    deprecated: 0
-  - displayName: recharge station used
+  - displayName: Recharge station used
     key: hub.recharge_station.used
     type: 0
-    category: Tutorial
-    description: 
+    category: Hub
+    description: True once the recharge station has been used this session.
     deprecated: 0
-  - displayName: recharge station
-    key: hub.recharge_station.used
-    type: 0
-    category: Tutorial
-    description: 
-    deprecated: 0
-  - displayName: battery emoty
+  - displayName: Battery empty
     key: player.battery.empty
     type: 0
-    category: Tutorial
-    description: 
+    category: Player
+    description: True when active battery charge reaches zero.
     deprecated: 0
-  - displayName: battery low
+  - displayName: Battery low
     key: player.battery.low
     type: 0
-    category: Tutorial
-    description: 
+    category: Player
+    description: True when active battery charge drops below the low-warning threshold.
+    deprecated: 0
+  - displayName: NPC dead (template)
+    key: npc.{id}.dead
+    type: 0
+    category: NPC
+    description: Template key. Replace {id} with the specific NPC identifier. Written by BaseEnemyAI on death.
     deprecated: 0

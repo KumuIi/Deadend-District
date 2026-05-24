@@ -4,14 +4,13 @@ public enum StatType
 {
     Speed,
     SprintSpeed,
-    NoiseMult,
+    NoiseMultiplier,
     StaminaDrain,
     EnergyRegen,
     EnergyDrain,
     VisibilityScore,
     CarryCapacity,
     HazardResist,
-    NoiseMultiplier,
     BatteryEfficiency,
 }
 
@@ -32,7 +31,7 @@ public struct PlayerStatModifier
 
 /// <summary>
 /// Plain C# class — lives as a field on PlayerMotor and PlayerHealth.
-/// Net(stat) = product of all multipliers for that stat * (1 + sum of all flat bonuses).
+/// Net(stat) = (product of all multipliers) + (sum of all flat bonuses).
 /// With an empty stack, Net returns 1.0.
 /// </summary>
 public class StatModifierStack

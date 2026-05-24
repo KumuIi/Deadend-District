@@ -7,7 +7,7 @@ using UnityEngine.Events;
 /// Other systems call TakeDamage / Heal / UseEnergy / RestoreEnergy.
 /// Energy regenerates automatically at <see cref="energyRegenRate"/> per second.
 /// </summary>
-public sealed class PlayerHealth : MonoBehaviour
+public sealed class PlayerHealth : MonoBehaviour, IDamageable
 {
     [Header("=== Health ===")]
     public float maxHealth = 100f;
@@ -24,6 +24,7 @@ public sealed class PlayerHealth : MonoBehaviour
     public float CurrentHealth => _currentHealth;
     public float CurrentEnergy => _currentEnergy;
     public bool  IsDead        => _currentHealth <= 0f;
+    public bool  IsAlive       => _currentHealth > 0f;
 
     // ── Events ─────────────────────────────────────────────────────────────
 
@@ -52,6 +53,13 @@ public sealed class PlayerHealth : MonoBehaviour
     }
 
     // ── Public API ─────────────────────────────────────────────────────────
+
+    public float ApplyDamage(DamageContext ctx)
+    {
+        float before = _currentHealth;
+        TakeDamage(ctx.BaseDamage);
+        return Mathf.Max(0f, before - _currentHealth);
+    }
 
     public void TakeDamage(float amount)
     {

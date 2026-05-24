@@ -75,8 +75,9 @@ public class PlayerMotor : MonoBehaviour
                                              && !_inSlopeMode && !_hitCeiling && !_steepGround && !_jumpedThisFrame
                                              && !_isCrouching;
     public float   CrouchProgress         => Mathf.InverseLerp(config.standHeight, config.crouchHeight, _currentHeight);
-    public float   SpeedMultiplier        { get; set; } = 1f;
+    public float   SpeedMultiplier        => StatModifiers.Net(StatType.Speed);
     public float   WeaponWeightMultiplier { get; set; } = 1f;
+    public StatModifierStack StatModifiers { get; } = new StatModifierStack();
     public event System.Action OnJumped;
 
     // ─── Geometry helpers ─────────────────────────────────────────────────
@@ -243,9 +244,11 @@ public class PlayerMotor : MonoBehaviour
         if (_inSlopeMode) return;
         Vector2 move    = _input.MoveInput;
         bool    sprint  = _input.SprintHeld && move.y > 0f && !_isCrouching;
+        float speedNet = StatModifiers.Net(StatType.Speed);
+        if (sprint) speedNet *= StatModifiers.Net(StatType.SprintSpeed);
         float   targetSpeed = (_isCrouching ? config.crouchSpeed
                               : sprint      ? config.sprintSpeed
-                                            : config.walkSpeed) * SpeedMultiplier * WeaponWeightMultiplier;
+                                            : config.walkSpeed) * speedNet * WeaponWeightMultiplier;
 
         Vector3 fwd   = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
         Vector3 right = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
