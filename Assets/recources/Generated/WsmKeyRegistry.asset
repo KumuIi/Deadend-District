@@ -61,3 +61,15 @@ MonoBehaviour:
     category: Tutorial
     description: 
     deprecated: 0
+  - displayName: battery emoty
+    key: player.battery.empty
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0
+  - displayName: battery low
+    key: player.battery.low
+    type: 0
+    category: Tutorial
+    description: 
+    deprecated: 0

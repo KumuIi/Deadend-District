@@ -6,6 +6,53 @@
 
 ---
 
+## Implementation Notes (from Wave 0 debate)
+
+### Split into 3 sessions — do not do this in one go
+
+**Session 1 — Resource systems** (W1-01 → W1-04)
+`EncumbranceSystem` → Stamina integration → `BatteryItemSO`/`BatteryItemInstance` → `BatterySystem`
+End state: encumbrance visibly slows movement, battery drains in real time.
+
+**Session 2 — Light & darkness** (W1-05 → W1-08)
+`ILightSource`/`LightSource` → `DarknessState` → HUD bars → `LowBatteryWarning`
+End state: flashlight toggles, battery bar drains, screen effect triggers on depletion.
+
+**Session 3 — Enemies** (W1-09 → W1-12)
+`BaseEnemyAI` → `GuardAI` → `EnemySpawnPoint` → NavMesh bake
+End state: one guard patrols, reacts to noise, chases player, deals damage.
+
+---
+
+### WSM keys this wave writes — must exist in `WsmKeyRegistrySO` before starting
+
+| Key | Type | Written by |
+|-----|------|------------|
+| `player.in_darkness` | bool | `DarknessStateWriter` |
+| `player.is_dead` | bool | `RunManager` (Wave 2) — pre-register now |
+| `run.active` | bool | `RunManager` (Wave 2) — pre-register now |
+| `npc.{id}.dead` | bool | `BaseEnemyAI` on death |
+
+Add these via the `WsmKeyRegistrySO` asset in the Inspector before writing any system code. This populates the `[WsmKey]` dropdowns so you never type key strings by hand.
+
+---
+
+### StatType entries added in Wave 0 that this wave uses
+
+The `StatType` enum was extended beyond the original plan. Wave 1 systems must use these exact names:
+
+| StatType | Used by |
+|----------|---------|
+| `StatType.Speed` | `EncumbranceSystem` |
+| `StatType.NoiseMult` | `EncumbranceSystem` (noise radius multiplier) |
+| `StatType.StaminaDrain` | `EncumbranceSystem` (stamina drain rate multiplier) |
+| `StatType.EnergyDrain` | Stamina integration in `PlayerHealth` |
+| `StatType.EnergyRegen` | Available for augments later — do not use for encumbrance |
+
+Do not mutate `PlayerHealth.energyRegenRate` or `PlayerMotor` speed fields directly. Push a `PlayerStatModifier` onto the stack and let `Net()` compute the result.
+
+---
+
 ## W1-01 — `EncumbranceSystem`
 
 **File:** `Scripts/Player/EncumbranceSystem.cs`
