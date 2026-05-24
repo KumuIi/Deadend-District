@@ -13,7 +13,11 @@
       "Skill(debate)",
       "Bash(Get-ChildItem -Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Recurse -File -Filter \"*.cs\")",
       "Bash(Select-Object FullName)",
-      "Bash(Sort-Object FullName)"
+      "Bash(Sort-Object FullName)",
+      "Bash(Get-ChildItem -Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem -Recurse \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Filter \"*.cs\")"
     ]
   }
 }
