@@ -257,12 +257,7 @@ public class PlayerMotor : MonoBehaviour
             ? (wish.sqrMagnitude > 0.01f ? config.acceleration : config.deceleration)
             : config.airDeceleration;
 
-        // CollideAndSlide projects horizontal movement onto the slope surface, reducing
-        // the XZ component by cos(slopeAngle). Compensate here so the reconstructed
-        // velocity after projection stays at targetSpeed along the surface.
-        float slopeComp = (_grounded && _groundHit.normal.y > 0.01f) ? 1f / _groundHit.normal.y : 1f;
-
-        Vector3 newH = Vector3.MoveTowards(curH, wish * (targetSpeed * slopeComp), accel * Time.fixedDeltaTime);
+        Vector3 newH = Vector3.MoveTowards(curH, wish * targetSpeed, accel * Time.fixedDeltaTime);
         _velocity.x  = newH.x;
         _velocity.z  = newH.z;
     }
@@ -331,6 +326,12 @@ public class PlayerMotor : MonoBehaviour
             config.collisionMask, QueryTriggerInteraction.Ignore);
 
         if (!hit) return vel;
+
+        // Walkable slopes in the horizontal pass would trigger wallDot=0 (the slope's
+        // XZ-projected normal faces directly opposite to uphill movement). Skip them here
+        // and let SnapToGround handle the vertical lift instead.
+        if (!isGravPass && _grounded && ch.normal.y >= Mathf.Cos(config.maxSlopeAngle * Mathf.Deg2Rad))
+            return vel;
 
         float   snapDist   = Mathf.Max(ch.distance - SkinWidth, 0f);
         Vector3 snapVel    = vel.normalized * snapDist;
