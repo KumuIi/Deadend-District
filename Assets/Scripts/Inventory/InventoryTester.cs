@@ -57,7 +57,7 @@ public sealed class InventoryTester : MonoBehaviour
                 item = new AmmoItemInstance(a);
                 break;
             default:
-                item = new ItemInstance(so);
+                item = ItemInstanceFactory.Create(so);
                 break;
         }
 

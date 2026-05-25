@@ -159,7 +159,14 @@ public sealed class InventoryUI : MonoBehaviour
             // C# reference equality: each WeaponItemInstance is a unique object even
             // if two items share the same WeaponSO. No GUID needed for runtime checks.
             _contextMenu.IsItemEquipped = item =>
-                item is WeaponItemInstance wi && wi == _equippedItem;
+                (item is WeaponItemInstance wi && wi == _equippedItem) ||
+                (item is FlashlightItemInstance &&
+                 EquipmentController.Instance?.GetEquipped("flashlight") == item);
+
+            _tooltip.IsItemEquipped = item =>
+                (item is WeaponItemInstance wi2 && wi2 == _equippedItem) ||
+                (item is FlashlightItemInstance &&
+                 EquipmentController.Instance?.GetEquipped("flashlight") == item);
         }
     }
 
@@ -357,16 +364,30 @@ public sealed class InventoryUI : MonoBehaviour
 
     private void ContextMenu_Equip(ItemInstance item)
     {
-        if (weaponManager == null || !(item is WeaponItemInstance wi)) return;
-        if (weaponManager.EquipFromInventory(wi, HandleInventoryReload))
-            _equippedItem = wi;
+        if (item is WeaponItemInstance wi)
+        {
+            if (weaponManager == null) return;
+            if (weaponManager.EquipFromInventory(wi, HandleInventoryReload))
+                _equippedItem = wi;
+        }
+        else if (item is FlashlightItemInstance fi)
+        {
+            EquipmentController.Instance?.EquipToSlot("flashlight", fi);
+        }
     }
 
     private void ContextMenu_Unequip(ItemInstance item)
     {
-        if (weaponManager == null) return;
-        _equippedItem = null;
-        weaponManager.EquipNothing();
+        if (item is WeaponItemInstance)
+        {
+            if (weaponManager == null) return;
+            _equippedItem = null;
+            weaponManager.EquipNothing();
+        }
+        else if (item is FlashlightItemInstance)
+        {
+            EquipmentController.Instance?.GetSlot("flashlight")?.Unequip();
+        }
     }
 
     private void ContextMenu_RemoveMagazine(ItemInstance item)
@@ -440,6 +461,11 @@ public sealed class InventoryUI : MonoBehaviour
             return;
         }
 
+        // Unequip flashlight before dropping
+        if (item is FlashlightItemInstance &&
+            EquipmentController.Instance?.GetEquipped("flashlight") == item)
+            EquipmentController.Instance.GetSlot("flashlight")?.Unequip();
+
         // Clean up weapon state after successful spawn
         if (item is WeaponItemInstance droppedWeapon)
         {
@@ -488,6 +514,17 @@ public sealed class InventoryUI : MonoBehaviour
                 return DragInteractionResult.HandledConsumeDragged;
             }
             return DragInteractionResult.HandledReturnDragged;
+        }
+
+        // ── Battery → Flashlight (swap into BatterySystem) ───────────────
+        if (dragged is BatteryItemInstance battery && target is FlashlightItemInstance)
+        {
+            var bs = BatterySystem.Instance;
+            if (bs == null) return DragInteractionResult.NotHandled;
+
+            bs.SwapBattery(battery);
+            _views.Remove(battery);
+            return DragInteractionResult.HandledConsumeDragged;
         }
 
         // ── Magazine → Weapon ─────────────────────────────────────────────

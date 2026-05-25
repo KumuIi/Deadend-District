@@ -9,9 +9,11 @@ public static class ItemInstanceFactory
     public static ItemInstance Create(ItemSO so)
     {
         if (so == null) { Debug.LogWarning("[ItemInstanceFactory] Null ItemSO passed to Create()."); return null; }
-        if (so is WeaponSO weapon)   return new WeaponItemInstance(weapon);
-        if (so is MagazineSO mag)    return new MagazineItemInstance(mag);
-        if (so is AmmunitionSO ammo) return new AmmoItemInstance(ammo);
+        if (so is WeaponSO weapon)      return new WeaponItemInstance(weapon);
+        if (so is MagazineSO mag)       return new MagazineItemInstance(mag);
+        if (so is AmmunitionSO ammo)    return new AmmoItemInstance(ammo);
+        if (so is FlashlightSO fl)      return new FlashlightItemInstance(fl);
+        if (so is BatteryItemSO bat)    return new BatteryItemInstance(bat);
         return new ItemInstance(so);
     }
 }

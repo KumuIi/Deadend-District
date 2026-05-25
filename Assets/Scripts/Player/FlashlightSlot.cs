@@ -45,6 +45,13 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     public bool TryEquip(ItemInstance item)
     {
         if (item is not FlashlightItemInstance fi) return false;
+
+        if (fi.FlashlightDef.flashlightPrefab == null)
+        {
+            Debug.LogError($"[FlashlightSlot] FlashlightSO '{fi.FlashlightDef.name}' has no flashlightPrefab assigned. Open the SO and assign the prefab.");
+            return false;
+        }
+
         Unequip();
 
         _equipped      = fi;
