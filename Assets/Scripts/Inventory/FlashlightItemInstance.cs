@@ -20,7 +20,7 @@ public class FlashlightItemInstance : ItemInstance
 
     public FlashlightItemInstance(FlashlightSO definition) : base(definition)
     {
-        CurrentCharge = definition.maxCharge;
+        CurrentCharge = 0f;
     }
 
     /// <summary>
