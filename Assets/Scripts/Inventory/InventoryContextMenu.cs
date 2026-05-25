@@ -28,6 +28,7 @@ public sealed class InventoryContextMenu
     public Action<ItemInstance> OnEquip;
     public Action<ItemInstance> OnUnequip;
     public Action<ItemInstance> OnRemoveMagazine;
+    public Action<ItemInstance> OnRemoveBattery;
     public Action<ItemInstance> OnDrop;
 
     /// <summary>Return true if the given item is currently the equipped weapon. Used to toggle Equip/Unequip.</summary>
@@ -86,13 +87,16 @@ public sealed class InventoryContextMenu
             if (wi.LoadedMagazine != null)
                 entries.Add(("Remove Magazine", () => { OnRemoveMagazine?.Invoke(item); Hide(); }));
         }
-        else if (item is FlashlightItemInstance)
+        else if (item is FlashlightItemInstance fi)
         {
             bool equipped = IsItemEquipped?.Invoke(item) ?? false;
             if (equipped)
                 entries.Add(("Unequip", () => { OnUnequip?.Invoke(item); Hide(); }));
             else
                 entries.Add(("Equip",   () => { OnEquip?.Invoke(item);   Hide(); }));
+
+            if (fi.InsertedBattery != null)
+                entries.Add(("Remove Battery", () => { OnRemoveBattery?.Invoke(item); Hide(); }));
         }
         entries.Add(("Drop", () => { OnDrop?.Invoke(item); Hide(); }));
 

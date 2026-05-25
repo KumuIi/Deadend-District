@@ -96,7 +96,6 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
             LightSource?.ForceOff();
 
         bool allowed = CurrentWeaponAllowsOffHand();
-        Debug.Log($"[FlashlightSlot] TryEquip: GO={_flashlightGO?.name ?? "NULL"}, allowed={allowed}, view={_flashlightView?.name ?? "NULL"}");
         if (_flashlightGO != null) _flashlightGO.SetActive(allowed);
 
         if (allowed)
@@ -125,21 +124,24 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         OnDepleted?.Invoke();        // player has no light source
     }
 
-    /// <summary>Transfers charge from a battery item into the equipped flashlight.</summary>
-    public void SwapBattery(BatteryItemInstance battery)
+    /// <summary>
+    /// Called by InventoryUI after a battery is loaded into or ejected from the flashlight.
+    /// Syncs HUD and depletion events to the new charge state.
+    /// </summary>
+    public void OnBatteryLoaded(FlashlightItemInstance flashlight)
     {
-        if (_equipped == null || battery == null) return;
+        if (flashlight != _equipped) return;
 
-        bool wasDepleted = _equipped.IsDepleted;
-        _equipped.SwapWith(battery);
+        bool wasDepleted = _wasDepleted;
+        _wasDepleted            = _equipped.IsDepleted;
+        _lastReportedNormalized = _equipped.ChargeNormalized;
+
+        if (_wasDepleted) LightSource?.ForceOff();
 
         OnChargeChanged?.Invoke(_equipped.ChargeNormalized);
 
-        if (wasDepleted && !_equipped.IsDepleted)
-        {
-            _wasDepleted = false;
-            OnRestored?.Invoke();
-        }
+        if (wasDepleted && !_wasDepleted) OnRestored?.Invoke();
+        if (!wasDepleted && _wasDepleted) OnDepleted?.Invoke();
     }
 
     // ── Weapon switch callback ─────────────────────────────────────────────

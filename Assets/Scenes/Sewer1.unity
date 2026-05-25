@@ -17790,6 +17790,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1918445247915862736, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _warnThreshold
+      value: 20
+      objectReference: {fileID: 0}
     - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.014400258

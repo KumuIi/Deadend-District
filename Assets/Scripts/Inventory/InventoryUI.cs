@@ -161,6 +161,7 @@ public sealed class InventoryUI : MonoBehaviour
             _contextMenu.OnEquip          = ContextMenu_Equip;
             _contextMenu.OnUnequip        = ContextMenu_Unequip;
             _contextMenu.OnRemoveMagazine = ContextMenu_RemoveMagazine;
+            _contextMenu.OnRemoveBattery  = ContextMenu_RemoveBattery;
             _contextMenu.OnDrop           = ContextMenu_Drop;
 
             // C# reference equality: each WeaponItemInstance is a unique object even
@@ -402,6 +403,23 @@ public sealed class InventoryUI : MonoBehaviour
         }
     }
 
+    private void ContextMenu_RemoveBattery(ItemInstance item)
+    {
+        if (item is not FlashlightItemInstance fi) return;
+        if (fi.InsertedBattery == null) return;
+
+        // Preflight: check space before committing
+        if (Grid.FindFreeSpace(fi.InsertedBattery) == null)
+        {
+            Debug.LogWarning("[InventoryUI] Remove Battery: no free space in inventory.");
+            return;
+        }
+
+        BatteryItemInstance battery = fi.EjectBattery();
+        TryPickup(battery);
+        flashlightSlot?.OnBatteryLoaded(fi); // sync HUD after eject
+    }
+
     private void ContextMenu_RemoveMagazine(ItemInstance item)
     {
         if (!(item is WeaponItemInstance wi)) return;
@@ -533,16 +551,24 @@ public sealed class InventoryUI : MonoBehaviour
         }
 
         // ── Battery → Flashlight ──────────────────────────────────────────
-        if (dragged is BatteryItemInstance battery && target is FlashlightItemInstance)
+        if (dragged is BatteryItemInstance battery && target is FlashlightItemInstance flashlight)
         {
             if (flashlightSlot == null) return DragInteractionResult.NotHandled;
-            flashlightSlot.SwapBattery(battery);
-            if (battery.CurrentCharge <= 0f)
+
+            // Remove battery from grid first — flashlight takes ownership
+            BatteryItemInstance ejected = flashlight.LoadBattery(battery);
+            _views.Remove(battery);
+
+            // If a battery was already loaded, return it to inventory
+            if (ejected != null)
             {
-                _views.Remove(battery);
-                return DragInteractionResult.HandledConsumeDragged;
+                if (TryPickup(ejected) == PickupResult.NoSpace)
+                    Debug.LogWarning("[InventoryUI] Battery swap: no space to return old battery — it is lost.");
             }
-            return DragInteractionResult.HandledReturnDragged;
+
+            // Notify FlashlightSlot so HUD and events sync
+            flashlightSlot.OnBatteryLoaded(flashlight);
+            return DragInteractionResult.HandledConsumeDragged;
         }
 
         // ── Magazine → Weapon ─────────────────────────────────────────────
