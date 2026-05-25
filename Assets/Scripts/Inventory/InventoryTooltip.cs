@@ -106,9 +106,13 @@ public sealed class InventoryTooltip
             case FlashlightItemInstance fi:
             {
                 bool equipped = IsItemEquipped?.Invoke(fi) ?? false;
-                string battery = equipped
-                    ? $"{Mathf.RoundToInt((BatterySystem.Instance?.ActiveChargeNormalized ?? 0f) * 100f)}%"
-                    : "--";
+                string battery;
+                if (!equipped)
+                    battery = "--";
+                else if (BatterySystem.Instance == null)
+                    battery = "--";
+                else
+                    battery = $"{Mathf.RoundToInt(BatterySystem.Instance.ActiveChargeNormalized * 100f)}%";
                 return $"<b>{fi.data.itemName}</b>\n" +
                        $"Battery: {battery}" +
                        WeightLine(item);

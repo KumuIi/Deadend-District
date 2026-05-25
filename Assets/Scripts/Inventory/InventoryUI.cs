@@ -34,6 +34,8 @@ public sealed class InventoryUI : MonoBehaviour
     [Header("=== Weapon Integration ===")]
     [Tooltip("Assign WeaponManager so 'Equip' and 'Remove Magazine' context menu actions work.")]
     public WeaponManager weaponManager;
+    [Tooltip("Assign FlashlightSlot on the Player so flashlight equip/unequip works.")]
+    public FlashlightSlot flashlightSlot;
 
     [Header("=== Colours ===")]
     [Tooltip("Keep alpha low (0.15–0.3) so 3D models are visible behind the cells.")]
@@ -130,6 +132,11 @@ public sealed class InventoryUI : MonoBehaviour
             Debug.LogWarning("[InventoryUI] Canvas is Screen Space Overlay — " +
                              "the 3D tilt effect won't look correct. Use Screen Space – Camera.");
 
+        if (weaponManager == null)
+            Debug.LogError("[InventoryUI] WeaponManager is not assigned — weapon equip will not work.", this);
+        if (flashlightSlot == null)
+            Debug.LogError("[InventoryUI] FlashlightSlot is not assigned — flashlight equip will not work.", this);
+
         Grid = new InventoryGrid(gridWidth, gridHeight);
 
         SetupRootTransform();
@@ -160,13 +167,11 @@ public sealed class InventoryUI : MonoBehaviour
             // if two items share the same WeaponSO. No GUID needed for runtime checks.
             _contextMenu.IsItemEquipped = item =>
                 (item is WeaponItemInstance wi && wi == _equippedItem) ||
-                (item is FlashlightItemInstance &&
-                 EquipmentController.Instance?.GetEquipped("flashlight") == item);
+                (item is FlashlightItemInstance && flashlightSlot != null && flashlightSlot.EquippedItem == item);
 
             _tooltip.IsItemEquipped = item =>
                 (item is WeaponItemInstance wi2 && wi2 == _equippedItem) ||
-                (item is FlashlightItemInstance &&
-                 EquipmentController.Instance?.GetEquipped("flashlight") == item);
+                (item is FlashlightItemInstance && flashlightSlot != null && flashlightSlot.EquippedItem == item);
         }
     }
 
@@ -372,7 +377,12 @@ public sealed class InventoryUI : MonoBehaviour
         }
         else if (item is FlashlightItemInstance fi)
         {
-            EquipmentController.Instance?.EquipToSlot("flashlight", fi);
+            if (flashlightSlot == null)
+            {
+                Debug.LogError("[InventoryUI] FlashlightSlot is not assigned — cannot equip flashlight.", this);
+                return;
+            }
+            flashlightSlot.TryEquip(fi);
         }
     }
 
@@ -386,7 +396,12 @@ public sealed class InventoryUI : MonoBehaviour
         }
         else if (item is FlashlightItemInstance)
         {
-            EquipmentController.Instance?.GetSlot("flashlight")?.Unequip();
+            if (flashlightSlot == null)
+            {
+                Debug.LogError("[InventoryUI] FlashlightSlot is not assigned — cannot unequip flashlight.", this);
+                return;
+            }
+            flashlightSlot.Unequip();
         }
     }
 
@@ -462,9 +477,13 @@ public sealed class InventoryUI : MonoBehaviour
         }
 
         // Unequip flashlight before dropping
-        if (item is FlashlightItemInstance &&
-            EquipmentController.Instance?.GetEquipped("flashlight") == item)
-            EquipmentController.Instance.GetSlot("flashlight")?.Unequip();
+        if (item is FlashlightItemInstance)
+        {
+            if (flashlightSlot == null)
+                Debug.LogError("[InventoryUI] FlashlightSlot is not assigned — flashlight dropped without unequipping.", this);
+            else if (flashlightSlot.EquippedItem == item)
+                flashlightSlot.Unequip();
+        }
 
         // Clean up weapon state after successful spawn
         if (item is WeaponItemInstance droppedWeapon)

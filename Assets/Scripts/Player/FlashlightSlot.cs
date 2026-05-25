@@ -15,6 +15,8 @@ using UnityEngine;
 public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
 {
     [SerializeField] private WeaponManager _weaponManager;
+    [Tooltip("The 'Guns' empty GO that gun prefabs are parented to (gives flashlight the same bob/sway).")]
+    [SerializeField] private Transform _weaponRoot;
 
     public string       SlotId       => "flashlight";
     public ItemInstance EquippedItem => _equipped;
@@ -55,7 +57,8 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         Unequip();
 
         _equipped      = fi;
-        _spawnedPrefab = Instantiate(fi.FlashlightDef.flashlightPrefab, _weaponManager.transform);
+        var parent     = _weaponRoot != null ? _weaponRoot : _weaponManager.transform;
+        _spawnedPrefab = Instantiate(fi.FlashlightDef.flashlightPrefab, parent);
         _view          = _spawnedPrefab.GetComponentInChildren<FlashlightView>();
 
         // Show/hide based on current weapon, then override IK and rebuild.
@@ -121,7 +124,8 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     private bool CurrentWeaponAllowsOffHand()
     {
         var gun = _weaponManager?.CurrentWeapon;
-        return gun != null && gun.weaponData != null && gun.weaponData.allowsOffHandItem;
+        if (gun == null) return true; // no weapon equipped — flashlight is standalone, always show
+        return gun.weaponData != null && gun.weaponData.allowsOffHandItem;
     }
 
 #if UNITY_EDITOR

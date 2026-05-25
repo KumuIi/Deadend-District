@@ -312,6 +312,7 @@ MonoBehaviour:
   gridHeight: 15
   cellSize: 25
   weaponManager: {fileID: 6033725508184216472}
+  flashlightSlot: {fileID: 8165028443347435510}
   cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.2}
   cellHighlight: {r: 0, g: 1, b: 0, a: 0.69803923}
   cellBlocked: {r: 0.65, g: 0.1, b: 0.1, a: 0.69803923}
@@ -1829,6 +1830,38 @@ Transform:
   - {fileID: 8287104403765643736}
   m_Father: {fileID: 256993547341705998}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5504335519158435283
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6395021366572176742}
+  m_Layer: 0
+  m_Name: FlashlightPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6395021366572176742
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5504335519158435283}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2611616795660079865}
+  m_Father: {fileID: 1982277221831344910}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5568503385448139460
 GameObject:
   m_ObjectHideFlags: 0
@@ -2043,6 +2076,12 @@ GameObject:
   - component: {fileID: 1182267514845902459}
   - component: {fileID: 2488752882836611764}
   - component: {fileID: 7505696192110024240}
+  - component: {fileID: 5018398539871175731}
+  - component: {fileID: 8082625033624405760}
+  - component: {fileID: 2300765085944272821}
+  - component: {fileID: 8165028443347435510}
+  - component: {fileID: 1918445247915862736}
+  - component: {fileID: 1314537000820138318}
   m_Layer: 0
   m_Name: '[Player]'
   m_TagString: Player
@@ -2138,7 +2177,7 @@ AudioSource:
   SpatializePostEffects: 0
   Priority: 128
   DopplerLevel: 1
-  MinDistance: 1
+  MinDistance: 0.9959754
   MaxDistance: 500
   Pan2D: 0
   rolloffMode: 0
@@ -2227,6 +2266,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
   config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
+  _playerHealth: {fileID: 4772443847941390725}
+  _encumbrance: {fileID: 5018398539871175731}
+  _sprintDrainRate: 8
+  _exhaustionRecoveryFraction: 0.2
   mouseSensitivity: 2
 --- !u!114 &6115976582632229670
 MonoBehaviour:
@@ -2292,7 +2335,7 @@ MonoBehaviour:
   _currentHealth: 100
   maxEnergy: 100
   _currentEnergy: 100
-  energyRegenRate: 0
+  energyRegenRate: 2
   OnDeath:
     m_PersistentCalls:
       m_Calls: []
@@ -2426,6 +2469,95 @@ MonoBehaviour:
   _promptFontSize: 14
   _promptOffsetY: 10
   _fadeSpeed: 10
+--- !u!114 &5018398539871175731
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1b42b9d30f7ac6448fdaa75eebdeaa1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EncumbranceSystem
+  _config: {fileID: 11400000, guid: 451d0862b5d58a444b1416e3c0ae0c18, type: 2}
+  _inventoryUI: {fileID: 8371605008115463076}
+  _motor: {fileID: 3513889191098211496}
+  _health: {fileID: 4772443847941390725}
+--- !u!114 &8082625033624405760
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05caf4161241a52418c390750f1f1c2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DarknessStateVisual
+  _postProcessVolume: {fileID: 0}
+  _blendSpeed: 2
+--- !u!114 &2300765085944272821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9dba5b5cff68e7d46a515c343440b64c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DarknessStateWriter
+  _huntDelaySeconds: 120
+--- !u!114 &8165028443347435510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b64bd24625d5d924f909aeadeb1e4e9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlashlightSlot
+  _weaponManager: {fileID: 6033725508184216472}
+  _weaponRoot: {fileID: 0}
+--- !u!114 &1918445247915862736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7caaf83018132c41841bdf2396f3319, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LowBatteryWarning
+  _flashlightSlot: {fileID: 8165028443347435510}
+  _warningClip: {fileID: 8300000, guid: e79d933869d5f464c9b00014acba8666, type: 3}
+  _warnThreshold: 0.2
+  _clearThreshold: 0.25
+  _flickerMinInterval: 0.05
+  _flickerMaxInterval: 0.15
+--- !u!114 &1314537000820138318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b64bd24625d5d924f909aeadeb1e4e9f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlashlightSlot
+  _weaponManager: {fileID: 6033725508184216472}
+  _weaponRoot: {fileID: 0}
 --- !u!1 &6631947371988985609
 GameObject:
   m_ObjectHideFlags: 0
@@ -2489,6 +2621,7 @@ Transform:
   m_Children:
   - {fileID: 6997981538978783331}
   - {fileID: 4707330550704300578}
+  - {fileID: 1982277221831344910}
   m_Father: {fileID: 7681915681699475355}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6834108146615930133
@@ -2963,6 +3096,38 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   inventoryManaged: 0
+--- !u!1 &7384750413385078890
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1982277221831344910}
+  m_Layer: 0
+  m_Name: Flashlight
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1982277221831344910
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7384750413385078890}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6395021366572176742}
+  m_Father: {fileID: 6514903454602418858}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7432015802694271070
 GameObject:
   m_ObjectHideFlags: 0
@@ -3571,6 +3736,7 @@ GameObject:
   - component: {fileID: 5523035584324527594}
   - component: {fileID: 2766828599089219978}
   - component: {fileID: 8773417110864000135}
+  - component: {fileID: 2574665437279322963}
   m_Layer: 0
   m_Name: PlayerHud
   m_TagString: Untagged
@@ -3629,10 +3795,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHUD
   playerHealth: {fileID: 4772443847941390725}
+  encumbrance: {fileID: 5018398539871175731}
+  batterySystem: {fileID: 0}
   paddingLeft: 20
   paddingBottom: 20
   healthColor: {r: 0.8, g: 0.15, b: 0.15, a: 0.9}
   energyColor: {r: 0.09411763, g: 0.69212604, b: 0.69803923, a: 0.9}
+  batteryColor: {r: 0.15, g: 0.65, b: 0.9, a: 0.9}
+--- !u!114 &2574665437279322963
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8514826629124626437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b06e57f09803fd4abeadfaf1c1e03af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BatterySystem
+  _startingRechargeable: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
 --- !u!1 &8739511608677595605
 GameObject:
   m_ObjectHideFlags: 0
@@ -3895,4 +4077,70 @@ Transform:
 Transform:
   m_CorrespondingSourceObject: {fileID: 1040947342551850563, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
   m_PrefabInstance: {fileID: 6691924420008529811}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1001 &9039067947790635340
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 6395021366572176742}
+    m_Modifications:
+    - target: {fileID: 5910054663295408399, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_Name
+      value: Flashlight
+      objectReference: {fileID: 0}
+    - target: {fileID: 5910054663295408399, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.207
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.013
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.401
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+--- !u!4 &2611616795660079865 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+  m_PrefabInstance: {fileID: 9039067947790635340}
   m_PrefabAsset: {fileID: 0}
