@@ -28,6 +28,11 @@ public abstract class ItemSO : ScriptableObject
         "Example L-shape (3 wide, extra cell below right): (0,0) (1,0) (2,0) (2,1)")]
     public Vector2Int[] cellOffsets = System.Array.Empty<Vector2Int>();
 
+    [Header("=== Weight ===")]
+    [Tooltip("Item weight in kilograms. Contributes to player encumbrance.")]
+    [Range(0f, 50f)]
+    public float weightKg = 0.5f;
+
     [Header("=== Visuals ===")]
     [Tooltip("3D model instantiated in the scene and physically placed over the inventory panel.")]
     public GameObject modelPrefab;

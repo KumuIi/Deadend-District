@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 /// <summary>
 /// Bottom-LEFT HUD panel with a health bar (red) and energy bar (yellow).
@@ -15,7 +16,8 @@ using UnityEngine.UI;
 public sealed class PlayerHUD : MonoBehaviour
 {
     [Header("=== References ===")]
-    public PlayerHealth playerHealth;
+    public PlayerHealth      playerHealth;
+    public EncumbranceSystem encumbrance;
 
     [Header("=== Position ===")]
     public float paddingLeft   = 20f;
@@ -25,8 +27,11 @@ public sealed class PlayerHUD : MonoBehaviour
     public Color healthColor = new Color(0.80f, 0.15f, 0.15f, 0.90f);
     public Color energyColor = new Color(0.85f, 0.75f, 0.15f, 0.90f);
 
-    private Image _healthFill;
-    private Image _energyFill;
+    private Image    _healthFill;
+    private Image    _energyFill;
+    private TextMeshProUGUI _weightLabel;
+
+    private static Sprite _fillSprite;
 
     private const float BarW = 200f;
     private const float BarH = 18f;
@@ -52,6 +57,8 @@ public sealed class PlayerHUD : MonoBehaviour
         _energyFill = BuildBar(panel.transform, 0, energyColor, "Energy");
         // Health bar — row 1 (top)
         _healthFill = BuildBar(panel.transform, 1, healthColor,  "Health");
+        // Weight label — above the bars
+        _weightLabel = BuildWeightLabel(panel.transform);
     }
 
     private void Update()
@@ -61,6 +68,44 @@ public sealed class PlayerHUD : MonoBehaviour
             ? playerHealth.CurrentHealth / playerHealth.maxHealth : 0f;
         _energyFill.fillAmount = playerHealth.maxEnergy > 0f
             ? playerHealth.CurrentEnergy / playerHealth.maxEnergy : 0f;
+
+        UpdateWeightLabel();
+    }
+
+    private void UpdateWeightLabel()
+    {
+        if (_weightLabel == null || encumbrance == null) return;
+
+        float current = encumbrance.CurrentWeightKg;
+        float max     = encumbrance.MaxCarryWeightKg;
+        float ratio   = max > 0f ? current / max : 0f;
+
+        _weightLabel.text = $"{current:F1} / {max:F1} kg";
+        _weightLabel.color = ratio < 0.6f  ? new Color(0.9f, 0.9f, 0.9f, 0.85f)   // white
+                           : ratio < 0.85f ? new Color(0.95f, 0.80f, 0.1f, 0.9f)   // yellow
+                           : ratio < 1.0f  ? new Color(0.95f, 0.50f, 0.1f, 0.9f)   // orange
+                                           : new Color(0.90f, 0.15f, 0.15f, 0.9f);  // red
+    }
+
+    private static TextMeshProUGUI BuildWeightLabel(Transform parent)
+    {
+        float yPos = 2 * (BarH + Gap) + 2f;
+
+        var go = new GameObject("WeightLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+        var rt        = go.GetComponent<RectTransform>();
+        rt.anchorMin  = Vector2.zero;
+        rt.anchorMax  = Vector2.zero;
+        rt.pivot      = Vector2.zero;
+        rt.sizeDelta  = new Vector2(BarW, 16f);
+        rt.anchoredPosition = new Vector2(0f, yPos);
+
+        var tmp       = go.GetComponent<TextMeshProUGUI>();
+        tmp.fontSize  = 11f;
+        tmp.color     = new Color(0.9f, 0.9f, 0.9f, 0.85f);
+        tmp.text      = "0.0 / 40.0 kg";
+        tmp.raycastTarget = false;
+        return tmp;
     }
 
     private static Image BuildBar(Transform parent, int row, Color fillColor, string label)
@@ -88,6 +133,13 @@ public sealed class PlayerHUD : MonoBehaviour
 
         var fill          = fillGO.GetComponent<Image>();
         fill.color        = fillColor;
+        if (_fillSprite == null)
+        {
+            var tex = Texture2D.whiteTexture;
+            _fillSprite = Sprite.Create(
+                tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        }
+        fill.sprite = _fillSprite;
         fill.type         = Image.Type.Filled;
         fill.fillMethod   = Image.FillMethod.Horizontal;
         fill.fillAmount   = 1f;

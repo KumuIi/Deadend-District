@@ -80,26 +80,32 @@ public sealed class InventoryTooltip
                 return $"<b>{wi.WeaponDef.itemName}</b>\n" +
                        $"Caliber: {cal}\n" +
                        $"Ammo: {ammo}\n" +
-                       $"Fire type: {mode}";
+                       $"Fire type: {mode}" +
+                       WeightLine(item);
             }
             case MagazineItemInstance mi:
             {
                 string cal = mi.MagDef.caliber ? mi.MagDef.caliber.displayName : "—";
                 return $"<b>{mi.MagDef.itemName}</b>\n" +
                        $"Caliber: {cal}\n" +
-                       $"Ammo: {mi.RuntimeMag.BulletCount} / {mi.MagDef.capacity}";
+                       $"Ammo: {mi.RuntimeMag.BulletCount} / {mi.MagDef.capacity}" +
+                       WeightLine(item);
             }
             case AmmoItemInstance ai:
             {
                 string cal = ai.AmmoDef.caliber ? ai.AmmoDef.caliber.displayName : "—";
                 return $"<b>{ai.AmmoDef.itemName}</b>\n" +
                        $"Caliber: {cal}\n" +
-                       $"Count: {ai.CurrentCount}";
+                       $"Count: {ai.CurrentCount}" +
+                       WeightLine(item);
             }
             default:
-                return $"<b>{item.data.itemName}</b>";
+                return $"<b>{item.data.itemName}</b>" + WeightLine(item);
         }
     }
+
+    private static string WeightLine(ItemInstance item) =>
+        $"\nWeight: {item.data.weightKg:0.0} kg";
 
     private static string FireModeLabel(FireMode mode) => mode switch
     {

@@ -7,6 +7,15 @@ public class PlayerMotor : MonoBehaviour
 {
     [SerializeField] private PlayerMovementConfig config;
 
+    [Header("References")]
+    [SerializeField] private PlayerHealth _playerHealth;
+    [SerializeField] private EncumbranceSystem _encumbrance;
+
+    [Header("Stamina")]
+    [SerializeField] private float _sprintDrainRate = 8f;
+    [Tooltip("Energy fraction (0-1) above which exhaustion clears. Default 0.2 = 20% of maxEnergy.")]
+    [SerializeField, Range(0.01f, 0.5f)] private float _exhaustionRecoveryFraction = 0.2f;
+
     [Header("Mouse Look")]
     [SerializeField] private float mouseSensitivity = 2f;
 
@@ -40,6 +49,8 @@ public class PlayerMotor : MonoBehaviour
     private float _slopeSpeed;
     private float _slideSpeed;
 
+    private bool _staminaExhausted;
+
     private float   _stepCooldown;
     private Vector3 _preCollisionHoriz;
 
@@ -67,7 +78,9 @@ public class PlayerMotor : MonoBehaviour
     // ─── Public API ───────────────────────────────────────────────────────
     public bool    IsGrounded             => _grounded;
     public bool    IsCrouching            => _isCrouching;
-    public bool    IsSprinting            => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching;
+    public bool    IsSprinting            => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching
+                                             && !_staminaExhausted
+                                             && (_encumbrance == null || !_encumbrance.IsOverloaded);
     public bool    IsMoving               => new Vector3(_velocity.x, 0f, _velocity.z).sqrMagnitude > 0.01f;
     public float   VerticalVelocity       => _velocity.y;
     public Vector3 HorizontalVelocity     => new Vector3(_velocity.x, 0f, _velocity.z);
@@ -76,7 +89,8 @@ public class PlayerMotor : MonoBehaviour
                                              && !_isCrouching;
     public float   CrouchProgress         => Mathf.InverseLerp(config.standHeight, config.crouchHeight, _currentHeight);
     public float   SpeedMultiplier        => StatModifiers.Net(StatType.Speed);
-    public float   WeaponWeightMultiplier { get; set; } = 1f;
+    public float   WeaponWeightMultiplier      { get; set; } = 1f;
+    public float   EncumbranceWeightMultiplier { get; set; } = 1f;
     public StatModifierStack StatModifiers { get; } = new StatModifierStack();
     public event System.Action OnJumped;
 
@@ -91,6 +105,9 @@ public class PlayerMotor : MonoBehaviour
         _rb      = GetComponent<Rigidbody>();
         _input   = GetComponent<PlayerInput>();
         _capsule = GetComponent<CapsuleCollider>();
+
+        if (_playerHealth == null)
+            Debug.LogError("[PlayerMotor] PlayerHealth reference is missing — assign in Inspector.", this);
 
         _rb.freezeRotation = true;
         _rb.interpolation  = RigidbodyInterpolation.Interpolate;
@@ -146,6 +163,7 @@ public class PlayerMotor : MonoBehaviour
         HandleJump();
         HandleSteepSlope();
         HandleMovement();
+        HandleStaminaDrain();
 
         _hitCeiling = false;
 
@@ -238,12 +256,36 @@ public class PlayerMotor : MonoBehaviour
         OnJumped?.Invoke();
     }
 
+    // ─── Stamina drain ────────────────────────────────────────────────────
+    void HandleStaminaDrain()
+    {
+        if (_playerHealth == null) return;
+
+        if (IsSprinting)
+            _playerHealth.UseEnergy(_sprintDrainRate * Time.fixedDeltaTime);
+
+        // Exhaustion: block sprint at 0, re-enable above recovery fraction (hysteresis)
+        float recoveryEnergy = _playerHealth.maxEnergy * _exhaustionRecoveryFraction;
+        if (!_staminaExhausted && _playerHealth.CurrentEnergy <= 0f)
+        {
+            _staminaExhausted = true;
+            StatModifiers.Remove("exhaustion.speed");
+            StatModifiers.Add(new PlayerStatModifier
+                { Id = "exhaustion.speed", Stat = StatType.Speed, Value = 0.5f, IsMultiplier = true });
+        }
+        else if (_staminaExhausted && _playerHealth.CurrentEnergy >= recoveryEnergy)
+        {
+            _staminaExhausted = false;
+            StatModifiers.Remove("exhaustion.speed");
+        }
+    }
+
     // ─── Movement ─────────────────────────────────────────────────────────
     void HandleMovement()
     {
         if (_inSlopeMode) return;
-        Vector2 move    = _input.MoveInput;
-        bool    sprint  = _input.SprintHeld && move.y > 0f && !_isCrouching;
+        Vector2 move   = _input.MoveInput;
+        bool    sprint = IsSprinting;
         float speedNet = StatModifiers.Net(StatType.Speed);
         if (sprint) speedNet *= StatModifiers.Net(StatType.SprintSpeed);
         float   targetSpeed = (_isCrouching ? config.crouchSpeed

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -19,6 +20,9 @@ public class InventoryGrid
 
     /// <summary>All items currently placed in this grid.</summary>
     public IReadOnlyCollection<ItemInstance> PlacedItems => _placed;
+
+    /// <summary>Fired after any placement, removal, or load that changes grid contents.</summary>
+    public event Action OnChanged;
 
     public InventoryGrid(int width, int height)
     {
@@ -88,6 +92,7 @@ public class InventoryGrid
             _cells[pos.x + offset.x, pos.y + offset.y] = item;
 
         _placed.Add(item);
+        OnChanged?.Invoke();
         return true;
     }
 
@@ -96,6 +101,7 @@ public class InventoryGrid
     {
         if (!_placed.Contains(item)) return false;
         RemoveInternal(item);
+        OnChanged?.Invoke();
         return true;
     }
 
@@ -171,6 +177,7 @@ public class InventoryGrid
                 Debug.LogWarning($"[InventoryGrid] Could not place '{entry.soName}' at " +
                                  $"({entry.gridX},{entry.gridY}) during load — position occupied or out of bounds.");
         }
+        OnChanged?.Invoke();
     }
 
     /// <summary>Serialisable record for one item's grid placement. Store this; rebuild everything else from the SO.</summary>

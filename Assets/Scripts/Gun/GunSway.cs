@@ -158,7 +158,9 @@ public class GunSway : MonoBehaviour
         bool isSprinting = sprinting && grounded;
         bool shouldBob  = isWalking || isSprinting;
 
-        float weightBobMult = _playerMotor ? _playerMotor.WeaponWeightMultiplier : 1f;
+        float weightBobMult = _playerMotor
+            ? _playerMotor.WeaponWeightMultiplier * _playerMotor.EncumbranceWeightMultiplier
+            : 1f;
         float bobFreq = (isSprinting ? _feel.sprintBobFrequency : _feel.walkBobFrequency) * weightBobMult;
         float bobAmpY = isSprinting ? _feel.sprintBobAmplitudeY : _feel.walkBobAmplitudeY;
         float bobAmpX = isSprinting ? _feel.sprintBobAmplitudeX : _feel.walkBobAmplitudeX;

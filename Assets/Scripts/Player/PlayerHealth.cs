@@ -19,6 +19,11 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
     [Tooltip("Energy points restored per second when not actively depleted.")]
     public float energyRegenRate = 5f;
 
+    // ── Stat modifiers ─────────────────────────────────────────────────────
+
+    /// <summary>Push stamina-affecting modifiers here (e.g. encumbrance.stamina, augment.*).</summary>
+    public StatModifierStack StatModifiers { get; } = new StatModifierStack();
+
     // ── Read-only state ────────────────────────────────────────────────────
 
     public float CurrentHealth => _currentHealth;
@@ -36,6 +41,15 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
     public event System.Action<float> OnDamaged;
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (energyRegenRate < 0f) energyRegenRate = 0f;
+        if (energyRegenRate == 0f)
+            Debug.LogWarning("[PlayerHealth] energyRegenRate is 0 — stamina will never regenerate.", this);
+    }
+#endif
 
     private void Awake()
     {
@@ -82,7 +96,8 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
     public void UseEnergy(float amount)
     {
         if (amount <= 0f) return;
-        _currentEnergy = Mathf.Max(0f, _currentEnergy - amount);
+        float drainMult = Mathf.Max(0f, StatModifiers.Net(StatType.StaminaDrain));
+        _currentEnergy = Mathf.Max(0f, _currentEnergy - amount * drainMult);
         OnEnergyChanged?.Invoke();
     }
 

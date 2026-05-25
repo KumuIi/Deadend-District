@@ -39,7 +39,7 @@ public class WeaponSO : ItemSO
     public float baseDamage = 25f;
     public float range = 100f;
     public LayerMask hitLayers = ~0;
-    [Tooltip("Weapon weight (1 = neutral). Scales move speed, jump, and bob frequency via sqrt curve — heavier guns move and bob slower.")]
+    [Tooltip("Feel multiplier (not kg — for carry weight use ItemSO.weightKg). 1 = neutral. Scales move speed, jump, and bob frequency — heavier guns move and bob slower.")]
     [Range(0.1f, 10f)]
     public float weight = 1f;
 

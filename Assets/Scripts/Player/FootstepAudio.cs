@@ -89,7 +89,7 @@ public class FootstepAudio : MonoBehaviour
         bool  grounded   = _playerMotor.IsGrounded;
         bool  sprinting  = _playerMotor.IsSprinting;
         float horizSpeed = _playerMotor.HorizontalVelocity.magnitude;
-        float weightMult = _playerMotor.WeaponWeightMultiplier;
+        float weightMult = _playerMotor.WeaponWeightMultiplier * _playerMotor.EncumbranceWeightMultiplier;
 
         // ── Pull bob frequencies from the equipped weapon ───────────────
         WeaponFeelData feel    = _weaponManager?.CurrentWeapon?.weaponData?.feel;
