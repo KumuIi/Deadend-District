@@ -6421,7 +6421,7 @@ PrefabInstance:
     - target: {fileID: 1478869977835866825, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: _flashlightSlot
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1440066319}
     - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: inventory
       value: 
@@ -9371,7 +9371,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f01dd6d941116634296980dbec272fa2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BatterySaveAdapter
-  _flashlightSlot: {fileID: 0}
+  _flashlightSlot: {fileID: 1440066319}
 --- !u!1 &1030638468 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7874783445782450535, guid: 3b5d0eba8e36843048144388c84b8e13, type: 3}
@@ -12240,11 +12240,6 @@ MonoBehaviour:
   m_ObsoleteUseShadowQualitySettings: 0
   m_ObsoleteCustomShadowResolution: 512
   m_ObsoleteContactShadows: 0
---- !u!1 &1300289858 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-  m_PrefabInstance: {fileID: 1782233374}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1301877841
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13530,22 +13525,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5919340341281888163, guid: e658189281ba44d4db52a170a1f10227, type: 3}
   m_PrefabInstance: {fileID: 1426408138}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1435202971 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3419783592915699779, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-  m_PrefabInstance: {fileID: 1782233374}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1435202973 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1710007920142482071, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-  m_PrefabInstance: {fileID: 1782233374}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1435202971}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62249d53d36bce14f8f8d6cf127f9c6a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FlashlightView
 --- !u!1001 &1438120752
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13691,50 +13670,23 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6033725508184216472, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
   m_PrefabInstance: {fileID: 1782233374}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5308dc130a29e6b44b1bf82ab052d115, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponManager
---- !u!114 &1440066292
+--- !u!114 &1440066319 stripped
 MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1b42b9d30f7ac6448fdaa75eebdeaa1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EncumbranceSystem
-  _config: {fileID: 11400000, guid: 451d0862b5d58a444b1416e3c0ae0c18, type: 2}
-  _inventoryUI: {fileID: 310730545}
-  _motor: {fileID: 1440066301}
-  _health: {fileID: 1440066298}
---- !u!114 &1440066298 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4772443847941390725, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_CorrespondingSourceObject: {fileID: 8165028443347435510, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
   m_PrefabInstance: {fileID: 1782233374}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4f4ed55d0964ea48a10d5014ced8f85, type: 3}
+  m_Script: {fileID: 11500000, guid: b64bd24625d5d924f909aeadeb1e4e9f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
---- !u!114 &1440066301 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-  m_PrefabInstance: {fileID: 1782233374}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ecf96179bc9f21041a1b0f0d79989da5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
+  m_EditorClassIdentifier: Assembly-CSharp::FlashlightSlot
 --- !u!1 &1443863436
 GameObject:
   m_ObjectHideFlags: 0
@@ -17838,34 +17790,58 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1314537000820138318, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: _flashlightGO
-      value: 
-      objectReference: {fileID: 1435202971}
-    - target: {fileID: 1314537000820138318, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: _flashlightView
-      value: 
-      objectReference: {fileID: 1435202973}
-    - target: {fileID: 1918445247915862736, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: _flashlightSlot
-      value: 
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.014400258
       objectReference: {fileID: 0}
-    - target: {fileID: 2300765085944272821, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: _flashlightSlot
-      value: 
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.011299905
       objectReference: {fileID: 0}
-    - target: {fileID: 3419783592915699779, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: m_IsActive
-      value: 0
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.0031001628
       objectReference: {fileID: 0}
-    - target: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: _encumbrance
-      value: 
-      objectReference: {fileID: 1440066292}
-    - target: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: _playerHealth
-      value: 
-      objectReference: {fileID: 1440066298}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.09305239
+      objectReference: {fileID: 0}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.007483973
+      objectReference: {fileID: 0}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.78645504
+      objectReference: {fileID: 0}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.6105519
+      objectReference: {fileID: 0}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -73.526
+      objectReference: {fileID: 0}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -146.745
+      objectReference: {fileID: 0}
+    - target: {fileID: 4292808527194000327, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: -386.245
+      objectReference: {fileID: 0}
+    - target: {fileID: 5334210254986898514, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _dimIntensity
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5334210254986898514, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _brightDrainRate
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 5334210254986898514, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _brightIntensity
+      value: 1500
+      objectReference: {fileID: 0}
     - target: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_Name
       value: '[Player]'
@@ -17911,38 +17887,13 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: encumbrance
-      value: 
-      objectReference: {fileID: 1440066292}
-    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: energyColor.b
-      value: 0.07694017
-      objectReference: {fileID: 0}
-    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: energyColor.g
-      value: 0.835426
-      objectReference: {fileID: 0}
-    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: energyColor.r
-      value: 0.8584906
-      objectReference: {fileID: 0}
-    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: flashlightSlot
       value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 8867320797845945753, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: MinDistance
-      value: 0.9959754
-      objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 2574665437279322963, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-    - {fileID: 8165028443347435510, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      objectReference: {fileID: 1440066319}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1440066292}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
 --- !u!1 &1787821046
 GameObject:
