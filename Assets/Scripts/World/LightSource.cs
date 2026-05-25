@@ -5,7 +5,7 @@ public enum LightMode { Off, Dim, Bright }
 /// <summary>
 /// Drives a hand-held light: on/off/dim modes and toggle audio.
 /// Drain rate is exposed as a property — FlashlightSlot owns the drain loop.
-/// F key toggles between Off and Bright while gameplay is not blocked.
+/// T key toggles between Off and Bright while gameplay is not blocked.
 /// </summary>
 [RequireComponent(typeof(Light))]
 public class LightSource : MonoBehaviour
@@ -32,7 +32,7 @@ public class LightSource : MonoBehaviour
 
     private void Update()
     {
-        if (!GameInputState.GameplayBlocked && Input.GetKeyDown(KeyCode.F))
+        if (!GameInputState.GameplayBlocked && Input.GetKeyDown(KeyCode.T))
             Toggle();
     }
 

@@ -555,11 +555,14 @@ public sealed class InventoryUI : MonoBehaviour
         {
             if (flashlightSlot == null) return DragInteractionResult.NotHandled;
 
+            // Must eject the old battery first via right-click Remove Battery
+            if (flashlight.InsertedBattery != null) return DragInteractionResult.NotHandled;
+
             // Remove battery from grid first — flashlight takes ownership
             BatteryItemInstance ejected = flashlight.LoadBattery(battery);
             _views.Remove(battery);
 
-            // If a battery was already loaded, return it to inventory
+            // Safety: LoadBattery ejects any prior battery, but we blocked that above
             if (ejected != null)
             {
                 if (TryPickup(ejected) == PickupResult.NoSpace)

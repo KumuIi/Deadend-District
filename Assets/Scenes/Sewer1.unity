@@ -12840,6 +12840,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7025140593899549968, guid: 0ad617b0c7f3440dab2380fa6e3e1c68, type: 3}
   m_PrefabInstance: {fileID: 1348645695}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &1357913324 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6052119987546144178, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1782233374}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1359131987
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13525,6 +13530,33 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5919340341281888163, guid: e658189281ba44d4db52a170a1f10227, type: 3}
   m_PrefabInstance: {fileID: 1426408138}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1435202971 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3419783592915699779, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1782233374}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1435202976
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1435202971}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a724dba1a6f172647a19815b3724496e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlashlightSway
+  _flashlightSlot: {fileID: 1440066319}
+  _playerMotor: {fileID: 1440066301}
+  _cameraTransform: {fileID: 1357913324}
+  _stiffness: 100
+  _damping: 4
+  _maxAngle: 50
+  _mouseInfluence: 4
+  _velocityInfluence: 0.5
+  _bobAmplitude: 0.004
+  _bobFrequency: 1.8
 --- !u!1001 &1438120752
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13676,6 +13708,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5308dc130a29e6b44b1bf82ab052d115, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeaponManager
+--- !u!114 &1440066301 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1782233374}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecf96179bc9f21041a1b0f0d79989da5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
 --- !u!114 &1440066319 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8165028443347435510, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
@@ -17890,6 +17933,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7691086412341542467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_Intensity
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: flashlightSlot
       value: 
@@ -17897,7 +17944,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3419783592915699779, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1435202976}
   m_SourcePrefab: {fileID: 100100000, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
 --- !u!1 &1787821046
 GameObject:
