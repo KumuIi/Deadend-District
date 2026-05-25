@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Flashlight
   m_EditorClassIdentifier: Assembly-CSharp::FlashlightSO
   itemName: Flashlight
-  gridSize: {x: 3, y: 1}
+  gridSize: {x: 1, y: 1}
   cellOffsets: []
-  weightKg: 0.5
+  weightKg: 2
   modelPrefab: {fileID: 5910054663295408399, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   modelOrientationOffset: {x: 0, y: 0, z: 0}
   gridRotationAxis: {x: 0, y: 0, z: 1}
-  flashlightPrefab: {fileID: 5910054663295408399, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+  maxCharge: 100

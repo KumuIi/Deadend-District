@@ -1,45 +1,82 @@
+using System;
 using UnityEngine;
 
 /// <summary>
-/// Equipment slot for a hand-held flashlight.
-/// Spawns the flashlight prefab on equip and stows/shows it as the active weapon changes.
+/// Equipment slot for a hand-held flashlight — mirrors the WeaponManager pattern.
+/// Pre-placed flashlight GO in the scene is shown/hidden on equip/unequip.
 ///
 /// Scene setup:
 ///   1. Add this component to the Player GameObject (same as WeaponManager).
-///   2. Assign WeaponManager in the Inspector.
-///   3. From the inventory UI call EquipmentController.Instance.EquipToSlot("flashlight", instance).
+///   2. Assign WeaponManager, FlashlightView, and FlashlightGO in the Inspector.
+///   3. Call TryEquip(instance) from InventoryUI on right-click Equip.
 ///
-/// Dual-wield rule: the flashlight is visible only when WeaponSO.allowsOffHandItem is true
-/// on the currently equipped weapon. When stowed the prefab is disabled (LightSource state preserved).
+/// Dual-wield rule: flashlight is visible only when WeaponSO.allowsOffHandItem is true
+/// on the currently equipped weapon, OR when no weapon is equipped.
 /// </summary>
 public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
 {
-    [SerializeField] private WeaponManager _weaponManager;
-    [Tooltip("The 'Guns' empty GO that gun prefabs are parented to (gives flashlight the same bob/sway).")]
-    [SerializeField] private Transform _weaponRoot;
+    [SerializeField] private WeaponManager  _weaponManager;
+    [SerializeField] private FlashlightView _flashlightView;
+    [Tooltip("The root GameObject of the pre-placed flashlight model in the scene.")]
+    [SerializeField] private GameObject     _flashlightGO;
 
-    public string       SlotId       => "flashlight";
-    public ItemInstance EquippedItem => _equipped;
-    public LightSource  LightSource  => _view?.lightSource;
+    public string                 SlotId            => "flashlight";
+    public ItemInstance           EquippedItem      => _equipped;
+    public FlashlightItemInstance EquippedFlashlight => _equipped;
+    public LightSource            LightSource        => _flashlightView?.lightSource;
+
+    public float ChargeNormalized => _equipped != null ? _equipped.ChargeNormalized : 0f;
+    public bool  IsDepleted       => _equipped == null || _equipped.IsDepleted;
+
+    // ── Events (mirrors BatterySystem API — observers subscribe here) ───────
+    public event Action<float> OnChargeChanged;
+    public event Action        OnDepleted;
+    public event Action        OnRestored;
 
     private FlashlightItemInstance _equipped;
-    private GameObject             _spawnedPrefab;
-    private FlashlightView         _view;
+    private bool                   _wasDepleted;
+    private float                  _lastReportedNormalized = 1f;
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     private void OnEnable()
     {
-        EquipmentController.Instance?.RegisterSlot(this);
         if (_weaponManager != null)
             _weaponManager.OnWeaponEquipped += HandleWeaponEquipped;
     }
 
     private void OnDisable()
     {
-        EquipmentController.Instance?.UnregisterSlot(SlotId);
         if (_weaponManager != null)
             _weaponManager.OnWeaponEquipped -= HandleWeaponEquipped;
+    }
+
+    private void Update()
+    {
+        if (_equipped == null || _flashlightView == null) return;
+
+        var light = LightSource;
+        if (light == null || !light.IsOn) return;
+
+        float drain = light.DrainRate * Time.deltaTime;
+        if (drain <= 0f) return;
+
+        _equipped.CurrentCharge = Mathf.Max(0f, _equipped.CurrentCharge - drain);
+
+        float norm = _equipped.ChargeNormalized;
+        if (Mathf.Abs(norm - _lastReportedNormalized) > 0.001f)
+        {
+            _lastReportedNormalized = norm;
+            OnChargeChanged?.Invoke(norm);
+        }
+
+        bool depleted = _equipped.IsDepleted;
+        if (depleted && !_wasDepleted)
+        {
+            _wasDepleted = true;
+            light.ForceOff();
+            OnDepleted?.Invoke();
+        }
     }
 
     // ── IEquipmentSlot ─────────────────────────────────────────────────────
@@ -48,62 +85,81 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     {
         if (item is not FlashlightItemInstance fi) return false;
 
-        if (fi.FlashlightDef.flashlightPrefab == null)
-        {
-            Debug.LogError($"[FlashlightSlot] FlashlightSO '{fi.FlashlightDef.name}' has no flashlightPrefab assigned. Open the SO and assign the prefab.");
-            return false;
-        }
-
         Unequip();
 
-        _equipped      = fi;
-        var parent     = _weaponRoot != null ? _weaponRoot : _weaponManager.transform;
-        _spawnedPrefab = Instantiate(fi.FlashlightDef.flashlightPrefab, parent);
-        _view          = _spawnedPrefab.GetComponentInChildren<FlashlightView>();
+        _equipped               = fi;
+        _wasDepleted            = fi.IsDepleted;
+        _lastReportedNormalized = fi.ChargeNormalized;
 
-        // Show/hide based on current weapon, then override IK and rebuild.
+        // If already depleted keep light off
+        if (_wasDepleted)
+            LightSource?.ForceOff();
+
         bool allowed = CurrentWeaponAllowsOffHand();
-        _spawnedPrefab.SetActive(allowed);
+        Debug.Log($"[FlashlightSlot] TryEquip: GO={_flashlightGO?.name ?? "NULL"}, allowed={allowed}, view={_flashlightView?.name ?? "NULL"}");
+        if (_flashlightGO != null) _flashlightGO.SetActive(allowed);
+
         if (allowed)
         {
-            OverrideLeftIK(_view?.gripTarget);
-            _weaponManager.rigBuilder?.Build();
+            OverrideLeftIK(_flashlightView?.gripTarget);
+            _weaponManager?.rigBuilder?.Build();
         }
+
+        // Sync all observers to the new item's state immediately
+        OnChargeChanged?.Invoke(fi.ChargeNormalized);
+        if (_wasDepleted)  OnDepleted?.Invoke();
+        else               OnRestored?.Invoke();
+
         return true;
     }
 
     public void Unequip()
     {
-        if (_spawnedPrefab != null)
-        {
-            Destroy(_spawnedPrefab);
-            _spawnedPrefab = null;
-            _view          = null;
-        }
-        _equipped = null;
+        if (_flashlightGO != null) _flashlightGO.SetActive(false);
+        LightSource?.ForceOff();
+        _equipped    = null;
+        _wasDepleted = false;
         RestoreWeaponLeftIK();
+        _lastReportedNormalized = 0f;
+        OnChargeChanged?.Invoke(0f); // clear HUD
+        OnDepleted?.Invoke();        // player has no light source
+    }
+
+    /// <summary>Transfers charge from a battery item into the equipped flashlight.</summary>
+    public void SwapBattery(BatteryItemInstance battery)
+    {
+        if (_equipped == null || battery == null) return;
+
+        bool wasDepleted = _equipped.IsDepleted;
+        _equipped.SwapWith(battery);
+
+        OnChargeChanged?.Invoke(_equipped.ChargeNormalized);
+
+        if (wasDepleted && !_equipped.IsDepleted)
+        {
+            _wasDepleted = false;
+            OnRestored?.Invoke();
+        }
     }
 
     // ── Weapon switch callback ─────────────────────────────────────────────
 
-    // Called by WeaponManager BEFORE rigBuilder.Build() — safe to mutate constraint data.
     private void HandleWeaponEquipped(GunController gun)
     {
-        if (_equipped == null || _spawnedPrefab == null) return;
+        if (_equipped == null || _flashlightGO == null) return;
 
         bool allowed = gun.weaponData != null && gun.weaponData.allowsOffHandItem;
-        _spawnedPrefab.SetActive(allowed);
+        _flashlightGO.SetActive(allowed);
 
         if (allowed)
-            OverrideLeftIK(_view?.gripTarget);
-        // If not allowed, WeaponManager already restored left IK to gun.leftHandGrip.
+            OverrideLeftIK(_flashlightView?.gripTarget);
     }
 
     // ── IK helpers ─────────────────────────────────────────────────────────
 
     private void OverrideLeftIK(Transform target)
     {
-        if (_weaponManager.leftArmConstraint == null || target == null) return;
+        if (_weaponManager == null || _weaponManager.leftArmConstraint == null || target == null) return;
         var d    = _weaponManager.leftArmConstraint.data;
         d.target = target;
         _weaponManager.leftArmConstraint.data = d;
@@ -114,7 +170,6 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         if (_weaponManager == null) return;
         var gun = _weaponManager.CurrentWeapon;
         if (gun == null || _weaponManager.leftArmConstraint == null) return;
-
         var d    = _weaponManager.leftArmConstraint.data;
         d.target = gun.leftHandGrip;
         _weaponManager.leftArmConstraint.data = d;
@@ -124,7 +179,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     private bool CurrentWeaponAllowsOffHand()
     {
         var gun = _weaponManager?.CurrentWeapon;
-        if (gun == null) return true; // no weapon equipped — flashlight is standalone, always show
+        if (gun == null) return true; // standalone — no weapon equipped
         return gun.weaponData != null && gun.weaponData.allowsOffHandItem;
     }
 
@@ -133,6 +188,10 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     {
         if (_weaponManager == null)
             Debug.LogWarning("[FlashlightSlot] WeaponManager is not assigned.", this);
+        if (_flashlightView == null)
+            Debug.LogWarning("[FlashlightSlot] FlashlightView is not assigned.", this);
+        if (_flashlightGO == null)
+            Debug.LogWarning("[FlashlightSlot] FlashlightGO is not assigned.", this);
     }
 #endif
 }

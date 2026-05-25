@@ -15,11 +15,13 @@ MonoBehaviour:
   itemName: Fists
   gridSize: {x: 1, y: 1}
   cellOffsets: []
+  weightKg: 0.5
   modelPrefab: {fileID: 0}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   modelOrientationOffset: {x: 0, y: 0, z: 0}
   gridRotationAxis: {x: 0, y: 0, z: 1}
   caliber: {fileID: 0}
+  allowsOffHandItem: 1
   fireMode: 1
   burstCount: 0
   burstShotInterval: 0
@@ -52,6 +54,14 @@ MonoBehaviour:
   gunshotClip: {fileID: 0}
   defaultAmmo: {fileID: 0}
   feel:
+    hipRestRotationOffset: {x: 0, y: 0, z: 0}
+    adsRestRotationOffset: {x: 0, y: 0, z: 0}
+    adsAimLagAmount: 0.4
+    adsAimLagCatchup: 5
+    adsAimLagMax: 3
+    adsInertiaAmount: 0.003
+    adsInertiaSmooth: 0.1
+    adsInertiaMaxDelta: 0.015
     swayAmount: 0.04
     swaySmooth: 8
     swayMaxDelta: 0.06
@@ -62,6 +72,7 @@ MonoBehaviour:
     breatheAmplitudeY: 0.0015
     breatheAmplitudeX: 0.0008
     breatheFrequency: 0.8
+    adsBreathScale: 0.3
     walkBobSpeedThreshold: 1.2
     walkBobFrequency: 1
     walkBobAmplitudeY: 0.006
@@ -81,3 +92,77 @@ MonoBehaviour:
     stepNudgeSmooth: 10
     masterIntensity: 1
     returnSmooth: 12
+  recoil:
+    kickUp: 2
+    kickHoriz: 0.5
+    kickRoll: 0.3
+    adsKickUp: 0.8
+    adsKickHoriz: 0.15
+    adsKickRoll: 0.1
+    targetDecaySpeed: 10
+    currentFollowSpeed: 20
+    maxVertical: 15
+    maxHoriz: 5
+    maxRoll: 3
+    modelKickPitch: 0
+    modelKickYawRandom: 0
+    modelKickRollRandom: 0
+    modelKickBack: 0
+    modelKickFollowSpeed: 25
+    modelKickReturnSpeed: 8
+    adsModelKickMultiplier: 0.4
+    modelKickMaxPitch: 25
+    modelKickMaxYaw: 6
+    modelKickMaxRoll: 6
+    modelKickBackMax: 0.03
+    horizontalPattern:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 100
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    verticalPattern:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 100
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    patternResetDelay: 0.25
+    randomHorizScale: 1
+  _preset: {fileID: 0}

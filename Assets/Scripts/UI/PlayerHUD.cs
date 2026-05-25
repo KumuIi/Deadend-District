@@ -18,7 +18,7 @@ public sealed class PlayerHUD : MonoBehaviour
     [Header("=== References ===")]
     public PlayerHealth      playerHealth;
     public EncumbranceSystem encumbrance;
-    public BatterySystem     batterySystem;
+    public FlashlightSlot    flashlightSlot;
 
     [Header("=== Position ===")]
     public float paddingLeft   = 20f;
@@ -73,8 +73,7 @@ public sealed class PlayerHUD : MonoBehaviour
             ? playerHealth.CurrentHealth / playerHealth.maxHealth : 0f;
         _energyFill.fillAmount  = playerHealth.maxEnergy > 0f
             ? playerHealth.CurrentEnergy / playerHealth.maxEnergy : 0f;
-        _batteryFill.fillAmount = batterySystem != null
-            ? batterySystem.ActiveChargeNormalized : 0f;
+        _batteryFill.fillAmount = flashlightSlot != null ? flashlightSlot.ChargeNormalized : 0f;
 
         UpdateWeightLabel();
     }

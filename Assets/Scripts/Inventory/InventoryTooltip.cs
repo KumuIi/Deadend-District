@@ -1,4 +1,3 @@
-using System;
 using TMPro;
 using UnityEngine;
 
@@ -9,8 +8,6 @@ using UnityEngine;
 /// </summary>
 public sealed class InventoryTooltip
 {
-    /// <summary>Set by InventoryUI so the tooltip can show equipped state without coupling to InventoryUI internals.</summary>
-    public Func<ItemInstance, bool> IsItemEquipped;
 
     private readonly RectTransform   _rt;
     private readonly TextMeshProUGUI _text;
@@ -105,14 +102,7 @@ public sealed class InventoryTooltip
             }
             case FlashlightItemInstance fi:
             {
-                bool equipped = IsItemEquipped?.Invoke(fi) ?? false;
-                string battery;
-                if (!equipped)
-                    battery = "--";
-                else if (BatterySystem.Instance == null)
-                    battery = "--";
-                else
-                    battery = $"{Mathf.RoundToInt(BatterySystem.Instance.ActiveChargeNormalized * 100f)}%";
+                string battery = $"{Mathf.RoundToInt(fi.ChargeNormalized * 100f)}%";
                 return $"<b>{fi.data.itemName}</b>\n" +
                        $"Battery: {battery}" +
                        WeightLine(item);

@@ -11,19 +11,6 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Deadend/Items/Flashlight")]
 public class FlashlightSO : ItemSO
 {
-    [Tooltip("Must have FlashlightView, LightSource, Light, and AudioSource components.")]
-    public GameObject flashlightPrefab;
-
-#if UNITY_EDITOR
-    private void OnValidate()
-    {
-        if (flashlightPrefab == null)
-        {
-            Debug.LogWarning($"[FlashlightSO] '{name}': flashlightPrefab is not assigned.", this);
-            return;
-        }
-        if (flashlightPrefab.GetComponentInChildren<FlashlightView>() == null)
-            Debug.LogWarning($"[FlashlightSO] '{name}': flashlightPrefab has no FlashlightView component.", this);
-    }
-#endif
+    [Tooltip("Total charge capacity. Drain rate from LightSource is subtracted per second.")]
+    [Min(0f)] public float maxCharge = 100f;
 }

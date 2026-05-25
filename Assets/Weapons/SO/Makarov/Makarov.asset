@@ -21,6 +21,7 @@ MonoBehaviour:
   modelOrientationOffset: {x: 90, y: 0, z: 0}
   gridRotationAxis: {x: 0, y: 0, z: 90}
   caliber: {fileID: 11400000, guid: 7b6eede7fd2b5a94b8e25469cd746b7c, type: 2}
+  allowsOffHandItem: 1
   fireMode: 1
   burstCount: 3
   burstShotInterval: 0.08

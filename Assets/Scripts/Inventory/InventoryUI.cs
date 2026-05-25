@@ -169,9 +169,6 @@ public sealed class InventoryUI : MonoBehaviour
                 (item is WeaponItemInstance wi && wi == _equippedItem) ||
                 (item is FlashlightItemInstance && flashlightSlot != null && flashlightSlot.EquippedItem == item);
 
-            _tooltip.IsItemEquipped = item =>
-                (item is WeaponItemInstance wi2 && wi2 == _equippedItem) ||
-                (item is FlashlightItemInstance && flashlightSlot != null && flashlightSlot.EquippedItem == item);
         }
     }
 
@@ -535,15 +532,17 @@ public sealed class InventoryUI : MonoBehaviour
             return DragInteractionResult.HandledReturnDragged;
         }
 
-        // ── Battery → Flashlight (swap into BatterySystem) ───────────────
+        // ── Battery → Flashlight ──────────────────────────────────────────
         if (dragged is BatteryItemInstance battery && target is FlashlightItemInstance)
         {
-            var bs = BatterySystem.Instance;
-            if (bs == null) return DragInteractionResult.NotHandled;
-
-            bs.SwapBattery(battery);
-            _views.Remove(battery);
-            return DragInteractionResult.HandledConsumeDragged;
+            if (flashlightSlot == null) return DragInteractionResult.NotHandled;
+            flashlightSlot.SwapBattery(battery);
+            if (battery.CurrentCharge <= 0f)
+            {
+                _views.Remove(battery);
+                return DragInteractionResult.HandledConsumeDragged;
+            }
+            return DragInteractionResult.HandledReturnDragged;
         }
 
         // ── Magazine → Weapon ─────────────────────────────────────────────

@@ -4,9 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Flickers the light and plays a looping audio warning when battery charge is low.
 /// Hysteresis: warn below _warnThreshold (20%), clear above _clearThreshold (25%).
-///
-/// Assign _flashlightSlot in the Inspector — LightSource is read from it at runtime
-/// so there is no cross-prefab drag-in required.
+/// Subscribes to FlashlightSlot events — no BatterySystem dependency.
 /// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class LowBatteryWarning : MonoBehaviour
@@ -22,32 +20,29 @@ public class LowBatteryWarning : MonoBehaviour
     private Coroutine   _flickerRoutine;
     private bool        _warning;
 
-    // Grabbed from FlashlightSlot at runtime — null when no flashlight is equipped.
     private LightSource Light => _flashlightSlot?.LightSource;
 
     private void Awake()
     {
-        _audioSource           = GetComponent<AudioSource>();
-        _audioSource.clip      = _warningClip;
-        _audioSource.loop      = true;
+        _audioSource             = GetComponent<AudioSource>();
+        _audioSource.clip        = _warningClip;
+        _audioSource.loop        = true;
         _audioSource.playOnAwake = false;
     }
 
     private void OnEnable()
     {
-        var bs = BatterySystem.Instance;
-        if (bs == null) return;
-        bs.OnChargeChanged   += HandleChargeChanged;
-        bs.OnBatteryDepleted += HandleDepleted;
+        if (_flashlightSlot == null) return;
+        _flashlightSlot.OnChargeChanged += HandleChargeChanged;
+        _flashlightSlot.OnDepleted      += HandleDepleted;
     }
 
     private void OnDisable()
     {
         StopWarning();
-        var bs = BatterySystem.Instance;
-        if (bs == null) return;
-        bs.OnChargeChanged   -= HandleChargeChanged;
-        bs.OnBatteryDepleted -= HandleDepleted;
+        if (_flashlightSlot == null) return;
+        _flashlightSlot.OnChargeChanged -= HandleChargeChanged;
+        _flashlightSlot.OnDepleted      -= HandleDepleted;
     }
 
     private void HandleChargeChanged(float normalized)

@@ -2081,7 +2081,7 @@ GameObject:
   - component: {fileID: 2300765085944272821}
   - component: {fileID: 8165028443347435510}
   - component: {fileID: 1918445247915862736}
-  - component: {fileID: 1314537000820138318}
+  - component: {fileID: 5558102581320971767}
   m_Layer: 0
   m_Name: '[Player]'
   m_TagString: Player
@@ -2267,7 +2267,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMotor
   config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
   _playerHealth: {fileID: 4772443847941390725}
-  _encumbrance: {fileID: 5018398539871175731}
+  _encumbrance: {fileID: 5558102581320971767}
   _sprintDrainRate: 8
   _exhaustionRecoveryFraction: 0.2
   mouseSensitivity: 2
@@ -2511,6 +2511,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9dba5b5cff68e7d46a515c343440b64c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DarknessStateWriter
+  _flashlightSlot: {fileID: 8165028443347435510}
   _huntDelaySeconds: 120
 --- !u!114 &8165028443347435510
 MonoBehaviour:
@@ -2525,7 +2526,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FlashlightSlot
   _weaponManager: {fileID: 6033725508184216472}
-  _weaponRoot: {fileID: 0}
+  _flashlightView: {fileID: 1710007920142482071}
+  _flashlightGO: {fileID: 3419783592915699779}
 --- !u!114 &1918445247915862736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2544,7 +2546,7 @@ MonoBehaviour:
   _clearThreshold: 0.25
   _flickerMinInterval: 0.05
   _flickerMaxInterval: 0.15
---- !u!114 &1314537000820138318
+--- !u!114 &5558102581320971767
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2553,11 +2555,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 6588030462703277740}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b64bd24625d5d924f909aeadeb1e4e9f, type: 3}
+  m_Script: {fileID: 11500000, guid: b1b42b9d30f7ac6448fdaa75eebdeaa1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FlashlightSlot
-  _weaponManager: {fileID: 6033725508184216472}
-  _weaponRoot: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::EncumbranceSystem
+  _config: {fileID: 11400000, guid: 451d0862b5d58a444b1416e3c0ae0c18, type: 2}
+  _inventoryUI: {fileID: 8371605008115463076}
+  _motor: {fileID: 3513889191098211496}
+  _health: {fileID: 4772443847941390725}
 --- !u!1 &6631947371988985609
 GameObject:
   m_ObjectHideFlags: 0
@@ -3736,7 +3740,6 @@ GameObject:
   - component: {fileID: 5523035584324527594}
   - component: {fileID: 2766828599089219978}
   - component: {fileID: 8773417110864000135}
-  - component: {fileID: 2574665437279322963}
   m_Layer: 0
   m_Name: PlayerHud
   m_TagString: Untagged
@@ -3795,26 +3798,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHUD
   playerHealth: {fileID: 4772443847941390725}
-  encumbrance: {fileID: 5018398539871175731}
-  batterySystem: {fileID: 0}
+  encumbrance: {fileID: 5558102581320971767}
+  flashlightSlot: {fileID: 0}
   paddingLeft: 20
   paddingBottom: 20
   healthColor: {r: 0.8, g: 0.15, b: 0.15, a: 0.9}
-  energyColor: {r: 0.09411763, g: 0.69212604, b: 0.69803923, a: 0.9}
+  energyColor: {r: 0.8584906, g: 0.835426, b: 0.07694017, a: 0.9}
   batteryColor: {r: 0.15, g: 0.65, b: 0.9, a: 0.9}
---- !u!114 &2574665437279322963
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8514826629124626437}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b06e57f09803fd4abeadfaf1c1e03af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BatterySystem
-  _startingRechargeable: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
 --- !u!1 &8739511608677595605
 GameObject:
   m_ObjectHideFlags: 0
@@ -4139,8 +4129,24 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+--- !u!114 &1710007920142482071 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7694984134273035227, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+  m_PrefabInstance: {fileID: 9039067947790635340}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3419783592915699779}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62249d53d36bce14f8f8d6cf127f9c6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlashlightView
 --- !u!4 &2611616795660079865 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6435480915688637365, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
+  m_PrefabInstance: {fileID: 9039067947790635340}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &3419783592915699779 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5910054663295408399, guid: 150faf49a509b174f908cc0c68ccaa3c, type: 3}
   m_PrefabInstance: {fileID: 9039067947790635340}
   m_PrefabAsset: {fileID: 0}

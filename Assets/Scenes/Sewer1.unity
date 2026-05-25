@@ -6418,6 +6418,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1478869977835866825, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
+      propertyPath: _flashlightSlot
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: inventory
       value: 
@@ -6428,30 +6432,32 @@ PrefabInstance:
       objectReference: {fileID: 1440066291}
     - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: testItems.Array.size
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: 'testItems.Array.data[3]'
       value: 
-      objectReference: {fileID: 11400000, guid: 4823a4b857b135349823842b8e202d4d, type: 2}
+      objectReference: {fileID: 11400000, guid: de20da7781018d249be47a49efe908b9, type: 2}
     - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: 'testItems.Array.data[4]'
       value: 
-      objectReference: {fileID: 11400000, guid: 99aaf39b23a716643a32471dfa0e986e, type: 2}
+      objectReference: {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
+    - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
+      propertyPath: 'testItems.Array.data[5]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
     - target: {fileID: 6615256840996726013, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: m_Name
       value: '[System]'
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 7734854099633030323, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1011407811}
-    - targetCorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1011407812}
+      addedObject: {fileID: 1011407817}
   m_SourcePrefab: {fileID: 100100000, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
 --- !u!1 &744892528
 GameObject:
@@ -9353,20 +9359,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
   m_PrefabInstance: {fileID: 743388334}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1011407811
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1011407810}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b06e57f09803fd4abeadfaf1c1e03af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BatterySystem
-  _startingRechargeable: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
---- !u!114 &1011407812
+--- !u!114 &1011407817
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -9378,6 +9371,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f01dd6d941116634296980dbec272fa2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BatterySaveAdapter
+  _flashlightSlot: {fileID: 0}
 --- !u!1 &1030638468 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7874783445782450535, guid: 3b5d0eba8e36843048144388c84b8e13, type: 3}
@@ -13536,6 +13530,22 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 5919340341281888163, guid: e658189281ba44d4db52a170a1f10227, type: 3}
   m_PrefabInstance: {fileID: 1426408138}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1435202971 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3419783592915699779, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1782233374}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1435202973 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1710007920142482071, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1782233374}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1435202971}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62249d53d36bce14f8f8d6cf127f9c6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FlashlightView
 --- !u!1001 &1438120752
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -17828,6 +17838,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1314537000820138318, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _flashlightGO
+      value: 
+      objectReference: {fileID: 1435202971}
+    - target: {fileID: 1314537000820138318, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _flashlightView
+      value: 
+      objectReference: {fileID: 1435202973}
+    - target: {fileID: 1918445247915862736, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _flashlightSlot
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2300765085944272821, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _flashlightSlot
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 3419783592915699779, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: _encumbrance
       value: 
@@ -17885,112 +17915,35 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1440066292}
     - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      propertyPath: batterySystem
+      propertyPath: energyColor.b
+      value: 0.07694017
+      objectReference: {fileID: 0}
+    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: energyColor.g
+      value: 0.835426
+      objectReference: {fileID: 0}
+    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: energyColor.r
+      value: 0.8584906
+      objectReference: {fileID: 0}
+    - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: flashlightSlot
       value: 
-      objectReference: {fileID: 1011407811}
+      objectReference: {fileID: 0}
     - target: {fileID: 8867320797845945753, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: MinDistance
       value: 0.9959754
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 2574665437279322963, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+    - {fileID: 8165028443347435510, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1440066292}
-    - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1782233379}
-    - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1782233378}
-    - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1782233382}
-    - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1782233381}
-    - targetCorrespondingSourceObject: {fileID: 8514826629124626437, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1782233380}
   m_SourcePrefab: {fileID: 100100000, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
---- !u!1 &1782233375 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8514826629124626437, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
-  m_PrefabInstance: {fileID: 1782233374}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1782233378
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9dba5b5cff68e7d46a515c343440b64c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DarknessStateWriter
-  _huntDelaySeconds: 120
---- !u!114 &1782233379
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 05caf4161241a52418c390750f1f1c2f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DarknessStateVisual
-  _postProcessVolume: {fileID: 0}
-  _blendSpeed: 2
---- !u!114 &1782233380
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1782233375}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b06e57f09803fd4abeadfaf1c1e03af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BatterySystem
-  _startingRechargeable: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
---- !u!114 &1782233381
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f7caaf83018132c41841bdf2396f3319, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LowBatteryWarning
-  _flashlightSlot: {fileID: 1782233382}
-  _warningClip: {fileID: 8300000, guid: e79d933869d5f464c9b00014acba8666, type: 3}
-  _warnThreshold: 0.2
-  _clearThreshold: 0.25
-  _flickerMinInterval: 0.05
-  _flickerMaxInterval: 0.15
---- !u!114 &1782233382
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1300289858}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b64bd24625d5d924f909aeadeb1e4e9f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FlashlightSlot
-  _weaponManager: {fileID: 1440066291}
 --- !u!1 &1787821046
 GameObject:
   m_ObjectHideFlags: 0

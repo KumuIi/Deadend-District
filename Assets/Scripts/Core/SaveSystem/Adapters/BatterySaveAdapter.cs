@@ -2,47 +2,40 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Saves/restores battery charge mid-run.
+/// Saves/restores the equipped flashlight's current charge mid-run.
 /// Resets on death or extraction (RunScopeTag.Run).
-/// Attach to the same GameObject as BatterySystem.
+/// Attach to the same GameObject as FlashlightSlot (or any persistent GO).
 /// </summary>
 public class BatterySaveAdapter : MonoBehaviour, ISaveable
 {
+    [SerializeField] private FlashlightSlot _flashlightSlot;
+
     public string      SaveId    => "player.battery";
-    public string      SaveType  => "BatterySystem";
+    public string      SaveType  => "FlashlightCharge";
     public RunScopeTag SaveScope => RunScopeTag.Run;
 
-    private void Start()       => SaveSystem.Instance?.Register(this);
-    private void OnDisable()   => SaveSystem.Instance?.Unregister(this);
+    private void Start()     => SaveSystem.Instance?.Register(this);
+    private void OnDisable() => SaveSystem.Instance?.Unregister(this);
 
     public object CaptureSaveData()
     {
-        var bs = BatterySystem.Instance;
-        return new BatterySaveData
-        {
-            rechargeableCharge = bs?.ActiveRechargeable?.CurrentCharge ?? -1f,
-            oneTimeCharge      = bs?.ActiveOneTime?.CurrentCharge      ?? -1f,
-        };
+        float charge = _flashlightSlot?.EquippedFlashlight?.CurrentCharge ?? -1f;
+        return new FlashlightChargeSaveData { currentCharge = charge };
     }
 
     public void RestoreSaveData(object data)
     {
-        var dto = JsonUtility.FromJson<BatterySaveData>((string)data);
-        if (dto == null) return;
+        var dto = JsonUtility.FromJson<FlashlightChargeSaveData>((string)data);
+        if (dto == null || dto.currentCharge < 0f) return;
 
-        var bs = BatterySystem.Instance;
-        if (bs == null) return;
-
-        if (dto.rechargeableCharge >= 0f && bs.ActiveRechargeable != null)
-            bs.ActiveRechargeable.CurrentCharge = dto.rechargeableCharge;
-        if (dto.oneTimeCharge >= 0f && bs.ActiveOneTime != null)
-            bs.ActiveOneTime.CurrentCharge = dto.oneTimeCharge;
+        var fl = _flashlightSlot?.EquippedFlashlight;
+        if (fl == null) return;
+        fl.CurrentCharge = Mathf.Clamp(dto.currentCharge, 0f, fl.MaxCharge);
     }
 }
 
 [Serializable]
-public class BatterySaveData
+public class FlashlightChargeSaveData
 {
-    public float rechargeableCharge;
-    public float oneTimeCharge;
+    public float currentCharge;
 }

@@ -22,7 +22,13 @@
       "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\World\\\\LightSource.cs\")",
       "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Player\\\\DarknessStateWriter.cs\")",
       "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Player\\\\LowBatteryWarning.cs\")",
-      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Inventory\\\\BatteryItemSO.cs\")"
+      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Inventory\\\\BatteryItemSO.cs\")",
+      "Bash(codemoot plan *)",
+      "Bash(Remove-Item \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\BatterySystem.cs\" -Force)",
+      "Bash(Remove-Item \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\BatterySystem.cs.meta\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\ILightSource.cs\" -Force)",
+      "Bash(Remove-Item \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\ILightSource.cs.meta\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(Remove-Item \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\IBatteryDrainer.cs\" -Force)"
     ]
   }
 }
