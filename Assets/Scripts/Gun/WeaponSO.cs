@@ -20,6 +20,8 @@ public class WeaponSO : ItemSO
     [Header("=== Identity ===")]
     [Tooltip("Must reference the same CaliberSO as the magazines/ammo for this weapon.")]
     public CaliberSO caliber;
+    [Tooltip("If true, the player can hold a flashlight or other off-hand item in the left hand while this weapon is equipped (pistols, SMGs). False for two-handed rifles.")]
+    public bool allowsOffHandItem = false;
 
     // ── Fire mode ──────────────────────────────────────────────────────────
 

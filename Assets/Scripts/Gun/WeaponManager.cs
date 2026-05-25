@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
@@ -53,6 +54,12 @@ public class WeaponManager : MonoBehaviour
 
     /// <summary>Read-only view of all registered weapons (including runtime pickups).</summary>
     public IReadOnlyList<GunController> Weapons => _weapons;
+
+    /// <summary>
+    /// Fired after IK targets are set but BEFORE rigBuilder.Build().
+    /// FlashlightSlot subscribes to override the left-arm IK target for dual-wield.
+    /// </summary>
+    public event Action<GunController> OnWeaponEquipped;
 
     // ── Private ────────────────────────────────────────────────────────────
 
@@ -147,6 +154,8 @@ public class WeaponManager : MonoBehaviour
         CurrentWeapon.gameObject.SetActive(true);
 
         ApplyIKTargets(CurrentWeapon);
+        OnWeaponEquipped?.Invoke(CurrentWeapon); // FlashlightSlot may override left IK before Build
+        rigBuilder?.Build();
     }
 
     /// <summary>Disables the current weapon without equipping another.</summary>
@@ -171,6 +180,8 @@ public class WeaponManager : MonoBehaviour
         CurrentWeapon = emptyHandsGun;
         CurrentWeapon.gameObject.SetActive(true);
         ApplyIKTargets(CurrentWeapon);
+        OnWeaponEquipped?.Invoke(CurrentWeapon);
+        rigBuilder?.Build();
     }
 
     /// <summary>
@@ -250,9 +261,5 @@ public class WeaponManager : MonoBehaviour
             leftHandIKTarget.localPosition = Vector3.zero;
             leftHandIKTarget.localRotation = Quaternion.identity;
         }
-
-        // Animation Rigging caches constraint data at build time.
-        // Must rebuild after changing IK target parents or constraint data at runtime.
-        rigBuilder?.Build();
     }
 }

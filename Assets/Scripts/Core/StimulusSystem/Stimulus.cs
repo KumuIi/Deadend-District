@@ -6,6 +6,7 @@ public enum StimulusType
     Sight,      // line-of-sight detection (AI only polls, but broadcasts can still happen)
     Damage,     // something was hit/hurt
     Explosion,  // grenade, barrel, breaching charge
+    Hunt,       // darkness timer expired — MonsterAI only, radius 999. Guards do NOT listen to this.
 }
 
 /// <summary>

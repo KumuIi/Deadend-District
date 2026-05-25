@@ -17,7 +17,12 @@
       "Bash(Get-ChildItem -Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
-      "Bash(Get-ChildItem -Recurse \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Filter \"*.cs\")"
+      "Bash(Get-ChildItem -Recurse \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\" -Filter \"*.cs\")",
+      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\BatterySystem.cs\")",
+      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\World\\\\LightSource.cs\")",
+      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Player\\\\DarknessStateWriter.cs\")",
+      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Player\\\\LowBatteryWarning.cs\")",
+      "Bash(Test-Path \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Inventory\\\\BatteryItemSO.cs\")"
     ]
   }
 }

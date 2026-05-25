@@ -18,17 +18,20 @@ public sealed class PlayerHUD : MonoBehaviour
     [Header("=== References ===")]
     public PlayerHealth      playerHealth;
     public EncumbranceSystem encumbrance;
+    public BatterySystem     batterySystem;
 
     [Header("=== Position ===")]
     public float paddingLeft   = 20f;
     public float paddingBottom = 20f;
 
     [Header("=== Style ===")]
-    public Color healthColor = new Color(0.80f, 0.15f, 0.15f, 0.90f);
-    public Color energyColor = new Color(0.85f, 0.75f, 0.15f, 0.90f);
+    public Color healthColor  = new Color(0.80f, 0.15f, 0.15f, 0.90f);
+    public Color energyColor  = new Color(0.85f, 0.75f, 0.15f, 0.90f);
+    public Color batteryColor = new Color(0.15f, 0.65f, 0.90f, 0.90f);
 
-    private Image    _healthFill;
-    private Image    _energyFill;
+    private Image           _healthFill;
+    private Image           _energyFill;
+    private Image           _batteryFill;
     private TextMeshProUGUI _weightLabel;
 
     private static Sprite _fillSprite;
@@ -50,13 +53,15 @@ public sealed class PlayerHUD : MonoBehaviour
         rt.anchorMin        = Vector2.zero;              // bottom-left anchor
         rt.anchorMax        = Vector2.zero;
         rt.pivot            = Vector2.zero;              // pivot at bottom-left
-        rt.sizeDelta        = new Vector2(BarW, 2f * BarH + Gap);
+        rt.sizeDelta        = new Vector2(BarW, 3f * BarH + 2f * Gap);
         rt.anchoredPosition = new Vector2(paddingLeft, paddingBottom);
 
-        // Energy bar — row 0 (bottom)
-        _energyFill = BuildBar(panel.transform, 0, energyColor, "Energy");
-        // Health bar — row 1 (top)
-        _healthFill = BuildBar(panel.transform, 1, healthColor,  "Health");
+        // Battery bar — row 0 (bottom)
+        _batteryFill = BuildBar(panel.transform, 0f, batteryColor, "Battery");
+        // Energy bar — row 1
+        _energyFill  = BuildBar(panel.transform, 1f * (BarH + Gap), energyColor,  "Energy");
+        // Health bar — row 2 (top)
+        _healthFill  = BuildBar(panel.transform, 2f * (BarH + Gap), healthColor,  "Health");
         // Weight label — above the bars
         _weightLabel = BuildWeightLabel(panel.transform);
     }
@@ -64,10 +69,12 @@ public sealed class PlayerHUD : MonoBehaviour
     private void Update()
     {
         if (playerHealth == null) return;
-        _healthFill.fillAmount = playerHealth.maxHealth > 0f
+        _healthFill.fillAmount  = playerHealth.maxHealth > 0f
             ? playerHealth.CurrentHealth / playerHealth.maxHealth : 0f;
-        _energyFill.fillAmount = playerHealth.maxEnergy > 0f
+        _energyFill.fillAmount  = playerHealth.maxEnergy > 0f
             ? playerHealth.CurrentEnergy / playerHealth.maxEnergy : 0f;
+        _batteryFill.fillAmount = batterySystem != null
+            ? batterySystem.ActiveChargeNormalized : 0f;
 
         UpdateWeightLabel();
     }
@@ -89,7 +96,7 @@ public sealed class PlayerHUD : MonoBehaviour
 
     private static TextMeshProUGUI BuildWeightLabel(Transform parent)
     {
-        float yPos = 2 * (BarH + Gap) + 2f;
+        float yPos = 3 * (BarH + Gap) + 2f;
 
         var go = new GameObject("WeightLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
         go.transform.SetParent(parent, false);
@@ -108,9 +115,8 @@ public sealed class PlayerHUD : MonoBehaviour
         return tmp;
     }
 
-    private static Image BuildBar(Transform parent, int row, Color fillColor, string label)
+    private static Image BuildBar(Transform parent, float yPos, Color fillColor, string label)
     {
-        float yPos = row * (BarH + Gap);
 
         var bgGO              = new GameObject($"{label}BG", typeof(RectTransform), typeof(Image));
         bgGO.transform.SetParent(parent, false);
