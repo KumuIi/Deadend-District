@@ -16,6 +16,7 @@ public class EncumbranceSystem : MonoBehaviour
     // ── State ──────────────────────────────────────────────────────────────
 
     private float _currentWeightKg;
+    private bool  _started;
 
     public float CurrentWeightKg  => _currentWeightKg;
     public float MaxCarryWeightKg => _config != null ? _config.maxCarryWeightKg : 40f;
@@ -23,11 +24,19 @@ public class EncumbranceSystem : MonoBehaviour
     public bool IsOverloaded => _config != null
         && _currentWeightKg / _config.maxCarryWeightKg >= _config.sprintBlockThreshold;
 
+    // ── Cached per-recalc values exposed to motor ─────────────────────────
+
+    public float JumpForceMultiplier  { get; private set; } = 1f;
+    public float JumpDelay            { get; private set; } = 0f;
+    public float CrouchRegenMultiplier => _config != null ? _config.crouchRegenMultiplier : 1f;
+    public float WalkDrainRate         => _config != null ? _config.walkDrainRate         : 0f;
+
     // ── Stable modifier IDs ────────────────────────────────────────────────
 
     private const string IdSpeed   = "encumbrance.speed";
     private const string IdStamina = "encumbrance.stamina";
     private const string IdNoise   = "encumbrance.noise";
+    private const string IdRegen   = "encumbrance.regen";
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
@@ -43,19 +52,26 @@ public class EncumbranceSystem : MonoBehaviour
             Debug.LogError("[EncumbranceSystem] PlayerHealth not assigned.", this);
     }
 
+    private void OnEnable()
+    {
+        if (!_started) return; // Start() handles the initial subscription
+        if (_inventoryUI != null && _inventoryUI.Grid != null)
+            _inventoryUI.Grid.OnChanged += OnInventoryChanged;
+        Recalculate();
+    }
+
     private void OnDisable()
     {
         if (_inventoryUI != null && _inventoryUI.Grid != null)
             _inventoryUI.Grid.OnChanged -= OnInventoryChanged;
-
         RemoveModifiers();
     }
 
     private void Start()
     {
+        _started = true;
         if (_inventoryUI != null && _inventoryUI.Grid != null)
             _inventoryUI.Grid.OnChanged += OnInventoryChanged;
-
         Recalculate();
     }
 
@@ -79,6 +95,14 @@ public class EncumbranceSystem : MonoBehaviour
         float staminaMult = Mathf.Max(0f, _config.staminaDrainCurve.Evaluate(ratio));
         float noiseMult   = Mathf.Max(0f, _config.noiseCurve.Evaluate(ratio));
         float bobMult     = Mathf.Max(0f, _config.bobFrequencyCurve.Evaluate(ratio));
+        // Guard against empty AnimationCurve (evaluates to 0 on unsaved SO fields)
+        float regenMult = _config.regenPenaltyCurve.keys.Length > 0
+            ? Mathf.Max(0f, _config.regenPenaltyCurve.Evaluate(ratio)) : 1f;
+
+        JumpForceMultiplier = _config.jumpForceCurve.keys.Length > 0
+            ? Mathf.Max(0f, _config.jumpForceCurve.Evaluate(ratio)) : 1f;
+        JumpDelay = _config.jumpDelayCurve.keys.Length > 0
+            ? Mathf.Max(0f, _config.jumpDelayCurve.Evaluate(ratio)) : 0f;
 
         if (_motor != null)
         {
@@ -98,6 +122,10 @@ public class EncumbranceSystem : MonoBehaviour
             _health.StatModifiers.Remove(IdStamina);
             _health.StatModifiers.Add(new PlayerStatModifier
                 { Id = IdStamina, Stat = StatType.StaminaDrain, Value = staminaMult, IsMultiplier = true });
+
+            _health.StatModifiers.Remove(IdRegen);
+            _health.StatModifiers.Add(new PlayerStatModifier
+                { Id = IdRegen, Stat = StatType.EnergyRegen, Value = regenMult, IsMultiplier = true });
         }
     }
 
@@ -106,6 +134,9 @@ public class EncumbranceSystem : MonoBehaviour
         _motor?.StatModifiers.Remove(IdSpeed);
         _motor?.StatModifiers.Remove(IdNoise);
         _health?.StatModifiers.Remove(IdStamina);
+        _health?.StatModifiers.Remove(IdRegen);
         if (_motor != null) _motor.EncumbranceWeightMultiplier = 1f;
+        JumpForceMultiplier = 1f;
+        JumpDelay           = 0f;
     }
 }

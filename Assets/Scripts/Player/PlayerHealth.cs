@@ -24,6 +24,17 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
     /// <summary>Push stamina-affecting modifiers here (e.g. encumbrance.stamina, augment.*).</summary>
     public StatModifierStack StatModifiers { get; } = new StatModifierStack();
 
+    // ── Regen gating ───────────────────────────────────────────────────────
+
+    private float _regenCooldown;
+
+    /// <summary>
+    /// Prevents regen for at least <paramref name="duration"/> seconds.
+    /// Call every frame while the blocking condition is active to keep the timer pinned.
+    /// </summary>
+    public void SuppressRegen(float duration) =>
+        _regenCooldown = Mathf.Max(_regenCooldown, duration);
+
     // ── Read-only state ────────────────────────────────────────────────────
 
     public float CurrentHealth => _currentHealth;
@@ -59,10 +70,21 @@ public sealed class PlayerHealth : MonoBehaviour, IDamageable
 
     private void Update()
     {
+        if (_regenCooldown > 0f)
+        {
+            _regenCooldown -= Time.deltaTime;
+            return;
+        }
+
         if (_currentEnergy < maxEnergy)
         {
-            _currentEnergy = Mathf.Min(maxEnergy, _currentEnergy + energyRegenRate * Time.deltaTime);
-            OnEnergyChanged?.Invoke();
+            float regenMult = Mathf.Max(0f, StatModifiers.Net(StatType.EnergyRegen));
+            float next = Mathf.Min(maxEnergy, _currentEnergy + energyRegenRate * regenMult * Time.deltaTime);
+            if (next != _currentEnergy)
+            {
+                _currentEnergy = next;
+                OnEnergyChanged?.Invoke();
+            }
         }
     }
 

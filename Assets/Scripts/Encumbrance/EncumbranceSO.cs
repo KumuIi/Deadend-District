@@ -36,6 +36,24 @@ public class EncumbranceSO : ScriptableObject
              "Default: 1.0 at 0%, ~0.75 at 100%, ~0.55 at 150%.")]
     public AnimationCurve bobFrequencyCurve = DefaultBobCurve();
 
+    [Header("=== Stamina Regen ===")]
+    [Tooltip("Regen rate multiplier by weight ratio. Y<1 = slower regen. Default: 1.0 at 0%, 0.5 at 100%, 0.35 at 150%.")]
+    public AnimationCurve regenPenaltyCurve = DefaultRegenCurve();
+
+    [Tooltip("Flat stamina drain per second while walking (scales with StaminaDrain modifiers). 0 = no walk drain.")]
+    public float walkDrainRate = 2f;
+
+    [Tooltip("EnergyRegen multiplier when crouching. Stacks multiplicatively with weight regen penalty.")]
+    [Range(1f, 3f)]
+    public float crouchRegenMultiplier = 1.5f;
+
+    [Header("=== Jump ===")]
+    [Tooltip("Jump force multiplier by weight ratio. Y<1 = lower jump. Default: 1.0 at 0%, 0.65 at 100%.")]
+    public AnimationCurve jumpForceCurve = DefaultJumpForceCurve();
+
+    [Tooltip("Jump delay in seconds by weight ratio. Player must hold jump before takeoff. Default: 0 at 0%, 0.25 at 100%.")]
+    public AnimationCurve jumpDelayCurve = DefaultJumpDelayCurve();
+
     // ── Default curves ─────────────────────────────────────────────────────
 
     private static AnimationCurve DefaultSpeedCurve() => new AnimationCurve(
@@ -66,6 +84,27 @@ public class EncumbranceSO : ScriptableObject
         new Keyframe(1.00f, 0.65f),
         new Keyframe(1.50f, 0.55f));
 
+    private static AnimationCurve DefaultRegenCurve() => new AnimationCurve(
+        new Keyframe(0f,    1.00f),
+        new Keyframe(0.60f, 0.85f),
+        new Keyframe(0.85f, 0.65f),
+        new Keyframe(1.00f, 0.50f),
+        new Keyframe(1.50f, 0.35f));
+
+    private static AnimationCurve DefaultJumpForceCurve() => new AnimationCurve(
+        new Keyframe(0f,    1.00f),
+        new Keyframe(0.60f, 0.90f),
+        new Keyframe(0.85f, 0.75f),
+        new Keyframe(1.00f, 0.65f),
+        new Keyframe(1.50f, 0.55f));
+
+    private static AnimationCurve DefaultJumpDelayCurve() => new AnimationCurve(
+        new Keyframe(0f,    0.00f),
+        new Keyframe(0.60f, 0.00f),
+        new Keyframe(0.85f, 0.10f),
+        new Keyframe(1.00f, 0.25f),
+        new Keyframe(1.50f, 0.50f));
+
     // ── Validation ─────────────────────────────────────────────────────────
 
 #if UNITY_EDITOR
@@ -81,6 +120,9 @@ public class EncumbranceSO : ScriptableObject
         staminaDrainCurve  = DefaultStaminaCurve();
         noiseCurve         = DefaultNoiseCurve();
         bobFrequencyCurve  = DefaultBobCurve();
+        regenPenaltyCurve  = DefaultRegenCurve();
+        jumpForceCurve     = DefaultJumpForceCurve();
+        jumpDelayCurve     = DefaultJumpDelayCurve();
     }
 #endif
 }

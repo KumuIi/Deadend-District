@@ -49,7 +49,12 @@ public class PlayerMotor : MonoBehaviour
     private float _slopeSpeed;
     private float _slideSpeed;
 
-    private bool _staminaExhausted;
+    private bool  _staminaExhausted;
+    private float _jumpChargeAccum;
+    private bool  _jumpPending;
+    private bool  _prevCrouching;
+
+    private const string CrouchRegenModId = "crouch.regen";
 
     private float   _stepCooldown;
     private Vector3 _preCollisionHoriz;
@@ -120,6 +125,11 @@ public class PlayerMotor : MonoBehaviour
             _visualBaseY = transform.GetChild(0).localPosition.y;
     }
 
+    void OnDisable()
+    {
+        _playerHealth?.StatModifiers.Remove(CrouchRegenModId);
+    }
+
     void ApplyCapsuleGeometry(float height)
     {
         _capsule.height = height;
@@ -140,6 +150,7 @@ public class PlayerMotor : MonoBehaviour
         if (_input.JumpPressed && _jumpBufferTimer <= 0f)
         {
             _jumpBufferTimer = config.jumpBufferTime;
+            _jumpPending     = true;
             _input.ConsumeJump();
         }
 
@@ -228,6 +239,20 @@ public class PlayerMotor : MonoBehaviour
         }
 
         _isCrouching   = wantCrouch;
+
+        if (_isCrouching != _prevCrouching)
+        {
+            _prevCrouching = _isCrouching;
+            if (_playerHealth != null)
+            {
+                _playerHealth.StatModifiers.Remove(CrouchRegenModId);
+                if (_isCrouching && _encumbrance != null && _encumbrance.CrouchRegenMultiplier > 1f)
+                    _playerHealth.StatModifiers.Add(new PlayerStatModifier
+                        { Id = CrouchRegenModId, Stat = StatType.EnergyRegen,
+                          Value = _encumbrance.CrouchRegenMultiplier, IsMultiplier = true });
+            }
+        }
+
         float targetH  = _isCrouching ? config.crouchHeight : config.standHeight;
         _currentHeight = Mathf.Lerp(_currentHeight, targetH, config.crouchLerpSpeed * Time.fixedDeltaTime);
         ApplyCapsuleGeometry(_currentHeight);
@@ -245,12 +270,32 @@ public class PlayerMotor : MonoBehaviour
     // ─── Jump ─────────────────────────────────────────────────────────────
     void HandleJump()
     {
-        if (_jumpBufferTimer <= 0f) return;
+        if (!_jumpPending) { _jumpChargeAccum = 0f; return; }
+
         bool canJump = (_grounded || _coyoteTimer <= config.coyoteTime)
                        && !_inSlopeMode && !_hitCeiling && !_steepGround && !_isCrouching;
-        if (!canJump) return;
+        if (!canJump)
+        {
+            // Cancel if charge already started (can't finish mid-air) or buffer window expired
+            if (_jumpChargeAccum > 0f || _jumpBufferTimer <= 0f)
+            {
+                _jumpChargeAccum = 0f;
+                _jumpPending     = false;
+            }
+            // Otherwise keep pending — player pressed jump in the air; wait to land within buffer
+            return;
+        }
+
+        float jumpDelay = _encumbrance != null ? _encumbrance.JumpDelay : 0f;
+        _jumpChargeAccum += Time.fixedDeltaTime;
+        if (_jumpChargeAccum < jumpDelay) return;
+
+        _jumpChargeAccum = 0f;
+        _jumpPending     = false;
         _jumpBufferTimer = 0f;
-        _velocity.y      = config.jumpForce * WeaponWeightMultiplier;
+
+        float forceMult  = _encumbrance != null ? _encumbrance.JumpForceMultiplier : 1f;
+        _velocity.y      = config.jumpForce * forceMult;
         _jumpedThisFrame = true;
         _coyoteTimer     = config.coyoteTime + 1f;
         OnJumped?.Invoke();
@@ -261,8 +306,26 @@ public class PlayerMotor : MonoBehaviour
     {
         if (_playerHealth == null) return;
 
+        bool isMoving    = _input.MoveInput.sqrMagnitude > 0.01f;
+        bool isOverloaded = _encumbrance != null && _encumbrance.IsOverloaded;
+
         if (IsSprinting)
+        {
             _playerHealth.UseEnergy(_sprintDrainRate * Time.fixedDeltaTime);
+            _playerHealth.SuppressRegen(1f);
+        }
+        else
+        {
+            float walkRate = _encumbrance != null ? _encumbrance.WalkDrainRate : 0f;
+            bool isWalking = _grounded && isMoving
+                             && !(_staminaExhausted && _playerHealth.CurrentEnergy <= 0f);
+            if (walkRate > 0f && isWalking)
+                _playerHealth.UseEnergy(walkRate * Time.fixedDeltaTime);
+
+            // Overweight: suppress regen while moving (walking already drains, standing still is the only recovery)
+            if (isOverloaded && _grounded && isMoving)
+                _playerHealth.SuppressRegen(1f);
+        }
 
         // Exhaustion: block sprint at 0, re-enable above recovery fraction (hysteresis)
         float recoveryEnergy = _playerHealth.maxEnergy * _exhaustionRecoveryFraction;
