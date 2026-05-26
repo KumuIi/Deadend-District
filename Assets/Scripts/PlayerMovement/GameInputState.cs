@@ -30,8 +30,8 @@ public static class GameInputState
     public static bool ReloadPressed => Input.GetKeyDown(KeyCode.R);
     /// <summary>Hold-open / debug bolt key held.</summary>
     public static bool HoldOpenHeld  => Input.GetKey(KeyCode.H);
-    /// <summary>Interact key pressed this frame (E).</summary>
-    public static bool InteractPressed => Input.GetKeyDown(KeyCode.E);
+    /// <summary>Interact key pressed this frame (F).</summary>
+    public static bool InteractPressed => Input.GetKeyDown(KeyCode.F);
 
     // ──────────────────────────────────────────────────────────────────────
 

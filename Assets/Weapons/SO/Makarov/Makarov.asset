@@ -32,7 +32,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   weight: 1
-  reloadTime: 3
+  reloadTime: 2
   reloadMagEjectTime: 0.3
   reloadMagInsertTime: 1.2
   defaultMagazineType: {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
@@ -44,6 +44,9 @@ MonoBehaviour:
   reloadDipDownTime: 0.25
   reloadDipReturnTime: 0.2
   reloadDipAudioThreshold: -0.25
+  reloadFlashlightPitchDown: 70
+  reloadFlashlightJitterPos: 0.03
+  reloadFlashlightJitterRot: 15
   adsInTime: 0.09
   adsOutTime: 0.2
   adsFirerateMultiplier: 1
