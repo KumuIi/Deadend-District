@@ -56,7 +56,16 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         if (_equipped == null || _flashlightView == null) return;
 
         var light = LightSource;
-        if (light == null || !light.IsOn) return;
+        if (light == null) return;
+
+        if (!GameInputState.GameplayBlocked && Input.GetKeyDown(KeyCode.T))
+        {
+            // Only allow turning ON if there is charge; turning OFF is always permitted.
+            if (!IsDepleted || light.IsOn)
+                light.Toggle();
+        }
+
+        if (!light.IsOn) return;
 
         float drain = light.DrainRate * Time.deltaTime;
         if (drain <= 0f) return;

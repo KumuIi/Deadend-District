@@ -100,6 +100,15 @@ public sealed class InventoryTooltip
                        $"Count: {ai.CurrentCount}" +
                        WeightLine(item);
             }
+            case BatteryItemInstance bi:
+            {
+                string charge = $"{Mathf.RoundToInt(bi.ChargeNormalized * 100f)}%";
+                string type   = bi.BatteryType == BatteryType.Rechargeable ? "Rechargeable" : "One-time";
+                return $"<b>{bi.data.itemName}</b>\n" +
+                       $"Charge: {charge}\n" +
+                       $"Type: {type}" +
+                       WeightLine(item);
+            }
             case FlashlightItemInstance fi:
             {
                 string battery = $"{Mathf.RoundToInt(fi.ChargeNormalized * 100f)}%";

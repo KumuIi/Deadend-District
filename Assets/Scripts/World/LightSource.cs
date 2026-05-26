@@ -30,12 +30,6 @@ public class LightSource : MonoBehaviour
 
     private void Awake() => _light = GetComponent<Light>();
 
-    private void Update()
-    {
-        if (!GameInputState.GameplayBlocked && Input.GetKeyDown(KeyCode.T))
-            Toggle();
-    }
-
     public void Toggle()
     {
         SetMode(_mode == LightMode.Off ? LightMode.Bright : LightMode.Off);
