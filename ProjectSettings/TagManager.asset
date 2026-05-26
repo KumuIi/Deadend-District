@@ -8,6 +8,8 @@ TagManager:
   - Concrete
   - Wood
   - Gravel
+  - WaterLow
+  - WaterHigh
   layers:
   - Default
   - TransparentFX

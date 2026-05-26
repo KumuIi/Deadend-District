@@ -7,7 +7,7 @@ using UnityEngine;
 ///
 /// Scene setup:
 ///   1. Add this component to the Player GameObject (same as WeaponManager).
-///   2. Assign WeaponManager, FlashlightView, and FlashlightGO in the Inspector.
+///   2. Assign WeaponManager, FlashlightView, FlashlightGO, and BeamPivot in the Inspector.
 ///   3. Call TryEquip(instance) from InventoryUI on right-click Equip.
 ///
 /// Dual-wield rule: flashlight is visible only when WeaponSO.allowsOffHandItem is true
@@ -21,6 +21,14 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     [SerializeField] private GameObject     _flashlightGO;
     [Tooltip("FlashlightSway on the flashlight GO — receives the reload dip offset each frame.")]
     [SerializeField] private FlashlightSway _flashlightSway;
+    [Tooltip("Parent pivot Transform above the flashlight root. Rotated toward the inventory when open.")]
+    [SerializeField] private Transform      _beamPivot;
+    [Tooltip("How far toward the inventory target the beam pivots. 0 = no redirect, 1 = full aim.")]
+    [SerializeField][Range(0f, 1f)] private float _inventoryAimStrength = 0.7f;
+    [Tooltip("Degrees per second the pivot rotates toward (and back from) the inventory target.")]
+    [SerializeField] private float          _inventoryAimSpeed    = 120f;
+    [Tooltip("Extra degrees added on top of the LookAt aim. Y = swing beam right (+) or left (-). X = tilt up (-) or down (+).")]
+    [SerializeField] private Vector3        _inventoryAimExtra    = Vector3.zero;
     [Tooltip("Drag in the ReloadDip component from every gun prefab that can have an off-hand flashlight.")]
     [SerializeField] private ReloadDip[]    _reloadDips;
 
@@ -42,6 +50,12 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     private float                  _lastReportedNormalized = 1f;
     private ReloadDip              _activeReloadDip;
 
+    // ── Inventory aim state ────────────────────────────────────────────────
+    private Transform  _inventoryAimTarget;
+    private bool       _inventoryAimActive;
+    private bool       _inventoryAimReturning;
+    private Quaternion _savedPivotLocalRot;
+
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     private void OnEnable()
@@ -57,6 +71,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     {
         if (_weaponManager != null)
             _weaponManager.OnWeaponEquipped -= HandleWeaponEquipped;
+        CancelInventoryAim();
     }
 
     private void Update()
@@ -102,6 +117,88 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         }
     }
 
+    private void LateUpdate()
+    {
+        if (_beamPivot == null) return;
+        if (!_inventoryAimActive && !_inventoryAimReturning) return;
+
+        // Natural world rotation — recomputed each frame so it tracks player/camera movement.
+        Quaternion naturalWorld = _beamPivot.parent != null
+            ? _beamPivot.parent.rotation * _savedPivotLocalRot
+            : _savedPivotLocalRot;
+
+        Quaternion targetRot;
+
+        if (_inventoryAimActive && _inventoryAimTarget != null)
+        {
+            Vector3 dir = (_inventoryAimTarget.position - _beamPivot.position).normalized;
+            if (dir == Vector3.zero) return;
+            Quaternion aimWorld = Quaternion.LookRotation(dir) * Quaternion.Euler(_inventoryAimExtra);
+            targetRot = Quaternion.Slerp(naturalWorld, aimWorld, _inventoryAimStrength);
+        }
+        else
+        {
+            // Returning: ease back to natural pose.
+            targetRot = naturalWorld;
+        }
+
+        _beamPivot.rotation = Quaternion.RotateTowards(
+            _beamPivot.rotation, targetRot, _inventoryAimSpeed * Time.deltaTime);
+
+        // Snap-complete the return to avoid floating-point drift.
+        if (_inventoryAimReturning && Quaternion.Angle(_beamPivot.rotation, targetRot) < 0.5f)
+        {
+            _beamPivot.localRotation = _savedPivotLocalRot;
+            _inventoryAimReturning   = false;
+        }
+    }
+
+    // ── Inventory aim ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by InventoryUI when the inventory opens. Eases the beam pivot toward
+    /// the inventory target. No-op if already active.
+    /// Safe to call mid-return — resumes aim without losing the saved natural rotation.
+    /// </summary>
+    public void BeginInventoryAim(Transform aimTarget)
+    {
+        if (_inventoryAimActive) return;
+        if (_beamPivot == null) return;
+
+        // If we're mid-return, _savedPivotLocalRot already holds the natural local rotation —
+        // keep it. Only save a fresh snapshot when starting from a fully idle state.
+        if (!_inventoryAimReturning)
+            _savedPivotLocalRot = _beamPivot.localRotation;
+
+        _inventoryAimReturning = false;
+        _inventoryAimTarget    = aimTarget;
+        _inventoryAimActive    = true;
+    }
+
+    /// <summary>
+    /// Called by InventoryUI when the inventory closes. Eases the pivot back to its
+    /// natural orientation over time. Safe to call when already inactive.
+    /// </summary>
+    public void EndInventoryAim()
+    {
+        if (!_inventoryAimActive) return;
+
+        _inventoryAimActive    = false;
+        _inventoryAimTarget    = null;
+        _inventoryAimReturning = _beamPivot != null;
+    }
+
+    /// <summary>Immediate pivot restore — used by Unequip and OnDisable.</summary>
+    private void CancelInventoryAim()
+    {
+        _inventoryAimActive    = false;
+        _inventoryAimReturning = false;
+        _inventoryAimTarget    = null;
+
+        if (_beamPivot != null)
+            _beamPivot.localRotation = _savedPivotLocalRot;
+    }
+
     // ── IEquipmentSlot ─────────────────────────────────────────────────────
 
     public bool TryEquip(ItemInstance item)
@@ -138,6 +235,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
 
     public void Unequip()
     {
+        CancelInventoryAim();
         if (_flashlightGO != null) _flashlightGO.SetActive(false);
         LightSource?.ForceOff();
         _equipped    = null;
@@ -236,6 +334,8 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
             Debug.LogWarning("[FlashlightSlot] FlashlightGO is not assigned.", this);
         if (_flashlightSway == null)
             Debug.LogWarning("[FlashlightSlot] FlashlightSway is not assigned — reload dip will not affect the flashlight.", this);
+        if (_beamPivot == null)
+            Debug.LogWarning("[FlashlightSlot] BeamPivot is not assigned — inventory aim will not work.", this);
     }
 #endif
 }

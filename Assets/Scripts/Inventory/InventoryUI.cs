@@ -59,6 +59,10 @@ public sealed class InventoryUI : MonoBehaviour
     [Tooltip("Layer used exclusively for inventory models. Create a layer named 'InventoryItems'.")]
     public int modelLayer = 31;
 
+    [Header("=== Flashlight Aim ===")]
+    [Tooltip("Empty Transform positioned where inventory items sit in world space. The flashlight beam aims here when the inventory is open.")]
+    [SerializeField] private Transform _inventoryLightTarget;
+
     [Header("=== Drop Settings ===")]
     [Tooltip("Origin transform for item drops (assign player camera). Falls back to Camera.main.")]
     [SerializeField] private Transform _dropOrigin;
@@ -136,6 +140,8 @@ public sealed class InventoryUI : MonoBehaviour
             Debug.LogError("[InventoryUI] WeaponManager is not assigned — weapon equip will not work.", this);
         if (flashlightSlot == null)
             Debug.LogError("[InventoryUI] FlashlightSlot is not assigned — flashlight equip will not work.", this);
+        if (_inventoryLightTarget == null)
+            Debug.LogWarning("[InventoryUI] InventoryLightTarget is not assigned — flashlight will not aim at inventory.", this);
 
         Grid = new InventoryGrid(gridWidth, gridHeight);
 
@@ -213,6 +219,7 @@ public sealed class InventoryUI : MonoBehaviour
     private void OnDestroy()
     {
         if (IsOpen) GameInputState.Unblock();
+        flashlightSlot?.EndInventoryAim();
     }
 
     // ── Public API ────────────────────────────────────────────────────────
@@ -273,8 +280,16 @@ public sealed class InventoryUI : MonoBehaviour
             _hoveredView = null;
         }
 
-        if (open) GameInputState.Block();
-        else      GameInputState.Unblock();
+        if (open)
+        {
+            GameInputState.Block();
+            flashlightSlot?.BeginInventoryAim(_inventoryLightTarget);
+        }
+        else
+        {
+            GameInputState.Unblock();
+            flashlightSlot?.EndInventoryAim();
+        }
     }
 
     /// <summary>
@@ -381,6 +396,9 @@ public sealed class InventoryUI : MonoBehaviour
                 return;
             }
             flashlightSlot.TryEquip(fi);
+            // TryEquip calls Unequip first which ends any active inventory aim; restart it.
+            if (IsOpen)
+                flashlightSlot.BeginInventoryAim(_inventoryLightTarget);
         }
     }
 
