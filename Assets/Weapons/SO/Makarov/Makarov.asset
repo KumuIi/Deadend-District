@@ -32,10 +32,18 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   weight: 1
-  reloadTime: 2
+  reloadTime: 3
   reloadMagEjectTime: 0.3
   reloadMagInsertTime: 1.2
   defaultMagazineType: {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
+  reloadClips:
+  - {fileID: 8300000, guid: 586d39d5e885b7844b9936f56486d8c7, type: 3}
+  - {fileID: 8300000, guid: 2144b1782ec5a8240bcd726c886f8122, type: 3}
+  - {fileID: 8300000, guid: 2ffb3ee953e901248845159266931e41, type: 3}
+  reloadDipDepth: -0.8
+  reloadDipDownTime: 0.25
+  reloadDipReturnTime: 0.2
+  reloadDipAudioThreshold: -0.25
   adsInTime: 0.09
   adsOutTime: 0.2
   adsFirerateMultiplier: 1
@@ -50,8 +58,8 @@ MonoBehaviour:
   casingEjectSpread: 1.5
   casingTorque: 8
   casingLifetime: 4
-  muzzleFlashPrefab: {fileID: 1881687275341570813, guid: 05db9151f93e18e4598102ad0dd3c3c8, type: 3}
-  gunshotClip: {fileID: 8300000, guid: 2a8a853b1be954c499cc8a83851d7000, type: 3}
+  muzzleFlashPrefab: {fileID: 0}
+  gunshotClip: {fileID: 8300000, guid: ba033ad3b7441314295c4205140ef0c1, type: 3}
   defaultAmmo: {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}
   feel:
     hipRestRotationOffset: {x: 0, y: 0, z: 0}

@@ -17934,8 +17934,16 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7691086412341542467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_Range
+      value: 13.373423
+      objectReference: {fileID: 0}
+    - target: {fileID: 7691086412341542467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_Intensity
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7691086412341542467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_InnerSpotAngle
+      value: 68.07069
       objectReference: {fileID: 0}
     - target: {fileID: 8773417110864000135, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: flashlightSlot

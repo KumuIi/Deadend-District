@@ -19,6 +19,10 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     [SerializeField] private FlashlightView _flashlightView;
     [Tooltip("The root GameObject of the pre-placed flashlight model in the scene.")]
     [SerializeField] private GameObject     _flashlightGO;
+    [Tooltip("FlashlightSway on the flashlight GO — receives the reload dip offset each frame.")]
+    [SerializeField] private FlashlightSway _flashlightSway;
+    [Tooltip("Drag in the ReloadDip component from every gun prefab that can have an off-hand flashlight.")]
+    [SerializeField] private ReloadDip[]    _reloadDips;
 
     public string                 SlotId            => "flashlight";
     public ItemInstance           EquippedItem      => _equipped;
@@ -36,13 +40,17 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
     private FlashlightItemInstance _equipped;
     private bool                   _wasDepleted;
     private float                  _lastReportedNormalized = 1f;
+    private ReloadDip              _activeReloadDip;
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     private void OnEnable()
     {
         if (_weaponManager != null)
+        {
             _weaponManager.OnWeaponEquipped += HandleWeaponEquipped;
+            _activeReloadDip = FindReloadDip(_weaponManager.CurrentWeapon);
+        }
     }
 
     private void OnDisable()
@@ -63,6 +71,12 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
             // Only allow turning ON if there is charge; turning OFF is always permitted.
             if (!IsDepleted || light.IsOn)
                 light.Toggle();
+        }
+
+        if (_flashlightSway != null)
+        {
+            _flashlightSway.DipPositionOffset = _activeReloadDip != null ? _activeReloadDip.FlashlightPositionOffset : Vector3.zero;
+            _flashlightSway.DipRotationOffset = _activeReloadDip != null ? _activeReloadDip.FlashlightRotationOffset : Vector3.zero;
         }
 
         if (!light.IsOn) return;
@@ -99,6 +113,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         _equipped               = fi;
         _wasDepleted            = fi.IsDepleted;
         _lastReportedNormalized = fi.ChargeNormalized;
+        _activeReloadDip = FindReloadDip(_weaponManager?.CurrentWeapon);
 
         // If already depleted keep light off
         if (_wasDepleted)
@@ -129,6 +144,11 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         _wasDepleted = false;
         RestoreWeaponLeftIK();
         _lastReportedNormalized = 0f;
+        if (_flashlightSway != null)
+        {
+            _flashlightSway.DipPositionOffset = Vector3.zero;
+            _flashlightSway.DipRotationOffset = Vector3.zero;
+        }
         OnChargeChanged?.Invoke(0f); // clear HUD
         OnDepleted?.Invoke();        // player has no light source
     }
@@ -157,9 +177,12 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
 
     private void HandleWeaponEquipped(GunController gun)
     {
+        _activeReloadDip = FindReloadDip(gun);
+
         if (_equipped == null || _flashlightGO == null) return;
 
-        bool allowed = gun.weaponData != null && gun.weaponData.allowsOffHandItem;
+        // null gun = no weapon equipped = standalone flashlight allowed (same as CurrentWeaponAllowsOffHand)
+        bool allowed = gun == null || (gun.weaponData != null && gun.weaponData.allowsOffHandItem);
         _flashlightGO.SetActive(allowed);
 
         if (allowed)
@@ -194,6 +217,14 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         return gun.weaponData != null && gun.weaponData.allowsOffHandItem;
     }
 
+    private ReloadDip FindReloadDip(GunController gun)
+    {
+        if (gun == null || _reloadDips == null) return null;
+        foreach (var dip in _reloadDips)
+            if (dip != null && dip.Gun == gun) return dip;
+        return null;
+    }
+
 #if UNITY_EDITOR
     private void OnValidate()
     {
@@ -203,6 +234,8 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
             Debug.LogWarning("[FlashlightSlot] FlashlightView is not assigned.", this);
         if (_flashlightGO == null)
             Debug.LogWarning("[FlashlightSlot] FlashlightGO is not assigned.", this);
+        if (_flashlightSway == null)
+            Debug.LogWarning("[FlashlightSlot] FlashlightSway is not assigned — reload dip will not affect the flashlight.", this);
     }
 #endif
 }

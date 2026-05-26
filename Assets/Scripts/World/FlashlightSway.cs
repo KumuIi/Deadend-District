@@ -48,6 +48,11 @@ public class FlashlightSway : MonoBehaviour
     // ── Bob state ──────────────────────────────────────────────────────────
     private float _bobTimer;
 
+    /// <summary>Written each frame by FlashlightSlot from ReloadDip.FlashlightPositionOffset.</summary>
+    public Vector3 DipPositionOffset { get; set; }
+    /// <summary>Written each frame by FlashlightSlot from ReloadDip.FlashlightRotationOffset.</summary>
+    public Vector3 DipRotationOffset { get; set; }
+
     private void Start()
     {
         _baseLocalPos = transform.localPosition;
@@ -130,7 +135,7 @@ public class FlashlightSway : MonoBehaviour
 
     private void ApplyPose(Vector3 bob)
     {
-        transform.localPosition = _baseLocalPos + _currentPosOffset + bob;
-        transform.localRotation = _baseLocalRot * Quaternion.Euler(_currentRot);
+        transform.localPosition = _baseLocalPos + _currentPosOffset + bob + DipPositionOffset;
+        transform.localRotation = _baseLocalRot * Quaternion.Euler(_currentRot) * Quaternion.Euler(DipRotationOffset);
     }
 }

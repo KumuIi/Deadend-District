@@ -135,6 +135,11 @@ public class GunController : MonoBehaviour
     /// </summary>
     public System.Action<GunController> OnReloadRequested;
 
+    /// <summary>Fired at the start of a player-initiated reload (R key). Does NOT fire for auto-load or inventory swaps.</summary>
+    public event System.Action<GunController> OnReloadStarted;
+    /// <summary>Fired when a player-initiated reload sequence finishes.</summary>
+    public event System.Action<GunController> OnReloadFinished;
+
     // ── Injection ──────────────────────────────────────────────────────────
 
     /// <summary>Called by WeaponManager.Awake() while this object is disabled.</summary>
@@ -182,7 +187,7 @@ public class GunController : MonoBehaviour
     /// If newMag is null and WeaponSO.defaultMagazineType is set, auto-creates a
     /// full magazine for debug / testing without a real inventory.
     /// </summary>
-    public void StartReload(MagazineInstance newMag = null)
+    public void StartReload(MagazineInstance newMag = null, bool playerInitiated = false)
     {
         if (IsReloading || !weaponData) return;
 
@@ -200,7 +205,7 @@ public class GunController : MonoBehaviour
             return;
         }
 
-        StartCoroutine(ReloadCoroutine(newMag));
+        StartCoroutine(ReloadCoroutine(newMag, playerInitiated));
     }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
@@ -279,7 +284,7 @@ public class GunController : MonoBehaviour
         if (inventoryManaged)
             OnReloadRequested?.Invoke(this);
         else
-            StartReload();
+            StartReload(playerInitiated: true);
     }
 
     private void HandleFireInput()
@@ -382,9 +387,10 @@ public class GunController : MonoBehaviour
 
     // ── Reload coroutine ───────────────────────────────────────────────────
 
-    private IEnumerator ReloadCoroutine(MagazineInstance newMag)
+    private IEnumerator ReloadCoroutine(MagazineInstance newMag, bool playerInitiated)
     {
         IsReloading = true;
+        if (playerInitiated) OnReloadStarted?.Invoke(this);
 
         yield return new WaitForSeconds(weaponData.reloadMagEjectTime);
         OnMagEjected?.Invoke();
@@ -397,6 +403,7 @@ public class GunController : MonoBehaviour
         float finishWait = Mathf.Max(0f, weaponData.reloadTime - weaponData.reloadMagInsertTime);
         yield return new WaitForSeconds(finishWait);
 
+        if (playerInitiated) OnReloadFinished?.Invoke(this);
         IsReloading = false;
         OnReloadComplete?.Invoke();
     }

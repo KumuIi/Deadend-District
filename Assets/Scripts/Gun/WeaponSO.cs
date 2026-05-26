@@ -57,6 +57,26 @@ public class WeaponSO : ItemSO
     [Tooltip("Default magazine type — used for auto-fill in debug/testing without an inventory.")]
     public MagazineSO defaultMagazineType;
 
+    // ── Reload feel ────────────────────────────────────────────────────────
+
+    [Header("=== Reload Feel ===")]
+    [Tooltip("One clip is picked at random and played once the gun dips past reloadDipAudioThreshold.")]
+    public AudioClip[] reloadClips;
+    [Tooltip("How far (local Y, metres) the gun dips down. Negative = down.")]
+    public float reloadDipDepth = -0.8f;
+    [Tooltip("Seconds to reach reloadDipDepth.")]
+    public float reloadDipDownTime = 0.25f;
+    [Tooltip("Seconds to return to rest after reload finishes.")]
+    public float reloadDipReturnTime = 0.2f;
+    [Tooltip("Dip offset (local Y) at which the reload audio fires. Must be >= reloadDipDepth to be reachable.")]
+    public float reloadDipAudioThreshold = -0.25f;
+    [Tooltip("How far the flashlight pitches downward (degrees) when fully dipped.")]
+    public float reloadFlashlightPitchDown = 70f;
+    [Tooltip("Amplitude of random position jitter on the flashlight during reload (metres).")]
+    public float reloadFlashlightJitterPos = 0.03f;
+    [Tooltip("Amplitude of random rotation jitter on the flashlight during reload (degrees).")]
+    public float reloadFlashlightJitterRot = 15f;
+
     // ── ADS ────────────────────────────────────────────────────────────────
 
     [Header("=== ADS ===")]
@@ -112,6 +132,13 @@ public class WeaponSO : ItemSO
     public WeaponRecoilData recoil = new WeaponRecoilData();
 
 #if UNITY_EDITOR
+    private void OnValidate()
+    {
+        // Audio threshold must be reachable: for negative dip, threshold >= depth.
+        if (reloadDipDepth < 0f)
+            reloadDipAudioThreshold = Mathf.Max(reloadDipAudioThreshold, reloadDipDepth);
+    }
+
     // ── Preset (editor-only deep copy tool) ────────────────────────────────
 
     [Header("=== Preset (Editor Only) ===")]

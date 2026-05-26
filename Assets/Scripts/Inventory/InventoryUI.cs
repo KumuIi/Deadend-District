@@ -473,7 +473,7 @@ public sealed class InventoryUI : MonoBehaviour
         // Remove the new magazine from inventory, record it in the weapon, and start reload
         RemoveItem(bestMag);
         wi.BeginReloadWith(bestMag);
-        gun.StartReload(bestMag.RuntimeMag);
+        gun.StartReload(bestMag.RuntimeMag, playerInitiated: true);
     }
 
     private void ContextMenu_Drop(ItemInstance item)
