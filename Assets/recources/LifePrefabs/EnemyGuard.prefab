@@ -627,6 +627,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8211622602097758786}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8138017322613295598}
     - targetCorrespondingSourceObject: {fileID: 1082271958561512970, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4469135765293492196}
@@ -1792,6 +1795,28 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &8138017322613295598
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4869245411376266679}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3cb8cf12a4701c419c9f571b5b7e363, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyRagdoll
+  _animator: {fileID: 0}
+  _rigBuilder: {fileID: 0}
+  _health: {fileID: 884100612616097262}
+  _armatureRoot: {fileID: 63177182313985034}
+  _hips: {fileID: 8981422823620685534}
+  _hipHeight: 0.9
+  _spring: 1000
+  _damper: 100
+  _maxForce: 10000
+  _deathForce: 200
 --- !u!4 &4916714761910640847 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8400955822856789975, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
