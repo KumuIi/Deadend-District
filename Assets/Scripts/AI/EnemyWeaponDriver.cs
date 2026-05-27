@@ -106,8 +106,11 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
             UnityEngine.Random.Range(-spreadDeg, spreadDeg),
             0f) * _muzzle.forward;
 
+        Vector3 rayEnd = _muzzle.position + spreadDir * _weaponData.range;
         if (Physics.Raycast(_muzzle.position, spreadDir, out RaycastHit hit, _weaponData.range, _weaponData.hitLayers))
         {
+            Debug.DrawLine(_muzzle.position, hit.point, Color.yellow, 0.3f);
+
             var damageable = hit.collider.GetComponentInParent<IDamageable>();
             if (damageable != null && damageable.IsAlive)
             {
@@ -124,6 +127,10 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
                     Impulse    = dmg * 2f,
                 });
             }
+        }
+        else
+        {
+            Debug.DrawLine(_muzzle.position, rayEnd, Color.yellow, 0.3f);
         }
 
         if (_weaponData.gunshotClip != null && _audioSource != null)

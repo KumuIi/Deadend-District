@@ -62,6 +62,10 @@ public class EnemyBrain : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float _rotationSpeed = 360f;
 
+    [Header("Damage Response")]
+    [Tooltip("Hits received at the same cover position before relocating.")]
+    [SerializeField] private int _hitsToChangeCover = 3;
+
     // ── Runtime ───────────────────────────────────────────────────────────────
 
     private NavMeshAgent _agent;
@@ -74,7 +78,9 @@ public class EnemyBrain : MonoBehaviour
 
     // Engage shared state
     private bool  _isInCover;
-    private float _losTimer;          // seconds since player was last seen (in Engage)
+    private float _losTimer;           // seconds since player was last seen (in Engage)
+    private bool  _shouldChangeCover;  // set by damage handler, checked by phase loops
+    private int   _hitsAtCurrentCover;
 
     // ── Init ─────────────────────────────────────────────────────────────────
 
@@ -95,6 +101,7 @@ public class EnemyBrain : MonoBehaviour
         SetupGunAndIK();
 
         if (_health     != null) _health.OnDeath               += Die;
+        if (_health     != null) _health.OnDamaged             += OnHealthDamaged;
         if (_perception != null) _perception.OnPerceptionEvent += OnPerceptionEvent;
     }
 
@@ -254,10 +261,12 @@ public class EnemyBrain : MonoBehaviour
     private IEnumerator EngageRoutine()
     {
         Debug.Log($"[Brain] Engage — target: {_playerTransform?.name ?? "null"}");
-        _losTimer         = 0f;
-        _isInCover        = false;
-        _cachedCoverPoint = null; // clear stale point from prior Engage session
-        _agent.speed      = _defaultAgentSpeed;
+        _losTimer            = 0f;
+        _isInCover           = false;
+        _shouldChangeCover   = false;
+        _hitsAtCurrentCover  = 0;
+        _cachedCoverPoint    = null; // clear stale point from prior Engage session
+        _agent.speed         = _defaultAgentSpeed;
 
         // Entry: pick opening phase based on whether cover is reachable
         Vector3? entryCover = FindCover();
@@ -281,6 +290,14 @@ public class EnemyBrain : MonoBehaviour
                 _agent.speed = _investigateSlowSpeed;
                 SetState(BrainState.Investigate);
                 yield break;
+            }
+
+            // If damage forced a cover change, clear the cached point so a fresh search runs
+            if (_shouldChangeCover)
+            {
+                _shouldChangeCover  = false;
+                _isInCover          = false;
+                _cachedCoverPoint   = null; // force a fresh cover search
             }
 
             // Choose next phase by current tactical situation
@@ -375,7 +392,11 @@ public class EnemyBrain : MonoBehaviour
         _weaponDriver?.ClearAim();
 
         if (!exitEarly && HasArrived())
-            _isInCover = true;
+        {
+            _isInCover          = true;
+            _hitsAtCurrentCover = 0; // reset hit counter at new cover position
+            _shouldChangeCover  = false;
+        }
     }
 
     // ── HoldGround ────────────────────────────────────────────────────────────
@@ -397,6 +418,9 @@ public class EnemyBrain : MonoBehaviour
         {
             // Global LOS timeout
             if (_losTimer >= _holdGroundTimeout) yield break;
+
+            // Damaged while blind — retreat (outer loop will find cover)
+            if (_shouldChangeCover) yield break;
 
             // Reload needed
             if (_weaponDriver != null && _weaponDriver.NeedsReload)
@@ -487,9 +511,9 @@ public class EnemyBrain : MonoBehaviour
         bool startedInCover = _isInCover;
         _isInCover = false; // will be re-confirmed below
 
-        if (startedInCover)
+        if (startedInCover && !_shouldChangeCover)
         {
-            // Already at cover (arriving from Peek) — no movement needed
+            // Already at cover and no forced relocation — reload in place
             _isInCover = true;
         }
         else
@@ -518,7 +542,12 @@ public class EnemyBrain : MonoBehaviour
                     yield return null;
                 }
 
-                if (HasArrived()) _isInCover = true;
+                if (HasArrived())
+                {
+                    _isInCover          = true;
+                    _hitsAtCurrentCover = 0;
+                    _shouldChangeCover  = false;
+                }
             }
         }
 
@@ -564,6 +593,9 @@ public class EnemyBrain : MonoBehaviour
             // LOS lost for too long — outer loop will push to InvestigateSlow
             if (_losTimer >= _holdGroundTimeout) break;
 
+            // Took too many hits at this position — relocate
+            if (_shouldChangeCover) break;
+
             // LOS lost briefly — stand ground (stay in Peek, just don't fire)
             // This loop continues — guard waits in cover until timer hits 30s or player reappears.
 
@@ -601,6 +633,26 @@ public class EnemyBrain : MonoBehaviour
         _aimComponent?.SetEngaged(false);
         _weaponDriver?.ClearAim();
         // _isInCover stays true — guard is still physically at the cover point
+    }
+
+    // ── Damage events ─────────────────────────────────────────────────────────
+
+    private void OnHealthDamaged(DamageContext ctx)
+    {
+        if (_state != BrainState.Engage) return;
+
+        // Damaged when player is not visible — retreat immediately (blind-spot exploit prevention)
+        bool blindsided = _perception != null && !_perception.CanSeeTarget;
+        if (blindsided)
+        {
+            _shouldChangeCover = true;
+            return;
+        }
+
+        // Count hits at current cover — relocate after threshold
+        _hitsAtCurrentCover++;
+        if (_hitsAtCurrentCover >= _hitsToChangeCover)
+            _shouldChangeCover = true;
     }
 
     // ── Perception events ─────────────────────────────────────────────────────

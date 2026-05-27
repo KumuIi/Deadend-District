@@ -14,7 +14,8 @@ public class EnemyHealth : MonoBehaviour, IDamageable, IFactionProvider
     public bool IsHostileTo(TeamId other)
         => other == TeamId.Player || other == TeamId.Monster;
 
-    public event Action OnDeath;
+    public event Action              OnDeath;
+    public event Action<DamageContext> OnDamaged;
 
     private void Awake() => CurrentHealth = _maxHealth;
 
@@ -24,6 +25,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable, IFactionProvider
         float dealt = Mathf.Min(ctx.BaseDamage, CurrentHealth);
         CurrentHealth -= dealt;
         Debug.Log($"[EnemyHealth] {name}: took {dealt:F1} dmg, remaining {CurrentHealth:F1}");
+        OnDamaged?.Invoke(ctx);
         if (CurrentHealth <= 0f)
         {
             enabled = false;

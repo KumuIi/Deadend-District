@@ -445,6 +445,23 @@ public class GunController : MonoBehaviour
 
             Debug.Log($"Hit: {hit.collider.name} | Dmg: {damage:F1} | Mag: {BulletsRemaining}/{MagazineCapacity}");
 
+            var damageable = hit.collider.GetComponentInParent<IDamageable>();
+            if (damageable != null && damageable.IsAlive)
+            {
+                damageable.ApplyDamage(new DamageContext
+                {
+                    Source           = gameObject,
+                    Instigator       = _playerMotor ? _playerMotor.gameObject : gameObject,
+                    HitPoint         = hit.point,
+                    HitNormal        = hit.normal,
+                    HitZoneId        = "",
+                    Type             = DamageType.Bullet,
+                    BaseDamage       = damage,
+                    Impulse          = damage * 2f,
+                    StimulusLoudness = 0f,
+                });
+            }
+
             if (ammo != null && ammo.isExplosive)
                 ApplyExplosion(hit.point, ammo);
         }

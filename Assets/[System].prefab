@@ -208,6 +208,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f01dd6d941116634296980dbec272fa2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BatterySaveAdapter
+  _flashlightSlot: {fileID: 0}
 --- !u!114 &6563808598503613460
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -254,7 +255,6 @@ Transform:
   - {fileID: 4440930367699155364}
   - {fileID: 5086659080180968935}
   - {fileID: 9142002570908795505}
-  - {fileID: 8594588966645956889}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7565993041065695047
@@ -308,54 +308,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
   - {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}
   - {fileID: 11400000, guid: de20da7781018d249be47a49efe908b9, type: 2}
+  - {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
   - {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
   addKey: 102
   removeKey: 103
---- !u!1 &7734854099633030323
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8594588966645956889}
-  - component: {fileID: 6713522953810559684}
-  m_Layer: 0
-  m_Name: '[BatterySystem]'
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8594588966645956889
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7734854099633030323}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 186339823272514278}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6713522953810559684
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7734854099633030323}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b06e57f09803fd4abeadfaf1c1e03af, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BatterySystem
-  _startingRechargeable: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
 --- !u!1 &8965906570653235500
 GameObject:
   m_ObjectHideFlags: 0
