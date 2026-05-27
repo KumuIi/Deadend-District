@@ -23,7 +23,8 @@ public class EnemyAimComponent : MonoBehaviour
     public Transform AimPivot => _aimPivot;
 
     private Transform _target;
-    private bool      _engaged;
+    private bool      _aiming;        // controls pivot LookAt only
+    private bool      _gunEquipped;   // controls IK weight — true as soon as gun is initialized
     private float     _currentWeight;
 
     private void Awake()
@@ -59,24 +60,30 @@ public class EnemyAimComponent : MonoBehaviour
             Debug.LogError($"[EnemyAimComponent] {name}: leftGrip is null — left hand IK will not work.");
 
         _rigBuilder?.Build();
+        _gunEquipped = true;   // hands now have valid targets — keep weight at 1 from here on
         Debug.Log($"[EnemyAimComponent] {name}: Rig built with new grip targets.");
     }
 
     public void SetTarget(Transform target) => _target = target;
     public void ClearTarget()               => _target = null;
 
-    public void SetEngaged(bool engaged) => _engaged = engaged;
+    /// <summary>
+    /// Engaged = actively tracking a target and driving the aim pivot.
+    /// IK weight stays at 1 regardless — hands always hold the gun once equipped.
+    /// </summary>
+    public void SetEngaged(bool engaged) => _aiming = engaged;
 
     private void Update()
     {
-        // Blend IK weights in/out as guard enters or leaves combat
-        float targetWeight = _engaged ? 1f : 0f;
+        // IK weight: always 1 once the gun is equipped so arms never drop to T-pose.
+        // Without a matching idle animation to fall back on, weight=0 causes the bind pose.
+        float targetWeight = _gunEquipped ? 1f : 0f;
         _currentWeight = Mathf.MoveTowards(_currentWeight, targetWeight, _blendSpeed * Time.deltaTime);
         if (_rightArmConstraint != null) _rightArmConstraint.weight = _currentWeight;
         if (_leftArmConstraint  != null) _leftArmConstraint.weight  = _currentWeight;
 
-        // Drive aim pivot toward target
-        if (_aimPivot == null || _target == null || !_engaged) return;
+        // Drive aim pivot toward target only while actively aiming
+        if (_aimPivot == null || _target == null || !_aiming) return;
 
         Vector3 dir = (_target.position + Vector3.up * 0.8f) - _aimPivot.position;
         if (dir.sqrMagnitude < 0.01f) return;

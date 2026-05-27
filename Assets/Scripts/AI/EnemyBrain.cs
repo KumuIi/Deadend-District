@@ -26,9 +26,9 @@ public class EnemyBrain : MonoBehaviour
 
     [Header("Weapon Setup")]
     [SerializeField] private WeaponSO   _weaponData;
-    [SerializeField] private GameObject _gunPrefab;
+    [SerializeField] private GameObject _gunInstance;  // drag the gun already placed in the prefab here
 
-    [Header("Gun Transform Names (must match child names in NPC gun prefab)")]
+    [Header("Gun Transform Names (must match child names in gun GO)")]
     [SerializeField] private string _muzzleName    = "MuzzlePoint";
     [SerializeField] private string _rightGripName = "RightHandGrip";
     [SerializeField] private string _leftGripName  = "LeftHandGrip";
@@ -90,26 +90,22 @@ public class EnemyBrain : MonoBehaviour
         if (_weaponDriver == null) Debug.LogError($"[EnemyBrain] {name}: EnemyWeaponDriver is null.");
         if (_health       == null) Debug.LogError($"[EnemyBrain] {name}: EnemyHealth is null.");
         if (_weaponData   == null) Debug.LogError($"[EnemyBrain] {name}: WeaponData is null.");
-        if (_gunPrefab    == null) Debug.LogError($"[EnemyBrain] {name}: GunPrefab is null.");
+        if (_gunInstance  == null) Debug.LogError($"[EnemyBrain] {name}: GunInstance is null — drag the gun GO from the prefab into this slot.");
         if (_aimComponent != null && _aimComponent.AimPivot == null)
             Debug.LogError($"[EnemyBrain] {name}: EnemyAimComponent.AimPivot is null.");
     }
 
     private void SetupGunAndIK()
     {
-        if (_gunPrefab == null || _aimComponent?.AimPivot == null) return;
+        if (_gunInstance == null) return;
 
-        var gunGO = Instantiate(_gunPrefab, _aimComponent.AimPivot);
-        gunGO.transform.localPosition = Vector3.zero;
-        gunGO.transform.localRotation = Quaternion.identity;
+        var muzzle    = FindDeep(_gunInstance.transform, _muzzleName);
+        var rightGrip = FindDeep(_gunInstance.transform, _rightGripName);
+        var leftGrip  = FindDeep(_gunInstance.transform, _leftGripName);
 
-        var muzzle    = FindDeep(gunGO.transform, _muzzleName);
-        var rightGrip = FindDeep(gunGO.transform, _rightGripName);
-        var leftGrip  = FindDeep(gunGO.transform, _leftGripName);
-
-        if (muzzle    == null) Debug.LogError($"[EnemyBrain] {name}: Transform '{_muzzleName}' not found in gun prefab.");
-        if (rightGrip == null) Debug.LogError($"[EnemyBrain] {name}: Transform '{_rightGripName}' not found in gun prefab.");
-        if (leftGrip  == null) Debug.LogError($"[EnemyBrain] {name}: Transform '{_leftGripName}' not found in gun prefab.");
+        if (muzzle    == null) Debug.LogError($"[EnemyBrain] {name}: Transform '{_muzzleName}' not found in gun GO.");
+        if (rightGrip == null) Debug.LogError($"[EnemyBrain] {name}: Transform '{_rightGripName}' not found in gun GO.");
+        if (leftGrip  == null) Debug.LogError($"[EnemyBrain] {name}: Transform '{_leftGripName}' not found in gun GO.");
 
         _aimComponent.Initialize(rightGrip, leftGrip);
         _weaponDriver.Initialize(_weaponData, gameObject, muzzle);
