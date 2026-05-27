@@ -1,53 +1,64 @@
 using UnityEngine;
-using UnityEngine.Animations.Rigging;
 
 /// <summary>
-/// Possessed corpse movement via ConfigurableJoint anchor.
+/// Possessed corpse — kinematic root bone drags the ragdoll via CharacterJoint chain.
 ///
 /// On Awake:
-///   - Animator and RigBuilder disabled (physics owns the body).
 ///   - Armature detached from NavMeshAgent root (world-space, pose preserved).
-///   - All ragdoll bones set non-kinematic.
-///   - A kinematic anchor Rigidbody is created on a child GameObject at hip height.
-///   - Hips Rigidbody connected to anchor via ConfigurableJoint spring.
+///   - All ragdoll bones set non-kinematic EXCEPT _rootBone (Hips), which stays kinematic.
+///   - Initial world offset between _rootBone and the agent root is cached.
 ///
-/// FixedUpdate: anchor tracks NavMeshAgent root via MovePosition (physics-aware).
+/// FixedUpdate: _rootBone tracks the NavMeshAgent via MovePosition/MoveRotation.
+///   MovePosition is physics-aware — connected bones receive velocity data and physically
+///   lag behind on fast turns, producing organic swing through the CharacterJoint chain.
 ///
-/// On death: joint disabled, body falls freely with death impulse.
+/// On death: _rootBone goes non-kinematic, body falls freely with death impulse.
 ///           NavMeshAgent is managed by EnemyBrain.Die() — not touched here.
+///
+/// IMPORTANT — prefab setup: do NOT add Animator or RigBuilder to this enemy prefab.
+///   The possessed corpse is physics-owned from frame 1; it has no animation clips.
+///   Adding those components and assigning them here breaks both the enemy aim IK
+///   and the player's arm IK via Unity's Animation Rigging scene-wide rebuild.
 /// </summary>
 public class EnemyRagdoll : MonoBehaviour
 {
     [Header("References")]
-    [SerializeField] private Animator    _animator;
-    [SerializeField] private RigBuilder  _rigBuilder;
     [SerializeField] private EnemyHealth _health;
 
     [Tooltip("Root of the skeleton to detach (usually 'Armature').")]
-    [SerializeField] private Transform  _armatureRoot;
+    [SerializeField] private Transform _armatureRoot;
 
-    [Tooltip("The Hips Rigidbody — ConfigurableJoint is added here.")]
-    [SerializeField] private Rigidbody  _hips;
+    [Tooltip("The root ragdoll Rigidbody (usually Hips). Stays kinematic — drags everything else.")]
+    [SerializeField] private Rigidbody _rootBone;
 
-    [Header("Anchor")]
-    [Tooltip("Height above the root where the ghost holds the body (roughly hip height).")]
-    [SerializeField] private float _hipHeight = 0.9f;
+    [Header("Root Bone Offset")]
+    [Tooltip("Euler angle offset applied to the root bone on top of the agent's rotation. " +
+             "Use X to tilt forward/back, Z to lean sideways.")]
+    [SerializeField] private Vector3 _rootBoneAngleOffset = Vector3.zero;
 
-    [Header("Joint Spring")]
-    [SerializeField] private float _spring   = 1000f;
-    [SerializeField] private float _damper   = 100f;
-    [SerializeField] private float _maxForce = 10000f;
+    [Header("Head")]
+    [Tooltip("The Head Rigidbody. A continuous torque is applied to push it backward, " +
+             "preventing it from flopping forward while still allowing left/right sway.")]
+    [SerializeField] private Rigidbody _headBone;
+    [Tooltip("Torque magnitude pushing the head back. Raise until it no longer flops forward.")]
+    [SerializeField] private float _headBackTorque = 5f;
+
+    [Header("Leg Reactivity")]
+    [Tooltip("Leg Rigidbodies to push during movement (e.g. LeftUpLeg, RightUpLeg, LeftLeg, RightLeg).")]
+    [SerializeField] private Rigidbody[] _legBones;
+    [Tooltip("Force multiplier applied to legs opposite to movement direction. Higher = more aggressive flailing.")]
+    [SerializeField] private float _legForceMultiplier = 15f;
 
     [Header("Death")]
     [SerializeField] private float _deathForce = 200f;
 
     // ── Runtime ───────────────────────────────────────────────────────────────
 
-    private Rigidbody[]       _allBones;
-    private Rigidbody         _anchorRb;
-    private ConfigurableJoint _joint;
-    private DamageContext     _lastHit;
-    private bool              _alive = true;
+    private Rigidbody[]   _allBones;
+    private Vector3       _rootOffset;    // world-space offset: agent root → rootBone at spawn
+    private Vector3       _prevPosition;  // for velocity estimation
+    private DamageContext _lastHit;
+    private bool          _alive = true;
 
     // ── Awake ─────────────────────────────────────────────────────────────────
 
@@ -55,40 +66,21 @@ public class EnemyRagdoll : MonoBehaviour
     {
         ValidateRefs();
 
-        // Disable animation systems — physics owns the body from frame 1
-        if (_animator   != null) _animator.enabled  = false;
-        if (_rigBuilder != null) _rigBuilder.enabled = false;
-
-        // Collect all ragdoll Rigidbodies before detaching the armature
         _allBones = _armatureRoot != null
             ? _armatureRoot.GetComponentsInChildren<Rigidbody>()
-            : _hips.GetComponentsInChildren<Rigidbody>();
+            : _rootBone.GetComponentsInChildren<Rigidbody>();
 
-        // All bones non-kinematic — full ragdoll
+        _rootOffset   = _rootBone.position - transform.position;
+        _prevPosition = transform.position;
+
         foreach (var rb in _allBones)
         {
-            rb.isKinematic   = false;
+            rb.isKinematic   = (rb == _rootBone);
             rb.interpolation = RigidbodyInterpolation.Interpolate;
         }
 
-        // Detach armature from NavMeshAgent root so moving the root
-        // does not teleport the physics bodies via transform hierarchy
         if (_armatureRoot != null)
             _armatureRoot.SetParent(null, worldPositionStays: true);
-
-        // Create a dedicated child GO for the anchor — NOT on the NavMeshAgent root,
-        // which would conflict with the agent's own position management
-        var anchorGO = new GameObject("_RagdollAnchor");
-        anchorGO.transform.SetParent(transform, false);
-        anchorGO.transform.localPosition = Vector3.up * _hipHeight;
-
-        _anchorRb             = anchorGO.AddComponent<Rigidbody>();
-        _anchorRb.isKinematic = true;
-        _anchorRb.useGravity  = false;
-
-        // Build the ConfigurableJoint on Hips, connected to the anchor
-        if (_hips != null)
-            BuildJoint();
 
         if (_health != null)
         {
@@ -107,11 +99,21 @@ public class EnemyRagdoll : MonoBehaviour
     {
         if (!_alive) return;
 
-        // Move the anchor to follow the NavMeshAgent root each physics step.
-        // MovePosition is physics-aware — it gives the joint velocity information,
-        // creating cloth-like lag when the root accelerates or turns.
-        _anchorRb.MovePosition(transform.position + Vector3.up * _hipHeight);
-        _anchorRb.MoveRotation(transform.rotation);
+        _rootBone.MovePosition(transform.position + _rootOffset);
+        _rootBone.MoveRotation(transform.rotation * Quaternion.Euler(_rootBoneAngleOffset));
+
+        if (_headBone != null)
+            _headBone.AddTorque(transform.right * _headBackTorque, ForceMode.Force);
+
+        Vector3 velocity = (transform.position - _prevPosition) / Time.fixedDeltaTime;
+        _prevPosition = transform.position;
+
+        if (velocity.sqrMagnitude > 0.001f && _legBones != null)
+        {
+            Vector3 legForce = -velocity * _legForceMultiplier;
+            foreach (var leg in _legBones)
+                if (leg != null) leg.AddForce(legForce, ForceMode.Force);
+        }
     }
 
     // ── Death ─────────────────────────────────────────────────────────────────
@@ -119,11 +121,8 @@ public class EnemyRagdoll : MonoBehaviour
     private void OnDeath()
     {
         _alive = false;
+        _rootBone.isKinematic = false;
 
-        // Ghost leaves — disable the spring, body falls freely
-        if (_joint != null) Destroy(_joint);
-
-        // Apply death impulse at the bone nearest the bullet hit
         if (_lastHit.HitPoint != Vector3.zero)
         {
             Rigidbody hitBone = FindClosestBone(_lastHit.HitPoint);
@@ -132,44 +131,9 @@ public class EnemyRagdoll : MonoBehaviour
                 _lastHit.HitPoint,
                 ForceMode.Impulse);
         }
-
-        // Note: NavMeshAgent is stopped by EnemyBrain.Die() — not touched here
-        // to avoid ordering conflicts between OnDeath subscribers.
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private void BuildJoint()
-    {
-        _joint = _hips.gameObject.AddComponent<ConfigurableJoint>();
-        _joint.connectedBody = _anchorRb;
-
-        // Disable auto-configuration so we control anchor positions explicitly
-        _joint.autoConfigureConnectedAnchor = false;
-        _joint.anchor          = Vector3.zero; // joint pivot at Hips center
-        _joint.connectedAnchor = Vector3.zero; // joint target at anchor center
-
-        // All axes free — spring drives position, limits would fight the ragdoll
-        _joint.xMotion        = ConfigurableJointMotion.Free;
-        _joint.yMotion        = ConfigurableJointMotion.Free;
-        _joint.zMotion        = ConfigurableJointMotion.Free;
-        _joint.angularXMotion = ConfigurableJointMotion.Free;
-        _joint.angularYMotion = ConfigurableJointMotion.Free;
-        _joint.angularZMotion = ConfigurableJointMotion.Free;
-
-        var drive = new JointDrive
-        {
-            positionSpring = _spring,
-            positionDamper = _damper,
-            maximumForce   = _maxForce,
-        };
-        _joint.xDrive = drive;
-        _joint.yDrive = drive;
-        _joint.zDrive = drive;
-
-        // Hips wants to sit at the anchor — zero offset from anchor center
-        _joint.targetPosition = Vector3.zero;
-    }
 
     private Rigidbody FindClosestBone(Vector3 point)
     {
@@ -186,7 +150,15 @@ public class EnemyRagdoll : MonoBehaviour
     private void ValidateRefs()
     {
         if (_armatureRoot == null) Debug.LogError($"[EnemyRagdoll] {name}: ArmatureRoot is null.");
-        if (_hips         == null) Debug.LogError($"[EnemyRagdoll] {name}: Hips Rigidbody is null.");
+        if (_rootBone     == null) Debug.LogError($"[EnemyRagdoll] {name}: RootBone Rigidbody is null.");
         if (_health       == null) Debug.LogError($"[EnemyRagdoll] {name}: EnemyHealth is null.");
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (GetComponent<Animator>() != null || GetComponentInChildren<Animator>() != null)
+            Debug.LogWarning($"[EnemyRagdoll] {name}: Animator found on this prefab — remove it. Possessed ragdoll is physics-only; an Animator here will break player arm IK via Animation Rigging.");
+    }
+#endif
 }
