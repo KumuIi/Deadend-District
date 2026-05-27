@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Flashlight
   m_EditorClassIdentifier: Assembly-CSharp::FlashlightSO
   itemName: Flashlight
-  gridSize: {x: 1, y: 1}
+  gridSize: {x: 1, y: 3}
   cellOffsets: []
   weightKg: 2
   modelPrefab: {fileID: 5910054663295408399, guid: 77d38aee3defe2944ae5965478e44b6e, type: 3}

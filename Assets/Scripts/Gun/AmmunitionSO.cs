@@ -38,7 +38,10 @@ public class AmmunitionSO : ItemSO
     public float GetDamageAtDistance(float distance, float weaponRange)
     {
         float t = weaponRange > 0f ? Mathf.Clamp01(distance / weaponRange) : 0f;
-        float multiplier = damageFalloff != null ? damageFalloff.Evaluate(t) : 1f;
+        // An AnimationCurve with no keys returns 0 — treat that as "no falloff" (multiplier 1)
+        float multiplier = (damageFalloff != null && damageFalloff.length > 0)
+            ? damageFalloff.Evaluate(t)
+            : 1f;
         return damage * multiplier;
     }
 }
