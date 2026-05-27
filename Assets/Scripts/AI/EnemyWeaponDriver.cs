@@ -91,38 +91,28 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
     public void SetAimTarget(Transform target) => _aimComponent?.SetTarget(target);
     public void ClearAim()                     => _aimComponent?.ClearTarget();
 
-    public void FireAt(Vector3 targetPoint, float accuracy)
+    public bool FireAt(Vector3 targetPoint, float accuracy)
     {
-        Debug.Log($"[EnemyWeaponDriver] FireAt called — CanFire: {CanFire}, Ammo: {CurrentAmmo}");
-        if (!CanFire) return;
+        if (!CanFire) return false;
 
         var round = _weaponInstance.LoadedMagazine.RuntimeMag.ConsumeRound();
-        if (round == null)
-        {
-            Debug.LogWarning($"[EnemyWeaponDriver] {name}: ConsumeRound returned null.");
-            return;
-        }
+        if (round == null) return false;
 
         _fireTimer = _fireCooldown;
 
-        // Build spread direction from muzzle forward
         float spreadDeg = (1f - Mathf.Clamp01(accuracy)) * 3f;
         Vector3 spreadDir = Quaternion.Euler(
             UnityEngine.Random.Range(-spreadDeg, spreadDeg),
             UnityEngine.Random.Range(-spreadDeg, spreadDeg),
             0f) * _muzzle.forward;
 
-        Debug.Log($"[EnemyWeaponDriver] Raycast from {_muzzle.position} dir {spreadDir} range {_weaponData.range}");
-
         if (Physics.Raycast(_muzzle.position, spreadDir, out RaycastHit hit, _weaponData.range, _weaponData.hitLayers))
         {
-            Debug.Log($"[EnemyWeaponDriver] Raycast hit: {hit.collider.name} on {hit.collider.transform.root.name}");
-
             var damageable = hit.collider.GetComponentInParent<IDamageable>();
             if (damageable != null && damageable.IsAlive)
             {
-                float dmg   = round.GetDamageAtDistance(hit.distance, _weaponData.range);
-                float dealt = damageable.ApplyDamage(new DamageContext
+                float dmg = round.GetDamageAtDistance(hit.distance, _weaponData.range);
+                damageable.ApplyDamage(new DamageContext
                 {
                     Source     = gameObject,
                     Instigator = _owner,
@@ -133,12 +123,7 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
                     BaseDamage = dmg,
                     Impulse    = dmg * 2f,
                 });
-                Debug.Log($"[EnemyWeaponDriver] ApplyDamage — target: {damageable}, dmg: {dealt:F1}");
             }
-        }
-        else
-        {
-            Debug.Log("[EnemyWeaponDriver] Raycast — no hit.");
         }
 
         if (_weaponData.gunshotClip != null && _audioSource != null)
@@ -152,6 +137,8 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
                 0.9f,
                 gameObject,
                 _owner));
+
+        return true;
     }
 
     public void Reload()

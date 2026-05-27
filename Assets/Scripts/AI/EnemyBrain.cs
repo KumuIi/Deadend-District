@@ -6,9 +6,9 @@ using UnityEngine.AI;
 /// Central FSM for a guard NPC. States: Patrol → Investigate → Engage.
 /// Each state owns a coroutine; SetState() stops the old and starts the new atomically.
 ///
-/// Engage sub-phases: SeekCover → InCover → Peek (fire) → optionally Reload → repeat.
-/// Exits Engage only after lostSightTimeout seconds of no line-of-sight, so
-/// deliberately taking cover never drops combat state.
+/// Engage sub-phases: SeekCover → InCover → Peek (burst fire) → optionally Reload → repeat.
+/// Body always faces player during Engage via manual rotation (updateRotation = false).
+/// Aim pivot only tracks player during Peek; resets to forward during movement.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class EnemyBrain : MonoBehaviour
@@ -40,6 +40,13 @@ public class EnemyBrain : MonoBehaviour
     [SerializeField] private float     _fireAccuracy      = 0.7f;
     [SerializeField] private LayerMask _coverMask;
 
+    [Header("Fire Pattern")]
+    [SerializeField] private int   _burstCount   = 3;    // shots per burst
+    [SerializeField] private float _burstCooldown = 1.5f; // seconds between bursts
+
+    [Header("Movement")]
+    [SerializeField] private float _rotationSpeed = 360f; // deg/s body rotation toward threat
+
     [Header("Tuning")]
     [SerializeField] private float _investigateTimeout = 8f;
     [SerializeField] private float _coverSeekTimeout   = 4f;
@@ -61,10 +68,10 @@ public class EnemyBrain : MonoBehaviour
     private void Awake()
     {
         _agent = GetComponent<NavMeshAgent>();
+        _agent.updateRotation = false; // we drive rotation manually so guard never turns back to player
 
         ValidateRefs();
 
-        // Resolve player — done once here, injected everywhere else
         var ph = Object.FindObjectOfType<PlayerHealth>();
         _playerTransform = ph != null ? ph.transform : null;
         if (_playerTransform == null)
@@ -74,13 +81,50 @@ public class EnemyBrain : MonoBehaviour
 
         SetupGunAndIK();
 
-        if (_health    != null) _health.OnDeath                     += Die;
-        if (_perception != null) _perception.OnPerceptionEvent      += OnPerceptionEvent;
+        if (_health     != null) _health.OnDeath                += Die;
+        if (_perception != null) _perception.OnPerceptionEvent  += OnPerceptionEvent;
     }
 
     private void Start()
     {
         SetState(BrainState.Patrol);
+    }
+
+    private void Update()
+    {
+        RotateBody();
+    }
+
+    // ── Body rotation ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// During Engage: always face the player (guard strafes sideways to cover).
+    /// During Patrol/Investigate: face movement direction when moving.
+    /// </summary>
+    private void RotateBody()
+    {
+        Vector3 targetDir;
+
+        if (_state == BrainState.Engage && _playerTransform != null)
+        {
+            targetDir = _playerTransform.position - transform.position;
+            targetDir.y = 0f;
+        }
+        else
+        {
+            // Face velocity direction when moving; otherwise hold current rotation
+            if (_agent.velocity.sqrMagnitude > 0.04f)
+                targetDir = _agent.velocity;
+            else
+                return;
+            targetDir.y = 0f;
+        }
+
+        if (targetDir.sqrMagnitude < 0.001f) return;
+
+        Quaternion desired = Quaternion.LookRotation(targetDir);
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation, desired, _rotationSpeed * Time.deltaTime);
     }
 
     private void ValidateRefs()
@@ -191,12 +235,11 @@ public class EnemyBrain : MonoBehaviour
     private IEnumerator EngageRoutine()
     {
         Debug.Log($"[Brain] Entered Engage state — target: {_playerTransform?.name ?? "null"}");
-        _aimComponent?.SetEngaged(true);
+        // NOTE: SetEngaged is NOT called here — aim pivot only activates during Peek
         _agent.isStopped = false;
 
         while (true)
         {
-            // Exit condition: LOS lost for too long
             if (ShouldExitEngage())
             {
                 Debug.Log("[Brain] LOS timeout — Engage → Investigate");
@@ -220,6 +263,9 @@ public class EnemyBrain : MonoBehaviour
 
     private IEnumerator SeekCoverRoutine()
     {
+        // Gun faces forward while repositioning
+        _aimComponent?.SetEngaged(false);
+
         if (_playerTransform == null) yield break;
 
         Vector3? cover = EnemyCoverUtility.FindCoverPoint(
@@ -245,7 +291,6 @@ public class EnemyBrain : MonoBehaviour
         }
         else
         {
-            // Fallback: push toward last known position
             if (_perception != null)
                 _agent.SetDestination(_perception.LastKnownPosition);
             yield return new WaitForSeconds(1.5f);
@@ -256,17 +301,29 @@ public class EnemyBrain : MonoBehaviour
     {
         _agent.isStopped = true;
 
-        // Face threat
-        if (_playerTransform != null)
+        // Ambush response: if player is already visible, skip the wait entirely
+        if (_perception != null && _perception.CanSeeTarget)
         {
-            Vector3 look = _playerTransform.position - transform.position;
-            look.y = 0f;
-            if (look.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.LookRotation(look);
+            _agent.isStopped = false;
+            yield break;
         }
 
-        float wait = Random.Range(_inCoverWaitMin, _inCoverWaitMax);
-        yield return new WaitForSeconds(wait);
+        float elapsed = 0f;
+        float wait    = Random.Range(_inCoverWaitMin, _inCoverWaitMax);
+
+        while (elapsed < wait)
+        {
+            // Break out early the moment we spot the player (ambush)
+            if (_perception != null && _perception.CanSeeTarget)
+            {
+                _agent.isStopped = false;
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
         _agent.isStopped = false;
     }
 
@@ -275,24 +332,51 @@ public class EnemyBrain : MonoBehaviour
         Debug.Log($"[Brain] Has target: {_playerTransform != null}");
         if (_playerTransform == null || _weaponDriver == null) yield break;
 
+        _aimComponent?.SetEngaged(true);
         _weaponDriver.SetAimTarget(_playerTransform);
+        // Yield one frame so EnemyAimComponent.Update processes the aim target before first shot
+        yield return null;
         Debug.Log($"[Brain] Peek — aim engaged, CanSeeTarget: {(_perception != null ? _perception.CanSeeTarget.ToString() : "perception null")}");
 
-        float elapsed  = 0f;
-        float duration = Random.Range(_peekDurationMin, _peekDurationMax);
+        float elapsed      = 0f;
+        float duration     = Random.Range(_peekDurationMin, _peekDurationMax);
+        int   shotsInBurst = 0;
+        bool  exitEarly    = false;
 
-        while (elapsed < duration)
+        while (elapsed < duration && !exitEarly)
         {
-            if (_weaponDriver.NeedsReload) yield break;
-            if (ShouldExitEngage())        yield break;
+            if (_weaponDriver.NeedsReload || ShouldExitEngage()) break;
 
             if (_perception != null && _perception.CanSeeTarget)
-                _weaponDriver.FireAt(_playerTransform.position + Vector3.up * 0.8f, _fireAccuracy);
+            {
+                bool fired = _weaponDriver.FireAt(
+                    _playerTransform.position + Vector3.up * 0.8f, _fireAccuracy);
+
+                if (fired)
+                {
+                    shotsInBurst++;
+                    if (shotsInBurst >= _burstCount)
+                    {
+                        // Burst complete — lower gun, wait, checking for exit conditions each frame
+                        _aimComponent?.SetEngaged(false);
+                        float cd = 0f;
+                        while (cd < _burstCooldown)
+                        {
+                            if (_weaponDriver.NeedsReload || ShouldExitEngage()) { exitEarly = true; break; }
+                            cd += Time.deltaTime;
+                            yield return null;
+                        }
+                        if (!exitEarly) _aimComponent?.SetEngaged(true);
+                        shotsInBurst = 0;
+                    }
+                }
+            }
 
             elapsed += Time.deltaTime;
             yield return null;
         }
 
+        _aimComponent?.SetEngaged(false);
         _weaponDriver.ClearAim();
     }
 
@@ -320,7 +404,6 @@ public class EnemyBrain : MonoBehaviour
                 break;
 
             case EnemyPerception.PerceptionEvent.TargetLost:
-                // Handled inside EngageRoutine via ShouldExitEngage()
                 break;
         }
     }
@@ -335,7 +418,7 @@ public class EnemyBrain : MonoBehaviour
         _agent.isStopped = true;
         _aimComponent?.SetEngaged(false);
 
-        if (_perception  != null) _perception.enabled  = false;
+        if (_perception   != null) _perception.enabled   = false;
         if (_aimComponent != null) _aimComponent.enabled = false;
         enabled = false;
 
@@ -357,7 +440,6 @@ public class EnemyBrain : MonoBehaviour
         && _agent.remainingDistance <= _agent.stoppingDistance + 0.1f
         && (!_agent.hasPath || _agent.velocity.sqrMagnitude < 0.01f);
 
-    /// <summary>Depth-first search for a child transform by name.</summary>
     private static Transform FindDeep(Transform root, string targetName)
     {
         if (root.name == targetName) return root;

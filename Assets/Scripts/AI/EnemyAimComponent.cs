@@ -82,9 +82,19 @@ public class EnemyAimComponent : MonoBehaviour
         if (_rightArmConstraint != null) _rightArmConstraint.weight = _currentWeight;
         if (_leftArmConstraint  != null) _leftArmConstraint.weight  = _currentWeight;
 
-        // Drive aim pivot toward target only while actively aiming
-        if (_aimPivot == null || _target == null || !_aiming) return;
+        if (_aimPivot == null) return;
 
+        if (!_aiming || _target == null)
+        {
+            // Not aiming — smoothly return pivot to body forward so gun faces straight ahead
+            _aimPivot.rotation = Quaternion.Slerp(
+                _aimPivot.rotation,
+                Quaternion.LookRotation(transform.forward, Vector3.up),
+                _blendSpeed * Time.deltaTime);
+            return;
+        }
+
+        // Aiming — drive pivot toward target
         Vector3 dir = (_target.position + Vector3.up * 0.8f) - _aimPivot.position;
         if (dir.sqrMagnitude < 0.01f) return;
 

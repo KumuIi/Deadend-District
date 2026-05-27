@@ -9,7 +9,8 @@ public interface IWeaponDriver
     void Initialize(WeaponSO weapon, GameObject owner, Transform muzzle);
     void SetAimTarget(Transform target);
     void ClearAim();
-    void FireAt(Vector3 targetPoint, float accuracy);
+    /// <summary>Returns true if a shot was actually fired this call.</summary>
+    bool FireAt(Vector3 targetPoint, float accuracy);
     void Reload();
     void DetachAndDrop();
 }
