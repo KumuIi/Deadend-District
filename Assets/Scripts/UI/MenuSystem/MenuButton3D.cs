@@ -5,9 +5,9 @@ using UnityEngine.Events;
 
 /// <summary>
 /// Attach to any 3D model in the pause/main menu to make it a clickable button.
-/// Hover: nudges the model on local X.
-/// Click: flies it out on local X, then fires OnClicked so PauseMenu can cascade the rest.
-/// FlyIn/FlyOut are called by PauseMenu to orchestrate the entrance/exit sequence.
+/// Hover: nudges the model along its own local X axis.
+/// FlyIn: enters from +flyDir side, lands at base.
+/// FlyOut: exits to -flyDir side (opposite of entry — bullets fly "through").
 /// Requires a Collider on this GameObject or a child.
 ///
 /// Implementors: one per 3D button model in PauseRoot or MainMenu scene.
@@ -22,51 +22,61 @@ public class MenuButton3D : MonoBehaviour
     [SerializeField] private float _hoverOffset = 0.0125f;
     [SerializeField] private float _hoverDuration = 0.15f;
 
-    [Header("Fly in")]
-    [SerializeField] private float _flyInOffsetX = -0.3f;
+    [Header("Fly in (enters from +right side)")]
+    [SerializeField] private float _flyInDistance = 0.3f;
     [SerializeField] private float _flyInDuration = 0.25f;
     [SerializeField] private Ease _flyInEase = Ease.OutBack;
 
-    [Header("Fly out (click or cascade)")]
-    [SerializeField] private float _flyOutX = 0.2f;
+    [Header("Fly out (exits to -right side, opposite of entry)")]
+    [SerializeField] private float _flyOutDistance = 0.2f;
     [SerializeField] private float _flyOutDuration = 0.18f;
     [SerializeField] private Ease _flyOutEase = Ease.InBack;
 
-    // PauseMenu subscribes to this to trigger cascade on the other buttons
     public event Action<MenuButton3D> OnClicked;
 
     private Vector3 _baseLocalPos;
+    private Vector3 _baseWorldPos;
+    private Vector3 _flyDir;
+    private bool _baseInitialized;
     private bool _isHovered;
     private bool _hasFledOut;
 
-    private void Awake()
-    {
-        _baseLocalPos = transform.localPosition;
-    }
-
     private void OnEnable()
     {
-        // Snap to fly-in start so FlyIn() always starts from off-position
-        transform.localPosition = new Vector3(
-            _baseLocalPos.x + _flyInOffsetX,
-            _baseLocalPos.y,
-            _baseLocalPos.z);
-        _isHovered = false;
-        _hasFledOut = false;
+        // Lazy-init: capture base local position the first time we're enabled,
+        // before any offsets are applied. Avoids Awake execution-order issues
+        // with PauseMenu.Awake deactivating the GO before Awake fires here.
+        if (!_baseInitialized)
+        {
+            _baseLocalPos = transform.localPosition;
+            _baseInitialized = true;
+        }
+
+        ResetToBase();
     }
 
-    // ── Called by PauseMenu to sequence the entrance ───────────────────────
+    // ── Called by PauseMenu.Open() ─────────────────────────────────────────
+
+    /// <summary>
+    /// Resets all state and flies in. Use instead of FlyIn() directly so rapid
+    /// open/close cycles don't leave _hasFledOut=true blocking clicks.
+    /// </summary>
+    public void ResetAndFlyIn(float delay = 0f)
+    {
+        ResetToBase();
+        FlyIn(delay);
+    }
 
     public void FlyIn(float delay = 0f)
     {
         transform.DOKill();
-        transform.DOLocalMoveX(_baseLocalPos.x, _flyInDuration)
+        transform.DOMove(_baseWorldPos, _flyInDuration)
                  .SetDelay(delay)
                  .SetEase(_flyInEase)
                  .SetUpdate(true);
     }
 
-    // ── Called by PauseMenu to cascade remaining buttons out ───────────────
+    // ── Called by PauseMenu cascade ────────────────────────────────────────
 
     public void FlyOut(float delay = 0f)
     {
@@ -75,7 +85,7 @@ public class MenuButton3D : MonoBehaviour
         _isHovered = false;
 
         transform.DOKill();
-        transform.DOLocalMoveX(_flyOutX, _flyOutDuration)
+        transform.DOMove(_baseWorldPos - _flyDir * _flyOutDistance, _flyOutDuration)
                  .SetDelay(delay)
                  .SetEase(_flyOutEase)
                  .SetUpdate(true);
@@ -101,7 +111,7 @@ public class MenuButton3D : MonoBehaviour
                  .SetUpdate(true);
     }
 
-    // ── Click (called by MenuInputHandler) ────────────────────────────────
+    // ── Click ──────────────────────────────────────────────────────────────
 
     public void Click()
     {
@@ -110,15 +120,31 @@ public class MenuButton3D : MonoBehaviour
         _isHovered = false;
 
         transform.DOKill();
-        transform.DOLocalMoveX(_flyOutX, _flyOutDuration)
+        transform.DOMove(_baseWorldPos - _flyDir * _flyOutDistance, _flyOutDuration)
                  .SetEase(_flyOutEase)
                  .SetUpdate(true)
                  .OnComplete(FireAction);
     }
 
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    private void ResetToBase()
+    {
+        transform.DOKill();
+        transform.localPosition = _baseLocalPos;
+
+        _baseWorldPos = transform.position;
+        _flyDir = transform.right;
+
+        // Start offset on +flyDir side so bullet enters from that side
+        transform.position = _baseWorldPos + _flyDir * _flyInDistance;
+
+        _isHovered = false;
+        _hasFledOut = false;
+    }
+
     private void FireAction()
     {
-        // Notify PauseMenu first so it can start cascading the other buttons
         OnClicked?.Invoke(this);
 
         if (_cameraTarget != null && MenuCameraRig.Instance != null)

@@ -1,12 +1,15 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Orchestrates the 3D pause menu button sequence entirely in code — no Animator needed.
 /// Open:  buttons fly in one by one with stagger.
-/// Click: clicked button fires first, then remaining buttons cascade out after it lands.
-/// Close: all buttons fly out with stagger, then PauseRoot deactivates.
-/// Owns exactly one GameInputState.Block token and one Time.timeScale snapshot.
+/// Click: clicked button fires first, remaining buttons cascade out after it lands.
+/// Close: all buttons fly out, then cursor locks, then timeScale restores, then deactivates.
+///
+/// Key rule: always lock cursor BEFORE restoring timeScale so gameplay never runs
+/// with an unlocked cursor (which causes a camera spike on the first frame).
 ///
 /// Implementors: one instance on PauseRoot (child of player camera).
 /// </summary>
@@ -52,7 +55,11 @@ public class PauseMenu : MonoBehaviour
         if (_isOpen) return;
         _isOpen = true;
 
-        gameObject.SetActive(true);
+        // Cancel any pending deactivation from a previous close
+        StopAllCoroutines();
+
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
 
         _savedTimeScale = Time.timeScale;
         Time.timeScale = 0f;
@@ -63,32 +70,45 @@ public class PauseMenu : MonoBehaviour
             _isBlocking = true;
         }
 
-        // Fly buttons in one by one
+        // ResetAndFlyIn resets _hasFledOut so clicks work even after rapid open/close
         for (int i = 0; i < _buttons.Length; i++)
-            _buttons[i]?.FlyIn(i * _flyInStagger);
+            _buttons[i]?.ResetAndFlyIn(i * _flyInStagger);
     }
+
+    // ── Escape close (via MenuController) ─────────────────────────────────
 
     public void Close()
     {
         if (!_isOpen) return;
         _isOpen = false;
+        StartCoroutine(CloseSequence());
+    }
 
-        Time.timeScale = _savedTimeScale;
+    private IEnumerator CloseSequence()
+    {
+        // Fly everything out at timeScale=0 (SetUpdate(true) handles this)
+        for (int i = 0; i < _buttons.Length; i++)
+            _buttons[i]?.FlyOut(i * _flyOutStagger);
 
+        float totalDelay = _buttons.Length * _flyOutStagger + 0.25f;
+        yield return new WaitForSecondsRealtime(totalDelay);
+
+        // Lock cursor FIRST, then restore timeScale — prevents the one-frame
+        // camera spike that happens when gameplay resumes with cursor still unlocked
         if (_isBlocking)
         {
             GameInputState.Unblock();
             _isBlocking = false;
         }
 
-        CascadeAllOut(clickedButton: null);
+        Time.timeScale = _savedTimeScale;
+        gameObject.SetActive(false);
     }
 
-    // ── Called when any button finishes its click fly-out ──────────────────
+    // ── Cascade after a button click ───────────────────────────────────────
 
     private void OnButtonClicked(MenuButton3D clicked)
     {
-        // Fly out every other button after the clicked one lands
         int cascade = 0;
         foreach (var btn in _buttons)
         {
@@ -97,26 +117,13 @@ public class PauseMenu : MonoBehaviour
             cascade++;
         }
 
-        // Deactivate after all cascades finish
         float totalDelay = (_buttons.Length - 1) * _flyOutStagger + 0.25f;
-        Invoke(nameof(Deactivate), totalDelay);
+        StartCoroutine(DeactivateAfter(totalDelay));
     }
 
-    private void CascadeAllOut(MenuButton3D clickedButton)
+    private IEnumerator DeactivateAfter(float realSeconds)
     {
-        int cascade = 0;
-        foreach (var btn in _buttons)
-        {
-            btn?.FlyOut(cascade * _flyOutStagger);
-            cascade++;
-        }
-
-        float totalDelay = _buttons.Length * _flyOutStagger + 0.25f;
-        Invoke(nameof(Deactivate), totalDelay);
-    }
-
-    private void Deactivate()
-    {
+        yield return new WaitForSecondsRealtime(realSeconds);
         if (!_isOpen)
             gameObject.SetActive(false);
     }
@@ -126,11 +133,13 @@ public class PauseMenu : MonoBehaviour
     public void OnResume()
     {
         if (!_isBlocking) return;
-        Time.timeScale = _savedTimeScale;
+        _isOpen = false;
+
+        // Lock cursor FIRST, then restore timeScale (same rule as CloseSequence)
         GameInputState.Unblock();
         _isBlocking = false;
-        _isOpen = false;
-        // cascade handled by OnButtonClicked
+        Time.timeScale = _savedTimeScale;
+        // Deactivation handled by OnButtonClicked cascade
     }
 
     public void OnSave()

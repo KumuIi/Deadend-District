@@ -10318,7 +10318,10 @@ MonoBehaviour:
   _invokeAfterCameraArrives: 0
   _hoverOffset: 0.0125
   _hoverDuration: 0.15
-  _flyOutX: 0.2
+  _flyInDistance: 0.3
+  _flyInDuration: 0.25
+  _flyInEase: 27
+  _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
 --- !u!23 &1011954132
@@ -10567,7 +10570,10 @@ MonoBehaviour:
   _invokeAfterCameraArrives: 0
   _hoverOffset: 0.0125
   _hoverDuration: 0.15
-  _flyOutX: 0.2
+  _flyInDistance: 0.3
+  _flyInDuration: 0.25
+  _flyInEase: 27
+  _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
 --- !u!1 &1026173161
@@ -12877,7 +12883,10 @@ MonoBehaviour:
   _invokeAfterCameraArrives: 0
   _hoverOffset: 0.0125
   _hoverDuration: 0.15
-  _flyOutX: 0.2
+  _flyInDistance: 0.3
+  _flyInDuration: 0.25
+  _flyInEase: 27
+  _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
 --- !u!23 &1218078068
@@ -19714,10 +19723,38 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1660674017878401248, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: _animator
       value: 
       objectReference: {fileID: 1556877593}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _buttons.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: '_buttons.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1011954116}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: '_buttons.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2074370374}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: '_buttons.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1025349522}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: '_buttons.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1218078052}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _slotButtons.Array.size
+      value: 4
+      objectReference: {fileID: 0}
     - target: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_Name
       value: '[Player]'
@@ -22249,7 +22286,10 @@ MonoBehaviour:
   _invokeAfterCameraArrives: 0
   _hoverOffset: 0.0125
   _hoverDuration: 0.15
-  _flyOutX: 0.2
+  _flyInDistance: 0.3
+  _flyInDuration: 0.25
+  _flyInEase: 27
+  _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
 --- !u!1 &2074370384
