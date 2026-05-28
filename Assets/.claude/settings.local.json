@@ -31,7 +31,10 @@
       "Bash(Remove-Item \"G:\\\\Unity\\\\Deadend-District\\\\Assets\\\\Scripts\\\\Core\\\\Battery\\\\IBatteryDrainer.cs\" -Force)",
       "Bash(find G:\\\\Unity\\\\Deadend-District\\\\Assets *)",
       "Bash(xargs grep -l \"class.*AI\\\\|class.*Guard\\\\|class.*Monster\")",
-      "Bash(xargs grep -l \"IStimulusListener\\\\|IFactionProvider\")"
+      "Bash(xargs grep -l \"IStimulusListener\\\\|IFactionProvider\")",
+      "WebSearch",
+      "WebFetch(domain:sergioabreu-g.medium.com)",
+      "WebFetch(domain:medium.com)"
     ]
   }
 }

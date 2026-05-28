@@ -683,16 +683,22 @@ public class EnemyBrain : MonoBehaviour
     {
         if (_stateCoroutine != null) StopCoroutine(_stateCoroutine);
 
-        // Throw the loot in the direction the shot came from (same as ragdoll impulse)
+        // 1. Kill AR writes first — destroys this RigBuilder's PlayableGraph so
+        //    LateUpdate can no longer write to the arm bones.
+        _aimComponent?.SetEngaged(false);
+        _aimComponent?.Disarm();
+
+        // 2. Drop loot (spawns a new world item, doesn't touch the visual gun GO yet).
         Vector3 throwDir = -_lastHitNormal;
         _weaponDriver?.DetachAndDrop(throwDir);
 
-        // Destroy the visual gun GO — it is now replaced by the loot world item
-        if (_gunInstance != null) Destroy(_gunInstance);
+        // 3. Destroy the visual gun one frame later — if we destroy it this frame,
+        //    AR's LateUpdate for this frame fires AFTER Die() with null targets and
+        //    writes bind-pose (T-pose) to the arm bones before the graph is gone.
+        if (_gunInstance != null) StartCoroutine(DestroyGunNextFrame(_gunInstance));
+        _gunInstance = null;
 
         _agent.isStopped = true;
-        _aimComponent?.SetEngaged(false);
-        _aimComponent?.Disarm();
 
         if (_perception   != null) _perception.enabled   = false;
         if (_aimComponent != null) _aimComponent.enabled = false;
@@ -702,6 +708,12 @@ public class EnemyBrain : MonoBehaviour
             WorldStateManager.Instance.SetBool($"npc.{gameObject.name}.dead", true);
 
         Debug.Log($"[Brain] {name} died — weapon dropped.");
+    }
+
+    private IEnumerator DestroyGunNextFrame(GameObject gun)
+    {
+        yield return null;
+        if (gun != null) Destroy(gun);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -129,17 +129,7 @@ public class EnemyRagdoll : MonoBehaviour
     private void OnDeath()
     {
         _alive = false;
-
-        // Re-scan: RigBuilder.Build() (called when the gun is equipped) may have set
-        // constrained arm-bone Rigidbodies back to kinematic so Animation Rigging can
-        // own their transforms. Force every bone non-kinematic now so the full ragdoll
-        // activates, including arms and hands.
-        _allBones = _armatureRoot != null
-            ? _armatureRoot.GetComponentsInChildren<Rigidbody>()
-            : _rootBone.GetComponentsInChildren<Rigidbody>();
-
-        foreach (var rb in _allBones)
-            rb.isKinematic = false;
+        _rootBone.isKinematic = false;
 
         if (_lastHit.HitPoint != Vector3.zero)
         {
