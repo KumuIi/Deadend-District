@@ -12,7 +12,6 @@ using UnityEngine.SceneManagement;
 public class MainMenu : MonoBehaviour
 {
     [SerializeField] private string _hubScene = "Hub";
-    [SerializeField] private string _defaultSaveSlot = "slot0";
 
     private void Start()
     {
@@ -28,15 +27,14 @@ public class MainMenu : MonoBehaviour
     public void ContinueGame()
     {
         if (SaveSystem.Instance == null) return;
-        if (!SaveSystem.Instance.SlotExists(_defaultSaveSlot))
+        string slot = RunManager.Instance?.ActiveSaveSlot ?? "slot0";
+        if (!SaveSystem.Instance.SlotExists(slot))
         {
             Debug.LogWarning("[MainMenu] No save found for Continue.");
             return;
         }
-        // Queue restores BEFORE loading the scene — SaveSystem flushes them one
-        // frame after Start() so all ISaveables in the hub scene are registered first.
-        SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Profile, _defaultSaveSlot);
-        SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.World, _defaultSaveSlot);
+        SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Profile, slot);
+        SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.World, slot);
         SceneManager.LoadScene(_hubScene);
     }
 

@@ -1,38 +1,38 @@
 using UnityEngine;
 
 /// <summary>
-/// Sits on the main menu camera. Raycasts on left-click and dispatches
-/// to MenuButton3D or SaveSlotButton3D. Gates clicks when GameInputState
-/// is blocked (e.g. a sub-panel is open).
+/// Sits on the player camera. Raycasts on left-click and dispatches to
+/// MenuButton3D, SaveSlotButton3D, or FlashdriveButton depending on what's active.
 ///
-/// Implementors: one instance on the MainMenu camera GameObject.
+/// Implementors: one instance on the player camera (used in both main menu and gameplay).
 /// </summary>
 [RequireComponent(typeof(Camera))]
 public class MenuInputHandler : MonoBehaviour
 {
     [SerializeField] private LayerMask _clickMask = ~0;
-    [SerializeField] private float _rayDistance = 100f;
+    [SerializeField] private float     _rayDistance = 100f;
 
     private Camera _cam;
-    private MenuButton3D _currentHoveredBtn;
-    private SaveSlotButton3D _currentHoveredSlot;
 
-    private void Awake()
-    {
-        _cam = GetComponent<Camera>();
-    }
+    private MenuButton3D       _currentHoveredBtn;
+    private SaveSlotButton3D   _currentHoveredSlot;
+    private FlashdriveButton   _currentHoveredDrive;
+
+    private void Awake() => _cam = GetComponent<Camera>();
 
     private void Update()
     {
         UpdateHover();
-
-        if (Input.GetMouseButtonDown(0))
-            TryClick();
+        if (Input.GetMouseButtonDown(0)) TryClick();
     }
 
     private void UpdateHover()
     {
-        MenuButton3D btn = Raycast<MenuButton3D>();
+        // Priority: MenuButton3D > FlashdriveButton > SaveSlotButton3D
+        var btn   = Raycast<MenuButton3D>();
+        var drive = btn == null ? Raycast<FlashdriveButton>() : null;
+        var slot  = btn == null && drive == null ? Raycast<SaveSlotButton3D>() : null;
+
         if (btn != _currentHoveredBtn)
         {
             _currentHoveredBtn?.OnHoverExit();
@@ -40,7 +40,13 @@ public class MenuInputHandler : MonoBehaviour
             _currentHoveredBtn?.OnHoverEnter();
         }
 
-        SaveSlotButton3D slot = btn == null ? Raycast<SaveSlotButton3D>() : null;
+        if (drive != _currentHoveredDrive)
+        {
+            _currentHoveredDrive?.OnHoverExit();
+            _currentHoveredDrive = drive;
+            _currentHoveredDrive?.OnHoverEnter();
+        }
+
         if (slot != _currentHoveredSlot)
         {
             _currentHoveredSlot?.OnHoverExit();
@@ -51,10 +57,13 @@ public class MenuInputHandler : MonoBehaviour
 
     private void TryClick()
     {
-        MenuButton3D btn = Raycast<MenuButton3D>();
+        var btn = Raycast<MenuButton3D>();
         if (btn != null) { btn.Click(); return; }
 
-        SaveSlotButton3D slot = Raycast<SaveSlotButton3D>();
+        var drive = Raycast<FlashdriveButton>();
+        if (drive != null) { drive.Click(); return; }
+
+        var slot = Raycast<SaveSlotButton3D>();
         slot?.Click();
     }
 

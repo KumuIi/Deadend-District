@@ -25,6 +25,19 @@ public class RunManager : MonoBehaviour
 
     public RunState State { get; private set; } = RunState.InHub;
 
+    /// <summary>
+    /// The save slot currently in use. Set when the player loads or saves from the flashdrive menu.
+    /// All RunManager save operations use this slot.
+    /// </summary>
+    public string ActiveSaveSlot { get; private set; }
+
+    private void Start() => ActiveSaveSlot = _defaultSaveSlot;
+
+    public void SetActiveSlot(string slot)
+    {
+        if (!string.IsNullOrEmpty(slot)) ActiveSaveSlot = slot;
+    }
+
     // ── Player registration ────────────────────────────────────────────────
 
     private PlayerHealth _playerHealth;
@@ -94,8 +107,8 @@ public class RunManager : MonoBehaviour
         }
         // Set state AFTER load is confirmed to start — prevents InRun with no sector loaded
         State = RunState.InRun;
-        SaveSystem.Instance?.SaveProfile(_defaultSaveSlot);
-        SaveSystem.Instance?.SaveWorld(_defaultSaveSlot);
+        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
         Broadcast(l => l.OnRunStarted());
     }
 
@@ -105,8 +118,8 @@ public class RunManager : MonoBehaviour
         if (State != RunState.InRun) return;
         State = RunState.Extracting;
 
-        SaveSystem.Instance?.SaveProfile(_defaultSaveSlot);
-        SaveSystem.Instance?.SaveRun(_defaultSaveSlot);
+        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        SaveSystem.Instance?.SaveRun(ActiveSaveSlot);
         Broadcast(l => l.OnRunExtracted());
 
         var stm = SceneTransitionManager.Instance;
@@ -126,7 +139,7 @@ public class RunManager : MonoBehaviour
             SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterExtract;
         State = RunState.InHub;
         Broadcast(l => l.OnReturnedToHub());
-        SaveSystem.Instance?.ClearRun(_defaultSaveSlot);
+        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
     }
 
     /// <summary>Called by PlayerHealth.OnDeath (via PlayerRunRegistration).</summary>
@@ -159,7 +172,7 @@ public class RunManager : MonoBehaviour
         Broadcast(l => l.OnRunDied());
         // InventorySaveAdapter implements IRunLifecycleListener and clears itself on OnRunDied
 
-        SaveSystem.Instance?.SaveProfile(_defaultSaveSlot);
+        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
 
         var stm = SceneTransitionManager.Instance;
         if (stm == null) { Debug.LogError("[RunManager] SceneTransitionManager missing — cannot load hub after death."); yield break; }
@@ -178,7 +191,7 @@ public class RunManager : MonoBehaviour
             SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterDeath;
         State = RunState.InHub;
         Broadcast(l => l.OnReturnedToHub());
-        SaveSystem.Instance?.ClearRun(_defaultSaveSlot);
+        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
     }
 
     private void OnDisable()

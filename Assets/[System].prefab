@@ -158,6 +158,9 @@ GameObject:
   - component: {fileID: 59963993855832172}
   - component: {fileID: 1478869977835866825}
   - component: {fileID: 6563808598503613460}
+  - component: {fileID: 3400108809343721835}
+  - component: {fileID: 8946118727985353534}
+  - component: {fileID: 8580064556277015665}
   m_Layer: 0
   m_Name: '[GameSystems]'
   m_TagString: Untagged
@@ -266,6 +269,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef897c9e567d70148ba97cc1f2f2a45e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentController
+--- !u!114 &3400108809343721835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 466af263d2038384dabe846074c4bc96, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneTransitionManager
+  _fadeDuration: 0.4
+  _hubSceneName: Hub
+--- !u!114 &8946118727985353534
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d734c319b1d59a47b90bfd9c5392f26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RunManager
+  _defaultSaveSlot: slot0
+  _deathFadeDelay: 1.5
+--- !u!114 &8580064556277015665
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 723364c90b12c5142af19b2ab365ed64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlaytimeTracker
+  _mainMenuScene: MainMenu
 --- !u!1 &6615256840996726013
 GameObject:
   m_ObjectHideFlags: 0

@@ -22,8 +22,8 @@ public class PauseMenu : MonoBehaviour
     [SerializeField] private float _flyInStagger  = 0.08f;
     [SerializeField] private float _flyOutStagger = 0.06f;
 
-    [Header("Save Slots")]
-    [SerializeField] private SaveSlotButton3D[] _slotButtons;
+    [Header("Flashdrive menu")]
+    [SerializeField] private FlashdriveMenuController _flashdriveMenu;
 
     [Header("Scene")]
     [SerializeField] private string _mainMenuScene = "MainMenu";
@@ -38,12 +38,24 @@ public class PauseMenu : MonoBehaviour
 
         foreach (var btn in _buttons)
             if (btn != null) btn.OnClicked += OnButtonClicked;
+
+        if (_flashdriveMenu != null)
+        {
+            _flashdriveMenu.OnReturnRequested += ShowBullets;
+            _flashdriveMenu.OnActionExecuted  += OnFlashdriveActionExecuted;
+        }
     }
 
     private void OnDestroy()
     {
         foreach (var btn in _buttons)
             if (btn != null) btn.OnClicked -= OnButtonClicked;
+
+        if (_flashdriveMenu != null)
+        {
+            _flashdriveMenu.OnReturnRequested -= ShowBullets;
+            _flashdriveMenu.OnActionExecuted  -= OnFlashdriveActionExecuted;
+        }
     }
 
     // ── Public API ─────────────────────────────────────────────────────────
@@ -142,16 +154,28 @@ public class PauseMenu : MonoBehaviour
         // Deactivation handled by OnButtonClicked cascade
     }
 
-    public void OnSave()
+    public void OnSave() => _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Save);
+
+    public void OnLoad() => _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Load);
+
+    /// <summary>Re-fly bullets in — called when flashdrive menu returns without action.</summary>
+    public void ShowBullets()
     {
-        SetSlotMode(SaveSlotButton3D.SlotMode.Save);
-        RefreshSlots();
+        for (int i = 0; i < _buttons.Length; i++)
+            _buttons[i]?.ResetAndFlyIn(i * _flyInStagger);
     }
 
-    public void OnLoad()
+    private void OnFlashdriveActionExecuted()
     {
-        SetSlotMode(SaveSlotButton3D.SlotMode.Load);
-        RefreshSlots();
+        // Save/load completed — close pause menu fully
+        if (_isBlocking)
+        {
+            GameInputState.Unblock();
+            _isBlocking = false;
+        }
+        Time.timeScale = _savedTimeScale;
+        _isOpen = false;
+        gameObject.SetActive(false);
     }
 
     public void OnReturnToMainMenu()
@@ -175,22 +199,4 @@ public class PauseMenu : MonoBehaviour
 #endif
     }
 
-    public void SaveSlot(string slot) => SaveSystem.Instance?.SaveAll(slot);
-    public void LoadSlot(string slot) => SaveSystem.Instance?.LoadAll(slot);
-
-    // ── Helpers ────────────────────────────────────────────────────────────
-
-    private void SetSlotMode(SaveSlotButton3D.SlotMode mode)
-    {
-        if (_slotButtons == null) return;
-        foreach (var btn in _slotButtons)
-            btn?.SetMode(mode);
-    }
-
-    private void RefreshSlots()
-    {
-        if (_slotButtons == null) return;
-        foreach (var btn in _slotButtons)
-            btn?.Refresh();
-    }
 }

@@ -24,7 +24,8 @@ public class SceneTransitionManager : MonoBehaviour
 
     [Header("Scenes")]
     [SerializeField] private string _hubSceneName = "Hub";
-    [SerializeField] private string _defaultSaveSlot = "slot0";
+
+    private string ActiveSlot => RunManager.Instance != null ? RunManager.Instance.ActiveSaveSlot : "slot0";
 
     public event Action OnSceneTransitionStarted;
     public event Action OnSceneTransitionFinished;
@@ -60,8 +61,8 @@ public class SceneTransitionManager : MonoBehaviour
 
         yield return FadeOut();
         // Queue restores BEFORE loading — SaveSystem flushes them when sceneLoaded fires
-        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Profile, _defaultSaveSlot);
-        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.World, _defaultSaveSlot);
+        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Profile, ActiveSlot);
+        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.World, ActiveSlot);
         yield return SceneManager.LoadSceneAsync(_hubSceneName, LoadSceneMode.Single);
         yield return FadeIn();
 
@@ -78,7 +79,7 @@ public class SceneTransitionManager : MonoBehaviour
         yield return FadeOut();
 
         // Queue restore BEFORE loading so sceneLoaded fires with pending scopes ready
-        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Run, _defaultSaveSlot);
+        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Run, ActiveSlot);
         var op = SceneManager.LoadSceneAsync(sectorName, LoadSceneMode.Additive);
         yield return op;
 
