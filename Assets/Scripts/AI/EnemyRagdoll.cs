@@ -15,10 +15,10 @@ using UnityEngine;
 /// On death: _rootBone goes non-kinematic, body falls freely with death impulse.
 ///           NavMeshAgent is managed by EnemyBrain.Die() — not touched here.
 ///
-/// IMPORTANT — prefab setup: do NOT add Animator or RigBuilder to this enemy prefab.
+/// IMPORTANT — prefab setup: do NOT add an Animator to this enemy prefab.
 ///   The possessed corpse is physics-owned from frame 1; it has no animation clips.
-///   Adding those components and assigning them here breaks both the enemy aim IK
-///   and the player's arm IK via Unity's Animation Rigging scene-wide rebuild.
+///   A RigBuilder IS intentionally present (managed by EnemyAimComponent for arm IK),
+///   but an Animator would conflict with the physics-driven skeleton.
 /// </summary>
 public class EnemyRagdoll : MonoBehaviour
 {
@@ -166,7 +166,7 @@ public class EnemyRagdoll : MonoBehaviour
     private void OnValidate()
     {
         if (GetComponent<Animator>() != null || GetComponentInChildren<Animator>() != null)
-            Debug.LogWarning($"[EnemyRagdoll] {name}: Animator found on this prefab — remove it. Possessed ragdoll is physics-only; an Animator here will break player arm IK via Animation Rigging.");
+            Debug.LogWarning($"[EnemyRagdoll] {name}: Animator found on this prefab — remove it. This enemy is physics-only; an Animator conflicts with the ragdoll skeleton.");
     }
 #endif
 }

@@ -17,21 +17,13 @@ public class EnemyHealth : MonoBehaviour, IDamageable, IFactionProvider
     public event Action              OnDeath;
     public event Action<DamageContext> OnDamaged;
 
-    private void Awake()
-    {
-        CurrentHealth = _maxHealth;
-        InvokeRepeating(nameof(LogHP), 1f, 1f);
-    }
-
-    private void LogHP() =>
-        Debug.Log($"[EnemyHealth] {name}: HP {CurrentHealth:F1} / {_maxHealth:F1}");
+    private void Awake() => CurrentHealth = _maxHealth;
 
     public float ApplyDamage(DamageContext ctx)
     {
         if (!IsAlive) return 0f;
         float dealt = Mathf.Min(ctx.BaseDamage, CurrentHealth);
         CurrentHealth -= dealt;
-        Debug.Log($"[EnemyHealth] {name}: took {dealt:F1} dmg, remaining {CurrentHealth:F1}");
         OnDamaged?.Invoke(ctx);
         if (CurrentHealth <= 0f)
         {
