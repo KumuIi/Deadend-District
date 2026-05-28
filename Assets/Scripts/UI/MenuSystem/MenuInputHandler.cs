@@ -9,8 +9,9 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class MenuInputHandler : MonoBehaviour
 {
-    [SerializeField] private LayerMask _clickMask = ~0;
-    [SerializeField] private float     _rayDistance = 100f;
+    [SerializeField] private LayerMask               _clickMask = ~0;
+    [SerializeField] private float                   _rayDistance = 100f;
+    [SerializeField] private FlashdriveMenuController _flashdriveController;
 
     private Camera _cam;
 
@@ -42,9 +43,21 @@ public class MenuInputHandler : MonoBehaviour
 
         if (drive != _currentHoveredDrive)
         {
-            _currentHoveredDrive?.OnHoverExit();
+            if (_currentHoveredDrive != null)
+            {
+                _currentHoveredDrive.OnHoverExit();
+                _flashdriveController?.OnDriveUnhovered();
+            }
             _currentHoveredDrive = drive;
-            _currentHoveredDrive?.OnHoverEnter();
+            if (_currentHoveredDrive != null)
+            {
+                _currentHoveredDrive.OnHoverEnter();
+                _flashdriveController?.OnDriveHovered(_currentHoveredDrive, Input.mousePosition);
+            }
+        }
+        else if (_currentHoveredDrive != null)
+        {
+            _flashdriveController?.UpdateTooltipPos(Input.mousePosition);
         }
 
         if (slot != _currentHoveredSlot)

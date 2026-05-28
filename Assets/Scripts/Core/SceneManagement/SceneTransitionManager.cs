@@ -1,19 +1,22 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Handles all scene loading with a full-screen fade transition.
-/// Owns a DontDestroyOnLoad Canvas (sort order 999) for the black fade overlay.
 ///
-/// LoadHub  — Single load, replaces all scenes (hub contains the player rig).
-/// LoadSector — Additive load alongside Hub. Restores Run-scoped save after load.
-/// UnloadSector — Despawns poolable entities then unloads the scene.
+/// Architecture: Hub is the PERMANENT base scene — it never unloads.
+/// Sectors load additively on top of Hub, then unload when the run ends.
+/// "Returning to hub" = unload the active sector + re-show HubRoot.
+/// This means the player rig and all GameSystems can simply live in Hub
+/// as normal scene objects — no DontDestroyOnLoad required for them.
 ///
-/// Implementors: one instance on the GameSystems GameObject.
+/// SceneTransitionManager itself IS DontDestroyOnLoad because it owns
+/// the fade canvas and must survive sector loads/unloads.
+///
+/// Implementors: one instance on the GameSystems GameObject in Hub scene.
 /// </summary>
 public class SceneTransitionManager : MonoBehaviour
 {
@@ -22,8 +25,10 @@ public class SceneTransitionManager : MonoBehaviour
     [Header("Fade")]
     [SerializeField] private float _fadeDuration = 0.4f;
 
-    [Header("Scenes")]
-    [SerializeField] private string _hubSceneName = "Hub";
+    [Header("Hub")]
+    [SerializeField] private string     _hubSceneName = "Hub";
+    [Tooltip("Root empty that parents ALL Hub scene geometry/NPCs. Hidden while in a sector.")]
+    [SerializeField] private GameObject _hubRoot;
 
     private string ActiveSlot => RunManager.Instance != null ? RunManager.Instance.ActiveSaveSlot : "slot0";
 
@@ -31,7 +36,8 @@ public class SceneTransitionManager : MonoBehaviour
     public event Action OnSceneTransitionFinished;
 
     private CanvasGroup _fadeGroup;
-    private bool _isTransitioning;
+    private bool        _isTransitioning;
+    private string      _activeSectorName;
 
     private void Awake()
     {
@@ -43,27 +49,61 @@ public class SceneTransitionManager : MonoBehaviour
 
     // ── Public API ─────────────────────────────────────────────────────────
 
-    /// <summary>Returns true if the transition started, false if one was already in progress.</summary>
-    public bool LoadHub() { if (_isTransitioning) return false; StartCoroutine(LoadHubRoutine()); return true; }
+    /// <summary>
+    /// "Return to hub" — unloads the active sector and re-shows Hub geometry.
+    /// Hub itself never reloads. Returns false if a transition is already running.
+    /// </summary>
+    public bool LoadHub()
+    {
+        if (_isTransitioning) return false;
+        StartCoroutine(ReturnToHubRoutine());
+        return true;
+    }
 
-    /// <summary>Returns true if the transition started, false if one was already in progress.</summary>
-    public bool LoadSector(string sectorName) { if (_isTransitioning) return false; StartCoroutine(LoadSectorRoutine(sectorName)); return true; }
-
-    public void UnloadSector(string sectorName) => StartCoroutine(UnloadSectorRoutine(sectorName));
+    /// <summary>
+    /// Load a sector additively on top of Hub and hide Hub geometry.
+    /// Returns false if a transition is already running.
+    /// </summary>
+    public bool LoadSector(string sectorName)
+    {
+        if (_isTransitioning) return false;
+        StartCoroutine(LoadSectorRoutine(sectorName));
+        return true;
+    }
 
     // ── Routines ───────────────────────────────────────────────────────────
 
-    private IEnumerator LoadHubRoutine()
+    private IEnumerator ReturnToHubRoutine()
     {
-        if (_isTransitioning) yield break;
         _isTransitioning = true;
         OnSceneTransitionStarted?.Invoke();
 
         yield return FadeOut();
-        // Queue restores BEFORE loading — SaveSystem flushes them when sceneLoaded fires
+
+        // Unload active sector if one exists
+        if (!string.IsNullOrEmpty(_activeSectorName))
+        {
+            Scene sector = SceneManager.GetSceneByName(_activeSectorName);
+            if (sector.IsValid())
+            {
+                foreach (var root in sector.GetRootGameObjects())
+                    foreach (var entity in root.GetComponentsInChildren<IPoolableSpawnedEntity>(true))
+                        entity.OnDespawned();
+
+                yield return SceneManager.UnloadSceneAsync(_activeSectorName);
+            }
+            _activeSectorName = null;
+        }
+
+        // Re-show hub geometry and restore hub as active scene
+        if (_hubRoot != null) _hubRoot.SetActive(true);
+        Scene hub = SceneManager.GetSceneByName(_hubSceneName);
+        if (hub.IsValid()) SceneManager.SetActiveScene(hub);
+
+        // Queue save restores — flush one frame after Start() on hub objects
         SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Profile, ActiveSlot);
         SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.World, ActiveSlot);
-        yield return SceneManager.LoadSceneAsync(_hubSceneName, LoadSceneMode.Single);
+
         yield return FadeIn();
 
         _isTransitioning = false;
@@ -72,49 +112,22 @@ public class SceneTransitionManager : MonoBehaviour
 
     private IEnumerator LoadSectorRoutine(string sectorName)
     {
-        if (_isTransitioning) yield break;
         _isTransitioning = true;
         OnSceneTransitionStarted?.Invoke();
 
         yield return FadeOut();
 
-        // Queue restore BEFORE loading so sceneLoaded fires with pending scopes ready
+        // Hide hub so only the sector is visible
+        if (_hubRoot != null) _hubRoot.SetActive(false);
+
+        // Queue Run restore before load so sceneLoaded fires with pending scopes
         SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Run, ActiveSlot);
-        var op = SceneManager.LoadSceneAsync(sectorName, LoadSceneMode.Additive);
-        yield return op;
 
-        SceneManager.SetActiveScene(SceneManager.GetSceneByName(sectorName));
+        yield return SceneManager.LoadSceneAsync(sectorName, LoadSceneMode.Additive);
 
-        yield return FadeIn();
-
-        _isTransitioning = false;
-        OnSceneTransitionFinished?.Invoke();
-    }
-
-    private IEnumerator UnloadSectorRoutine(string sectorName)
-    {
-        if (_isTransitioning) yield break;
-        _isTransitioning = true;
-        OnSceneTransitionStarted?.Invoke();
-
-        yield return FadeOut();
-
-        Scene scene = SceneManager.GetSceneByName(sectorName);
-        if (scene.IsValid())
-        {
-            // Notify poolable entities before unload
-            var roots = scene.GetRootGameObjects();
-            foreach (var root in roots)
-            {
-                foreach (var entity in root.GetComponentsInChildren<IPoolableSpawnedEntity>(includeInactive: true))
-                    entity.OnDespawned();
-            }
-            yield return SceneManager.UnloadSceneAsync(sectorName);
-        }
-
-        // Restore hub scene as active
-        Scene hub = SceneManager.GetSceneByName(_hubSceneName);
-        if (hub.IsValid()) SceneManager.SetActiveScene(hub);
+        _activeSectorName = sectorName;
+        Scene sector = SceneManager.GetSceneByName(sectorName);
+        if (sector.IsValid()) SceneManager.SetActiveScene(sector);
 
         yield return FadeIn();
 
@@ -138,7 +151,7 @@ public class SceneTransitionManager : MonoBehaviour
         yield return new WaitUntil(() => done);
     }
 
-    // ── Fade canvas setup ──────────────────────────────────────────────────
+    // ── Fade canvas ────────────────────────────────────────────────────────
 
     private void BuildFadeCanvas()
     {
@@ -147,11 +160,9 @@ public class SceneTransitionManager : MonoBehaviour
         DontDestroyOnLoad(canvasGO);
 
         var canvas = canvasGO.AddComponent<Canvas>();
-        canvas.renderMode  = RenderMode.ScreenSpaceOverlay;
+        canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 999;
-
         canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
-        canvasGO.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
         var imageGO = new GameObject("FadeImage");
         imageGO.transform.SetParent(canvasGO.transform, false);

@@ -90,7 +90,25 @@ public class RunManager : MonoBehaviour
 
     // ── Public run API ─────────────────────────────────────────────────────
 
-    /// <summary>Transition from hub into a sector run.</summary>
+    /// <summary>
+    /// Start a run without any scene loading — for when the sector is part of
+    /// the same scene or reached by a physical door. Just sets state to InRun.
+    /// </summary>
+    public void StartRunInPlace()
+    {
+        if (State != RunState.InHub)
+        {
+            Debug.LogWarning("[RunManager] StartRunInPlace called outside InHub state — ignored.");
+            return;
+        }
+        State = RunState.InRun;
+        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
+        Broadcast(l => l.OnRunStarted());
+        Debug.Log("[RunManager] Run started in place.");
+    }
+
+    /// <summary>Transition from hub into a separate sector scene.</summary>
     public void StartRun(string sectorName)
     {
         if (State != RunState.InHub)

@@ -31,9 +31,8 @@ public class FlashdriveButton : MonoBehaviour
     [Header("Shrink (slot drives on close)")]
     [SerializeField] private float _shrinkDuration = 0.18f;
 
-    [Header("Select (move to anchor + Z rotation)")]
-    [SerializeField] private float _selectDuration   = 0.25f;
-    [SerializeField] private float _selectedZRotation = -90f;
+    [Header("Select (move to anchor)")]
+    [SerializeField] private float _selectDuration = 0.25f;
 
     [Header("Hover")]
     [SerializeField] private float _hoverOffset   = 0.008f;
@@ -124,13 +123,13 @@ public class FlashdriveButton : MonoBehaviour
 
         transform.DOKill();
 
-        Vector3 targetEuler = new Vector3(_baseLocalEuler.x, _baseLocalEuler.y, _selectedZRotation);
+        Vector3 targetEuler = new Vector3(_baseLocalEuler.x, _baseLocalEuler.y, -90f);
 
         Sequence seq = DOTween.Sequence().SetUpdate(true);
         seq.Join(transform.DOMove(anchor.position, _selectDuration).SetEase(Ease.OutQuart));
         seq.Join(transform.DOLocalRotate(targetEuler, _selectDuration).SetEase(Ease.OutQuart));
 
-        if (_label != null) _label.text = "CLICK TO CONFIRM";
+        if (_label != null) _label.text = "Confirm";
     }
 
     public void Deselect()
@@ -155,10 +154,6 @@ public class FlashdriveButton : MonoBehaviour
         _isHovered = true;
         transform.DOLocalMoveX(_baseLocalPos.x + _hoverOffset, _hoverDuration)
                  .SetEase(Ease.OutQuad).SetUpdate(true);
-
-        // Show full stats on hover (like inventory tooltip)
-        if (_label != null && !_isReturn)
-            _label.text = BuildStatsText();
     }
 
     public void OnHoverExit()
@@ -167,10 +162,6 @@ public class FlashdriveButton : MonoBehaviour
         _isHovered = false;
         transform.DOLocalMoveX(_baseLocalPos.x, _hoverDuration)
                  .SetEase(Ease.OutQuad).SetUpdate(true);
-
-        // Revert to slot name only
-        if (_label != null && !_isReturn)
-            _label.text = SlotDisplayName();
     }
 
     // ── Click ──────────────────────────────────────────────────────────────
