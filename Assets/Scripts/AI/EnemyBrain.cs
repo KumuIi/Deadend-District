@@ -20,6 +20,7 @@ using UnityEngine.AI;
 public class EnemyBrain : MonoBehaviour
 {
     private enum BrainState  { Patrol, Investigate, Engage }
+    private enum EngagePhase { BadPosition, Peek, SeekCover }
     private enum CoverIntent { Reload, QuickCover, LostLOS, ForcedRelocation }
 
     // ── Inspector ─────────────────────────────────────────────────────────────
