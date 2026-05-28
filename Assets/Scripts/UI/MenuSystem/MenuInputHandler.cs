@@ -26,7 +26,7 @@ public class MenuInputHandler : MonoBehaviour
     {
         UpdateHover();
 
-        if (Input.GetMouseButtonDown(0) && !GameInputState.GameplayBlocked)
+        if (Input.GetMouseButtonDown(0))
             TryClick();
     }
 
