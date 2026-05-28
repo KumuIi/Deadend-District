@@ -1,19 +1,34 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Default IItemSOResolver that loads ItemSO assets from a Resources folder.
-/// Place your ItemSO assets inside a "Resources/Items/" folder (or change
-/// the <see cref="ResourcesFolder"/> constant to match your project layout).
+/// Loads ItemSO assets from Resources/Items/ and any subfolders (Weapons, Loot, etc.).
+/// Builds a name-to-asset cache on first use so subfolders are transparent to the caller.
 /// </summary>
 public sealed class ResourcesItemSOResolver : IItemSOResolver
 {
-    /// <summary>Path inside any Resources folder where ItemSO assets live.</summary>
-    private const string ResourcesFolder = "Items/";
+    private const string ResourcesFolder = "Items";
 
-    /// <inheritdoc/>
+    private static Dictionary<string, ItemSO> _cache;
+
     public ItemSO Resolve(string soName)
     {
         if (string.IsNullOrEmpty(soName)) return null;
-        return Resources.Load<ItemSO>(ResourcesFolder + soName);
+
+        if (_cache == null) BuildCache();
+
+        _cache.TryGetValue(soName, out var result);
+        return result;
+    }
+
+    private static void BuildCache()
+    {
+        _cache = new Dictionary<string, ItemSO>();
+        var all = Resources.LoadAll<ItemSO>(ResourcesFolder);
+        foreach (var item in all)
+        {
+            if (!_cache.ContainsKey(item.name))
+                _cache[item.name] = item;
+        }
     }
 }

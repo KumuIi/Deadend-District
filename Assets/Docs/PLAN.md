@@ -80,6 +80,7 @@
 - [ ] **[W3-03]** `MonsterAI` (extends `BaseEnemyAI`)
 - [ ] **[W3-04]** `EnemySpawnSystem`
 - [ ] **[W3-05]** `HitZone` component + `GunController` migration to `DamageContext`
+- [ ] **[W3-09]** `WeaponStateSaveAdapter` — save chambered round + loaded magazine per weapon slot so gun state survives save/load (pairs with W3-05 GunController work)
 - [ ] **[W3-06]** `LadderClimbing` — `Ladder : IInteractable` + `PlayerMotor` ladder mode
 - [ ] **[W3-07]** NavMesh off-mesh links for enemy ladder traversal
 - [ ] **[W3-08]** `FallDamage` — velocity threshold → `DamageContext` → `IDamageable`
@@ -95,6 +96,7 @@
 - [ ] **[W4-04]** `StockRestock` (TraderSO + RunManager.OnRunComplete hook)
 - [ ] **[W4-05]** `SectorLoading` + `SectorManager` (additive scenes, NavMeshSurface per sector)
 - [ ] **[W4-06]** MenuSystem polish — settings screen, save/load screen
+- [ ] **[W4-07]** `MidRaidSave` — optional mid-run checkpoint: save player world position + current sector name, restore sector additively on load if save was made during a run *[DECISION PENDING — owner to confirm whether mid-raid saving fits the game's design]*
 
 ---
 
