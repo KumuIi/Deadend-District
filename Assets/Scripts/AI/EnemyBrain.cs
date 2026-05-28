@@ -7,19 +7,21 @@ using UnityEngine.AI;
 ///
 /// Outer states: Patrol → Investigate → Engage.
 /// Inner EngagePhase (active only during Engage):
-///   SuppressAndRetreat — spotted in the open: shoot immediately while backing to cover.
-///   HoldGround         — no cover available, or holding position after player retreats.
-///   SeekCoverToReload  — magazine empty: move to cover silently, reload, then Peek.
-///   Peek               — in cover: burst fire when player is visible, duck back.
+///   BadPosition  — caught in the open: shoot immediately while slowly backing away.
+///                  LOS lost → SeekCover(LostLOS); NeedsReload → SeekCover(Reload).
+///   SeekCover    — sprint to cover for any reason (Reload / QuickCover / LostLOS / ForcedRelocation).
+///                  On arrival → Peek. No cover found → fallback per intent.
+///   Peek         — behind cover: shoot immediately when player visible, hold 30 s on LOS loss.
 ///
-/// Body always faces player during Engage (NavMeshAgent.updateRotation = false).
-/// Aim pivot only activates during phases that shoot (SuppressAndRetreat, HoldGround, Peek).
+/// Engage entry: cover within _quickCoverDist → SeekCover(QuickCover); otherwise → BadPosition.
+/// Retreat to cover ONLY on reload or LOS loss — never randomly.
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class EnemyBrain : MonoBehaviour
 {
-    private enum BrainState   { Patrol, Investigate, Engage }
-    private enum EngagePhase  { SuppressAndRetreat, HoldGround, SeekCoverToReload, Peek }
+    private enum BrainState  { Patrol, Investigate, Engage }
+    private enum EngagePhase { BadPosition, Peek, SeekCover }
+    private enum CoverIntent { Reload, QuickCover, LostLOS, ForcedRelocation }
 
     // ── Inspector ─────────────────────────────────────────────────────────────
 
@@ -50,21 +52,46 @@ public class EnemyBrain : MonoBehaviour
     [SerializeField] private int   _burstCount    = 3;
     [SerializeField] private float _burstCooldown = 1.5f;
 
+    [Header("BadPosition — Open-Ground Fighting")]
+    [Tooltip("Max distance to cover for a QuickCover sprint on first detection.")]
+    [SerializeField] private float _quickCoverDist      = 6f;
+    [Tooltip("How far (metres) to step backward per interval while in BadPosition.")]
+    [SerializeField] private float _backStepDist        = 3f;
+    [Tooltip("Seconds between each backward step destination update.")]
+    [SerializeField] private float _backStepInterval    = 1.5f;
+    [Tooltip("Agent speed while backing away in BadPosition.")]
+    [SerializeField] private float _backStepSpeed       = 1.8f;
+    [Tooltip("Seconds of continuous LOS loss before BadPosition reacts (debounce for brief occlusions).")]
+    [SerializeField] private float _losDebounce         = 1.5f;
+    [Tooltip("Minimum distance a ForcedRelocation cover point must be from the current cover position.")]
+    [SerializeField] private float _forceRelocateMinDist = 3f;
+
+    [Header("Cover Movement")]
+    [Tooltip("Agent speed while sprinting to cover.")]
+    [SerializeField] private float _coverSprintSpeed   = 5f;
+    [Tooltip("Max seconds allowed to reach cover before fallback triggers.")]
+    [SerializeField] private float _coverSeekTimeout   = 4f;
+    [Tooltip("Pause before an exposed emergency reload when no cover exists.")]
+    [SerializeField] private float _emergencyReloadDelay = 2f;
+
     [Header("Engage Timers")]
-    [SerializeField] private float _holdGroundTimeout   = 30f; // LOS lost → InvestigateSlow
-    [SerializeField] private float _coverSeekTimeout    = 4f;  // max time to reach cover
-    [SerializeField] private float _emergencyReloadDelay = 2f; // pause before in-place reload
+    [Tooltip("Seconds of LOS loss from Peek before slow-pushing to LastKnownPosition.")]
+    [SerializeField] private float _holdGroundTimeout   = 30f;
     [SerializeField] private float _investigateSlowSpeed = 1.5f;
 
-    [Header("Tuning")]
+    [Header("Investigate")]
     [SerializeField] private float _investigateTimeout = 8f;
 
     [Header("Movement")]
     [SerializeField] private float _rotationSpeed = 360f;
 
     [Header("Damage Response")]
-    [Tooltip("Hits received at the same cover position before relocating.")]
+    [Tooltip("Hits at the same cover position before relocating.")]
     [SerializeField] private int _hitsToChangeCover = 3;
+
+    [Header("First-Detection Reaction")]
+    [Tooltip("Seconds the guard takes to react on first detection before firing. Resets each time Engage is entered.")]
+    [SerializeField] private float _reactionDelay = 1f;
 
     // ── Runtime ───────────────────────────────────────────────────────────────
 
@@ -76,11 +103,18 @@ public class EnemyBrain : MonoBehaviour
     private Transform    _playerTransform;
     private int          _patrolIndex;
 
+    // Death
+    private Vector3 _lastHitNormal; // direction of the killing/last shot — used to throw the dropped weapon
+
     // Engage shared state
-    private bool  _isInCover;
-    private float _losTimer;           // seconds since player was last seen (in Engage)
-    private bool  _shouldChangeCover;  // set by damage handler, checked by phase loops
-    private int   _hitsAtCurrentCover;
+    private bool          _reactedThisEngage; // false until reaction delay has elapsed once per Engage
+    private bool          _isInCover;
+    private float         _losTimer;
+    private bool          _shouldChangeCover;
+    private int           _hitsAtCurrentCover;
+    private Vector3?      _cachedCoverPoint;
+    private CoverIntent?  _pendingIntent;   // set by phases before yielding break
+    private bool          _goToInvestigate; // set when any phase wants to exit to Investigate
 
     // ── Init ─────────────────────────────────────────────────────────────────
 
@@ -111,7 +145,6 @@ public class EnemyBrain : MonoBehaviour
     {
         RotateBody();
 
-        // Tick LOS-lost timer during Engage
         if (_state == BrainState.Engage)
         {
             if (_perception != null && !_perception.CanSeeTarget)
@@ -129,7 +162,7 @@ public class EnemyBrain : MonoBehaviour
 
         if (_state == BrainState.Engage && _playerTransform != null)
         {
-            targetDir = _playerTransform.position - transform.position;
+            targetDir   = _playerTransform.position - transform.position;
             targetDir.y = 0f;
         }
         else
@@ -265,45 +298,36 @@ public class EnemyBrain : MonoBehaviour
         _isInCover           = false;
         _shouldChangeCover   = false;
         _hitsAtCurrentCover  = 0;
-        _cachedCoverPoint    = null; // clear stale point from prior Engage session
+        _cachedCoverPoint    = null;
+        _pendingIntent       = null;
+        _goToInvestigate     = false;
+        _reactedThisEngage   = false;
         _agent.speed         = _defaultAgentSpeed;
 
-        // Entry: pick opening phase based on whether cover is reachable
+        // Entry: quick nearby cover → sprint silently; otherwise fight in the open
         Vector3? entryCover = FindCover();
-        if (entryCover.HasValue)
+        if (entryCover.HasValue
+            && Vector3.Distance(transform.position, entryCover.Value) <= _quickCoverDist)
         {
             _cachedCoverPoint = entryCover.Value;
-            yield return StartCoroutine(SuppressAndRetreatRoutine());
+            _pendingIntent    = CoverIntent.QuickCover;
         }
-        else
-        {
-            yield return StartCoroutine(HoldGroundRoutine());
-        }
+        // else → outer loop → BadPosition
 
-        // After each phase the coroutine returns here — drive the next phase
         while (_state == BrainState.Engage)
         {
-            // Global exit: LOS gone for too long
-            if (_losTimer >= _holdGroundTimeout)
+            if (_goToInvestigate)
             {
-                Debug.Log("[Brain] LOS timeout → InvestigateSlow");
                 _agent.speed = _investigateSlowSpeed;
                 SetState(BrainState.Investigate);
                 yield break;
             }
 
-            // If damage forced a cover change, clear the cached point so a fresh search runs
-            if (_shouldChangeCover)
+            if (_pendingIntent.HasValue)
             {
-                _shouldChangeCover  = false;
-                _isInCover          = false;
-                _cachedCoverPoint   = null; // force a fresh cover search
-            }
-
-            // Choose next phase by current tactical situation
-            if (_weaponDriver != null && _weaponDriver.NeedsReload)
-            {
-                yield return StartCoroutine(SeekCoverToReloadRoutine());
+                CoverIntent intent = _pendingIntent.Value;
+                _pendingIntent = null;
+                yield return StartCoroutine(SeekCoverRoutine(intent));
             }
             else if (_isInCover)
             {
@@ -311,53 +335,118 @@ public class EnemyBrain : MonoBehaviour
             }
             else
             {
-                // Not in cover — re-evaluate
-                Vector3? cover = FindCover();
-                if (cover.HasValue)
-                {
-                    _cachedCoverPoint = cover.Value;
-                    yield return StartCoroutine(SuppressAndRetreatRoutine());
-                }
-                else
-                {
-                    yield return StartCoroutine(HoldGroundRoutine());
-                }
+                yield return StartCoroutine(BadPositionRoutine());
             }
 
-            yield return null; // safety yield to avoid frame hang if phases end instantly
+            yield return null; // safety frame to avoid infinite tight loop
         }
     }
 
-    // Cached cover destination shared across phases within one Engage session (null = none found yet)
-    private Vector3? _cachedCoverPoint;
+    // ── Reaction delay ────────────────────────────────────────────────────────
 
-    // ── SuppressAndRetreat ────────────────────────────────────────────────────
-
-    private IEnumerator SuppressAndRetreatRoutine()
+    // Frame-polled so death / state change / LOS loss can interrupt cleanly.
+    // Sets _reactedThisEngage = true when done; subsequent phases skip the wait.
+    private IEnumerator ReactionDelayIfNeeded()
     {
-        Debug.Log("[Brain] Phase: SuppressAndRetreat");
-        _engagePhase  = EngagePhase.SuppressAndRetreat;
-        _isInCover    = false;
-        _agent.isStopped = false;
-        if (_cachedCoverPoint.HasValue) _agent.SetDestination(_cachedCoverPoint.Value);
+        if (_reactedThisEngage) yield break;
 
-        // Aim active immediately — shoot while backing up
+        float elapsed = 0f;
+        while (elapsed < _reactionDelay)
+        {
+            // Abort early if Engage exits for any reason, or if we're taking hits and need to move now
+            if (_state != BrainState.Engage || _goToInvestigate || _pendingIntent.HasValue || _shouldChangeCover)
+                yield break;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+        _reactedThisEngage = true;
+    }
+
+    // ── BadPosition ───────────────────────────────────────────────────────────
+
+    private IEnumerator BadPositionRoutine()
+    {
+        Debug.Log("[Brain] Phase: BadPosition — shooting in open, backing away");
+        _engagePhase     = EngagePhase.BadPosition;
+        _agent.isStopped = false;
+        _agent.speed     = _backStepSpeed;
+
         _aimComponent?.SetEngaged(true);
         if (_playerTransform != null) _weaponDriver?.SetAimTarget(_playerTransform);
         yield return null; // one frame for aim pivot to orient
 
-        float   timeout      = _coverSeekTimeout;
-        int     shotsInBurst = 0;
-        bool    exitEarly    = false;
+        // First discovery: guard raises gun but waits before firing
+        yield return StartCoroutine(ReactionDelayIfNeeded());
+        if (_state != BrainState.Engage || _goToInvestigate || _pendingIntent.HasValue) yield break;
 
-        while (!HasArrived() && timeout > 0f)
+        float backTimer        = 0f;
+        float losDebounceTimer = 0f;
+        int   shotsInBurst     = 0;
+
+        while (true)
         {
-            if (_losTimer >= _holdGroundTimeout) { exitEarly = true; break; }
+            // LOS debounce — brief occlusions don't immediately trigger a cover sprint
+            if (_perception != null && !_perception.CanSeeTarget)
+            {
+                losDebounceTimer += Time.deltaTime;
+                if (losDebounceTimer >= _losDebounce)
+                {
+                    Vector3? cover = FindCover();
+                    if (cover.HasValue)
+                    {
+                        _cachedCoverPoint = cover.Value;
+                        _pendingIntent    = CoverIntent.LostLOS;
+                    }
+                    else
+                    {
+                        _goToInvestigate = true;
+                    }
+                    break;
+                }
+            }
+            else
+            {
+                losDebounceTimer = 0f;
+            }
 
+            // Reload
             if (_weaponDriver != null && _weaponDriver.NeedsReload)
-                break; // go reload — let outer loop handle it
+            {
+                _pendingIntent = CoverIntent.Reload;
+                break;
+            }
 
-            // Burst fire while moving
+            // Too many hits at this spot — relocate
+            if (_shouldChangeCover)
+            {
+                _shouldChangeCover = false;
+                Vector3? cover = FindCoverForRelocation();
+                if (cover.HasValue)
+                {
+                    _cachedCoverPoint = cover.Value;
+                    _pendingIntent    = CoverIntent.ForcedRelocation;
+                    break;
+                }
+                // No alternative cover — keep fighting in place
+            }
+
+            // Periodic backward NavMesh step
+            backTimer += Time.deltaTime;
+            if (backTimer >= _backStepInterval && _playerTransform != null)
+            {
+                backTimer = 0f;
+                Vector3 awayDir = (transform.position - _playerTransform.position);
+                awayDir.y = 0f;
+                if (awayDir.sqrMagnitude > 0.001f)
+                {
+                    awayDir = awayDir.normalized;
+                    Vector3 candidate = transform.position + awayDir * _backStepDist;
+                    if (NavMesh.SamplePosition(candidate, out NavMeshHit nmHit, _backStepDist, NavMesh.AllAreas))
+                        _agent.SetDestination(nmHit.position);
+                }
+            }
+
+            // Burst fire
             if (_perception != null && _perception.CanSeeTarget && _weaponDriver != null)
             {
                 bool fired = _weaponDriver.FireAt(
@@ -372,103 +461,147 @@ public class EnemyBrain : MonoBehaviour
                         float cd = 0f;
                         while (cd < _burstCooldown)
                         {
-                            if (_losTimer >= _holdGroundTimeout || (_weaponDriver != null && _weaponDriver.NeedsReload))
-                            { exitEarly = true; break; }
+                            // Keep accumulating LOS debounce during burst cooldown
+                            if (_perception != null && !_perception.CanSeeTarget)
+                            {
+                                losDebounceTimer += Time.deltaTime;
+                                if (losDebounceTimer >= _losDebounce)
+                                    { cd = _burstCooldown; break; } // exit cooldown early
+                            }
+                            else
+                            {
+                                losDebounceTimer = 0f;
+                            }
+
+                            if (_weaponDriver != null && _weaponDriver.NeedsReload)
+                                { cd = _burstCooldown; break; }
+                            if (_shouldChangeCover)
+                                { cd = _burstCooldown; break; }
+
                             cd += Time.deltaTime;
                             yield return null;
                         }
-                        if (exitEarly) break;
                         _aimComponent?.SetEngaged(true);
                         shotsInBurst = 0;
                     }
                 }
             }
 
-            timeout -= Time.deltaTime;
             yield return null;
         }
 
         _aimComponent?.SetEngaged(false);
         _weaponDriver?.ClearAim();
-
-        if (!exitEarly && HasArrived())
-        {
-            _isInCover          = true;
-            _hitsAtCurrentCover = 0; // reset hit counter at new cover position
-            _shouldChangeCover  = false;
-        }
+        _agent.speed = _defaultAgentSpeed;
     }
 
-    // ── HoldGround ────────────────────────────────────────────────────────────
+    // ── SeekCover ─────────────────────────────────────────────────────────────
 
-    private IEnumerator HoldGroundRoutine()
+    private IEnumerator SeekCoverRoutine(CoverIntent intent)
     {
-        Debug.Log("[Brain] Phase: HoldGround");
-        _engagePhase     = EngagePhase.HoldGround;
+        Debug.Log($"[Brain] Phase: SeekCover ({intent})");
+        _engagePhase = EngagePhase.SeekCover;
+        _isInCover   = false;
+
+        _aimComponent?.SetEngaged(false);
+        _weaponDriver?.ClearAim();
+
+        Vector3? cover = _cachedCoverPoint
+            ?? (intent == CoverIntent.ForcedRelocation ? FindCoverForRelocation() : FindCover());
+        _cachedCoverPoint = null;
+
+        if (cover.HasValue)
+        {
+            _agent.isStopped = false;
+            _agent.speed     = _coverSprintSpeed;
+            _agent.SetDestination(cover.Value);
+
+            float timeout = _coverSeekTimeout * 1.5f;
+            while (!HasArrived() && timeout > 0f)
+            {
+                if (_losTimer >= _holdGroundTimeout) { _goToInvestigate = true; yield break; }
+                timeout -= Time.deltaTime;
+                yield return null;
+            }
+
+            if (HasArrived())
+            {
+                _isInCover          = true;
+                _hitsAtCurrentCover = 0;
+                _shouldChangeCover  = false;
+            }
+        }
+
+        _agent.isStopped = true;
+        _agent.speed     = _defaultAgentSpeed;
+
+        if (_isInCover)
+        {
+            if (intent == CoverIntent.Reload)
+            {
+                _weaponDriver?.Reload();
+                float reloadWait = _weaponData != null ? _weaponData.reloadTime + 0.1f : 2.1f;
+                yield return new WaitForSeconds(reloadWait);
+            }
+            // All intents: outer loop → Peek (which shoots immediately if CanSeeTarget)
+        }
+        else
+        {
+            // Failed to reach cover — per-intent fallback
+            switch (intent)
+            {
+                case CoverIntent.Reload:
+                    // Emergency exposed reload then back to fighting in open
+                    yield return new WaitForSeconds(_emergencyReloadDelay);
+                    _weaponDriver?.Reload();
+                    float rw = _weaponData != null ? _weaponData.reloadTime + 0.1f : 2.1f;
+                    yield return new WaitForSeconds(rw);
+                    // _isInCover stays false → outer loop → BadPosition
+                    break;
+
+                case CoverIntent.QuickCover:
+                    // Nav path failed for nearby cover → fight in open
+                    // _isInCover false → outer loop → BadPosition
+                    break;
+
+                case CoverIntent.LostLOS:
+                    _goToInvestigate = true;
+                    break;
+
+                case CoverIntent.ForcedRelocation:
+                    // Player may still be visible — don't investigate, keep fighting in open
+                    // _isInCover stays false → outer loop → BadPosition
+                    break;
+            }
+        }
+
+        _agent.isStopped = false;
+    }
+
+    // ── Peek ──────────────────────────────────────────────────────────────────
+
+    private IEnumerator PeekRoutine()
+    {
+        Debug.Log("[Brain] Phase: Peek — in cover, shooting on sight");
+        _engagePhase     = EngagePhase.Peek;
         _agent.isStopped = true;
 
         _aimComponent?.SetEngaged(true);
         if (_playerTransform != null) _weaponDriver?.SetAimTarget(_playerTransform);
         yield return null; // one frame for aim pivot
 
-        int  shotsInBurst     = 0;
-        bool usedEmergencyRld = false;
+        // First discovery (QuickCover path): guard is in cover but hasn't fired yet
+        yield return StartCoroutine(ReactionDelayIfNeeded());
+        if (_state != BrainState.Engage || _goToInvestigate || _pendingIntent.HasValue) yield break;
+
+        int shotsInBurst = 0;
 
         while (true)
         {
-            // Global LOS timeout
-            if (_losTimer >= _holdGroundTimeout) yield break;
+            if (_losTimer >= _holdGroundTimeout) { _goToInvestigate = true; break; }
+            if (_shouldChangeCover)              { _pendingIntent = CoverIntent.ForcedRelocation; break; }
+            if (_weaponDriver != null && _weaponDriver.NeedsReload) { _pendingIntent = CoverIntent.Reload; break; }
 
-            // Damaged while blind — retreat (outer loop will find cover)
-            if (_shouldChangeCover) yield break;
-
-            // Reload needed
-            if (_weaponDriver != null && _weaponDriver.NeedsReload)
-            {
-                // Try normal radius, then widened radius before giving up on cover
-                Vector3? cover = FindCover();
-                if (!cover.HasValue)
-                    cover = EnemyCoverUtility.FindCoverPoint(
-                        transform.position,
-                        _playerTransform?.position ?? transform.position,
-                        _coverSearchRadius * 1.5f, _coverSampleCount, _eyeHeight, _coverMask, _agent);
-
-                if (cover.HasValue)
-                {
-                    _cachedCoverPoint = cover.Value;
-                    _aimComponent?.SetEngaged(false);
-                    _weaponDriver?.ClearAim();
-                    yield break; // outer loop → SeekCoverToReload
-                }
-
-                // No cover anywhere — one emergency in-place reload, then keep fighting
-                if (!usedEmergencyRld)
-                {
-                    usedEmergencyRld = true; // never reset — only one exposed reload per HoldGround
-                    _aimComponent?.SetEngaged(false);
-                    _weaponDriver?.ClearAim();
-                    yield return new WaitForSeconds(_emergencyReloadDelay);
-                    _weaponDriver?.Reload();
-                    float reloadWait = _weaponData != null ? _weaponData.reloadTime + 0.1f : 2.1f;
-                    yield return new WaitForSeconds(reloadWait);
-                    _aimComponent?.SetEngaged(true);
-                    if (_playerTransform != null) _weaponDriver?.SetAimTarget(_playerTransform);
-                    shotsInBurst = 0;
-                }
-                else
-                {
-                    // No cover, emergency reload already spent, ammo gone again — guard retreats
-                    // rather than looping with no shots fired (losTimer would never tick at 30s)
-                    Debug.Log("[Brain] HoldGround: no cover, no ammo, emergency used — retreating");
-                    _aimComponent?.SetEngaged(false);
-                    _weaponDriver?.ClearAim();
-                    _agent.speed = _investigateSlowSpeed;
-                    SetState(BrainState.Investigate);
-                    yield break;
-                }
-            }
-
-            // Fire while visible
             if (_perception != null && _perception.CanSeeTarget && _weaponDriver != null)
             {
                 bool fired = _weaponDriver.FireAt(
@@ -484,6 +617,8 @@ public class EnemyBrain : MonoBehaviour
                         while (cd < _burstCooldown)
                         {
                             if (_losTimer >= _holdGroundTimeout) { cd = _burstCooldown; break; }
+                            if (_shouldChangeCover)              { cd = _burstCooldown; break; }
+                            if (_weaponDriver != null && _weaponDriver.NeedsReload) { cd = _burstCooldown; break; }
                             cd += Time.deltaTime;
                             yield return null;
                         }
@@ -495,153 +630,20 @@ public class EnemyBrain : MonoBehaviour
 
             yield return null;
         }
-    }
-
-    // ── SeekCoverToReload ─────────────────────────────────────────────────────
-
-    private IEnumerator SeekCoverToReloadRoutine()
-    {
-        Debug.Log("[Brain] Phase: SeekCoverToReload");
-        _engagePhase = EngagePhase.SeekCoverToReload;
 
         _aimComponent?.SetEngaged(false);
         _weaponDriver?.ClearAim();
-
-        // Capture whether we're already at cover BEFORE touching _isInCover
-        bool startedInCover = _isInCover;
-        _isInCover = false; // will be re-confirmed below
-
-        if (startedInCover && !_shouldChangeCover)
-        {
-            // Already at cover and no forced relocation — reload in place
-            _isInCover = true;
-        }
-        else
-        {
-            // Prefer the cover point already found by a prior phase (e.g. HoldGround found it
-            // one frame earlier at the same radius — re-searching may miss it randomly).
-            // Only run a fresh search if no cached point exists.
-            Vector3? cover = _cachedCoverPoint ?? FindCover();
-
-            if (!cover.HasValue)
-                cover = EnemyCoverUtility.FindCoverPoint(
-                    transform.position, _playerTransform?.position ?? transform.position,
-                    _coverSearchRadius * 1.5f, _coverSampleCount, _eyeHeight, _coverMask, _agent);
-
-            if (cover.HasValue)
-            {
-                _cachedCoverPoint = cover.Value;
-                _agent.isStopped  = false;
-                _agent.SetDestination(cover.Value);
-
-                float timeout = _coverSeekTimeout * 1.5f;
-                while (!HasArrived() && timeout > 0f)
-                {
-                    if (_losTimer >= _holdGroundTimeout) yield break;
-                    timeout -= Time.deltaTime;
-                    yield return null;
-                }
-
-                if (HasArrived())
-                {
-                    _isInCover          = true;
-                    _hitsAtCurrentCover = 0;
-                    _shouldChangeCover  = false;
-                }
-            }
-        }
-
-        _agent.isStopped = true;
-
-        if (_isInCover)
-        {
-            // In cover — reload immediately
-            if (_weaponDriver != null) _weaponDriver.Reload();
-            float reloadWait = _weaponData != null ? _weaponData.reloadTime + 0.1f : 2.1f;
-            yield return new WaitForSeconds(reloadWait);
-        }
-        else
-        {
-            // Timed out without reaching cover — exposed emergency reload with delay
-            yield return new WaitForSeconds(_emergencyReloadDelay);
-            if (_weaponDriver != null) _weaponDriver.Reload();
-            float reloadWait = _weaponData != null ? _weaponData.reloadTime + 0.1f : 2.1f;
-            yield return new WaitForSeconds(reloadWait);
-        }
-
-        _agent.isStopped = false;
-        // Outer loop decides next phase based on _isInCover and _losTimer
-    }
-
-    // ── Peek ─────────────────────────────────────────────────────────────────
-
-    private IEnumerator PeekRoutine()
-    {
-        Debug.Log("[Brain] Phase: Peek");
-        _engagePhase     = EngagePhase.Peek;
-        _agent.isStopped = true;
-
-        _aimComponent?.SetEngaged(true);
-        if (_playerTransform != null) _weaponDriver?.SetAimTarget(_playerTransform);
-        yield return null; // one frame for aim pivot
-
-        int  shotsInBurst = 0;
-        bool exitEarly    = false;
-
-        while (!exitEarly)
-        {
-            // LOS lost for too long — outer loop will push to InvestigateSlow
-            if (_losTimer >= _holdGroundTimeout) break;
-
-            // Took too many hits at this position — relocate
-            if (_shouldChangeCover) break;
-
-            // LOS lost briefly — stand ground (stay in Peek, just don't fire)
-            // This loop continues — guard waits in cover until timer hits 30s or player reappears.
-
-            if (_weaponDriver != null && _weaponDriver.NeedsReload)
-                break; // outer loop → SeekCoverToReload
-
-            if (_perception != null && _perception.CanSeeTarget && _weaponDriver != null)
-            {
-                bool fired = _weaponDriver.FireAt(
-                    _playerTransform.position + Vector3.up * 0.8f, _fireAccuracy);
-
-                if (fired)
-                {
-                    shotsInBurst++;
-                    if (shotsInBurst >= _burstCount)
-                    {
-                        _aimComponent?.SetEngaged(false);
-                        float cd = 0f;
-                        while (cd < _burstCooldown)
-                        {
-                            if (_losTimer >= _holdGroundTimeout || (_weaponDriver != null && _weaponDriver.NeedsReload))
-                            { exitEarly = true; break; }
-                            cd += Time.deltaTime;
-                            yield return null;
-                        }
-                        if (!exitEarly) _aimComponent?.SetEngaged(true);
-                        shotsInBurst = 0;
-                    }
-                }
-            }
-
-            yield return null;
-        }
-
-        _aimComponent?.SetEngaged(false);
-        _weaponDriver?.ClearAim();
-        // _isInCover stays true — guard is still physically at the cover point
+        // _isInCover stays true — guard is physically still at the cover point
     }
 
     // ── Damage events ─────────────────────────────────────────────────────────
 
     private void OnHealthDamaged(DamageContext ctx)
     {
+        _lastHitNormal = ctx.HitNormal;
+
         if (_state != BrainState.Engage) return;
 
-        // Damaged when player is not visible — retreat immediately (blind-spot exploit prevention)
         bool blindsided = _perception != null && !_perception.CanSeeTarget;
         if (blindsided)
         {
@@ -649,7 +651,6 @@ public class EnemyBrain : MonoBehaviour
             return;
         }
 
-        // Count hits at current cover — relocate after threshold
         _hitsAtCurrentCover++;
         if (_hitsAtCurrentCover >= _hitsToChangeCover)
             _shouldChangeCover = true;
@@ -682,9 +683,16 @@ public class EnemyBrain : MonoBehaviour
     {
         if (_stateCoroutine != null) StopCoroutine(_stateCoroutine);
 
-        _weaponDriver?.DetachAndDrop();
+        // Throw the loot in the direction the shot came from (same as ragdoll impulse)
+        Vector3 throwDir = -_lastHitNormal;
+        _weaponDriver?.DetachAndDrop(throwDir);
+
+        // Destroy the visual gun GO — it is now replaced by the loot world item
+        if (_gunInstance != null) Destroy(_gunInstance);
+
         _agent.isStopped = true;
         _aimComponent?.SetEngaged(false);
+        _aimComponent?.Disarm();
 
         if (_perception   != null) _perception.enabled   = false;
         if (_aimComponent != null) _aimComponent.enabled = false;
@@ -707,6 +715,18 @@ public class EnemyBrain : MonoBehaviour
             _eyeHeight,
             _coverMask,
             _agent);
+
+    private Vector3? FindCoverForRelocation() =>
+        EnemyCoverUtility.FindCoverPoint(
+            transform.position,
+            _playerTransform?.position ?? transform.position,
+            _coverSearchRadius * 1.5f,
+            _coverSampleCount,
+            _eyeHeight,
+            _coverMask,
+            _agent,
+            excludeCenter: transform.position,
+            excludeRadius: _forceRelocateMinDist);
 
     private bool HasArrived() =>
         !_agent.pathPending

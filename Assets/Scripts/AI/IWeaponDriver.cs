@@ -12,5 +12,5 @@ public interface IWeaponDriver
     /// <summary>Returns true if a shot was actually fired this call.</summary>
     bool FireAt(Vector3 targetPoint, float accuracy);
     void Reload();
-    void DetachAndDrop();
+    void DetachAndDrop(Vector3 throwDirection);
 }

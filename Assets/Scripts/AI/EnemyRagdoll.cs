@@ -80,7 +80,15 @@ public class EnemyRagdoll : MonoBehaviour
         }
 
         if (_armatureRoot != null)
+        {
             _armatureRoot.SetParent(null, worldPositionStays: true);
+
+            // Bone colliders are now orphaned from EnemyHealth — plant a proxy so
+            // GetComponentInParent<IDamageable> on any hit bone still reaches us.
+            var proxy = _armatureRoot.GetComponent<EnemyDamageProxy>()
+                     ?? _armatureRoot.gameObject.AddComponent<EnemyDamageProxy>();
+            proxy.Initialize(_health);
+        }
 
         if (_health != null)
         {
@@ -121,7 +129,17 @@ public class EnemyRagdoll : MonoBehaviour
     private void OnDeath()
     {
         _alive = false;
-        _rootBone.isKinematic = false;
+
+        // Re-scan: RigBuilder.Build() (called when the gun is equipped) may have set
+        // constrained arm-bone Rigidbodies back to kinematic so Animation Rigging can
+        // own their transforms. Force every bone non-kinematic now so the full ragdoll
+        // activates, including arms and hands.
+        _allBones = _armatureRoot != null
+            ? _armatureRoot.GetComponentsInChildren<Rigidbody>()
+            : _rootBone.GetComponentsInChildren<Rigidbody>();
+
+        foreach (var rb in _allBones)
+            rb.isKinematic = false;
 
         if (_lastHit.HitPoint != Vector3.zero)
         {

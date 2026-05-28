@@ -12,7 +12,17 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
 {
     [SerializeField] private EnemyAimComponent _aimComponent;
     [SerializeField] private AudioSource       _audioSource;
-    [SerializeField] private GameObject        _lootItemWorldPrefab;
+
+    [Tooltip("Layer the dropped loot is placed on — must match PlayerInteractor's interaction mask (default 6 = Interactable).")]
+    [SerializeField] private int _droppedItemLayer = 6;
+    [Tooltip("Impulse force applied to the dropped weapon on death.")]
+    [SerializeField] private float _dropThrowForce = 5f;
+    [Tooltip("Random spin torque applied to the dropped weapon on death.")]
+    [SerializeField] private float _dropSpinForce  = 4f;
+
+    [Tooltip("Multiplies bullet damage before applying to the target. 1 = full weapon damage, 0.5 = half.")]
+    [Min(0f)]
+    [SerializeField] private float _damageMultiplier = 0.5f;
 
     // ── Runtime state ─────────────────────────────────────────────────────────
 
@@ -114,7 +124,7 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
             var damageable = hit.collider.GetComponentInParent<IDamageable>();
             if (damageable != null && damageable.IsAlive)
             {
-                float dmg = round.GetDamageAtDistance(hit.distance, _weaponData.range);
+                float dmg = round.GetDamageAtDistance(hit.distance, _weaponData.range) * _damageMultiplier;
                 damageable.ApplyDamage(new DamageContext
                 {
                     Source     = gameObject,
@@ -159,29 +169,25 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
         StartCoroutine(ReloadCoroutine());
     }
 
-    public void DetachAndDrop()
+    public void DetachAndDrop(Vector3 throwDirection)
     {
         if (_weaponInstance == null) return;
 
-        if (_lootItemWorldPrefab == null)
-        {
-            Debug.LogError($"[EnemyWeaponDriver] {name}: LootItemWorldPrefab is null — cannot drop weapon.");
-            return;
-        }
+        Transform origin = _muzzle != null ? _muzzle : transform;
+        Vector3   dir    = throwDirection.sqrMagnitude > 0.001f ? throwDirection.normalized : origin.forward;
 
-        Vector3 dropPos = _muzzle != null ? _muzzle.position : transform.position;
-        var lootGO = Instantiate(_lootItemWorldPrefab, dropPos, Quaternion.identity);
-        var loot   = lootGO.GetComponent<LootItemWorld>();
+        bool spawned = ItemDropSpawner.TryDrop(
+            _weaponInstance,
+            origin,
+            dir,
+            throwForce:         _dropThrowForce,
+            spinForce:          _dropSpinForce,
+            interactableLayer:  _droppedItemLayer);
 
-        if (loot != null)
-        {
-            loot.Initialize(_weaponInstance);
+        if (spawned)
             Debug.Log($"[EnemyWeaponDriver] {name}: Weapon dropped — {CurrentAmmo} rounds remaining in mag.");
-        }
         else
-        {
-            Debug.LogError($"[EnemyWeaponDriver] {name}: LootItemWorldPrefab is missing a LootItemWorld component.");
-        }
+            Debug.LogError($"[EnemyWeaponDriver] {name}: ItemDropSpawner failed to spawn weapon loot.");
 
         _weaponInstance = null;
     }

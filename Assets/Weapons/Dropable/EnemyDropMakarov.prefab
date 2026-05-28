@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 642594220334182372}
   - component: {fileID: 5745203594178329717}
   - component: {fileID: 2224236058241342745}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: EnemyDropMakarov
   m_TagString: Untagged
   m_Icon: {fileID: 0}

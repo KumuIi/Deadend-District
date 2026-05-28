@@ -16,6 +16,8 @@ public static class EnemyCoverUtility
     /// eye line and (b) have a complete NavMesh path from the agent.
     /// Returns the closest valid candidate, or null if none found.
     /// </summary>
+    /// <param name="excludeCenter">If set, candidates within <paramref name="excludeRadius"/> of this point are skipped.</param>
+    /// <param name="excludeRadius">Exclusion zone radius around <paramref name="excludeCenter"/>.</param>
     public static Vector3? FindCoverPoint(
         Vector3      agentPos,
         Vector3      threatPos,
@@ -23,7 +25,9 @@ public static class EnemyCoverUtility
         int          sampleCount,
         float        eyeHeight,
         LayerMask    coverMask,
-        NavMeshAgent agent)
+        NavMeshAgent agent,
+        Vector3?     excludeCenter = null,
+        float        excludeRadius = 0f)
     {
         _candidates.Clear();
 
@@ -49,6 +53,11 @@ public static class EnemyCoverUtility
 
             // Verify a complete path exists (SamplePosition gives nearest mesh point, not a
             // routable destination — must check path status explicitly)
+            // Skip if inside the exclusion zone (used for forced relocation)
+            if (excludeCenter.HasValue && excludeRadius > 0f
+                && (candidate - excludeCenter.Value).sqrMagnitude < excludeRadius * excludeRadius)
+                continue;
+
             var path = new NavMeshPath();
             agent.CalculatePath(candidate, path);
             if (path.status != NavMeshPathStatus.PathComplete) continue;

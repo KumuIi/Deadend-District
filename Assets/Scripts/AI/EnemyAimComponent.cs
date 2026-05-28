@@ -17,8 +17,11 @@ public class EnemyAimComponent : MonoBehaviour
     [SerializeField] private TwoBoneIKConstraint _rightArmConstraint;
     [SerializeField] private TwoBoneIKConstraint _leftArmConstraint;
 
-    [SerializeField] private float _aimClampAngle = 80f;
-    [SerializeField] private float _blendSpeed    = 5f;
+    [SerializeField] private float _aimClampAngle  = 80f;
+    [SerializeField] private float _blendSpeed     = 5f;
+    [Tooltip("Degrees per second the aim pivot rotates toward the target. Lower = more lag, easier to dodge.")]
+    [Min(0f)]
+    [SerializeField] private float _aimRotateSpeed = 45f;
 
     public Transform AimPivot => _aimPivot;
 
@@ -73,6 +76,15 @@ public class EnemyAimComponent : MonoBehaviour
     /// </summary>
     public void SetEngaged(bool engaged) => _aiming = engaged;
 
+    /// <summary>Called on death — immediately zeros both IK constraint weights so arms drop.</summary>
+    public void Disarm()
+    {
+        _gunEquipped   = false;
+        _currentWeight = 0f;
+        if (_rightArmConstraint != null) _rightArmConstraint.weight = 0f;
+        if (_leftArmConstraint  != null) _leftArmConstraint.weight  = 0f;
+    }
+
     private void Update()
     {
         // IK weight: always 1 once the gun is equipped so arms never drop to T-pose.
@@ -98,8 +110,12 @@ public class EnemyAimComponent : MonoBehaviour
         Vector3 dir = (_target.position + Vector3.up * 0.8f) - _aimPivot.position;
         if (dir.sqrMagnitude < 0.01f) return;
 
-        // Clamp so the guard can't aim backward or too far off-axis
+        // Clamp so the guard can't aim backward or too far off-axis,
+        // and rotate toward target at limited speed so fast movement can dodge shots.
         if (Vector3.Angle(transform.forward, dir) < _aimClampAngle)
-            _aimPivot.rotation = Quaternion.LookRotation(dir);
+            _aimPivot.rotation = Quaternion.RotateTowards(
+                _aimPivot.rotation,
+                Quaternion.LookRotation(dir, Vector3.up),
+                _aimRotateSpeed * Time.deltaTime);
     }
 }
