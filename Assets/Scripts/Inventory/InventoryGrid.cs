@@ -96,6 +96,14 @@ public class InventoryGrid
         return true;
     }
 
+    /// <summary>Removes every item from the grid. Used by death handling.</summary>
+    public void ClearAll()
+    {
+        var all = new List<ItemInstance>(_placed);
+        foreach (var item in all) RemoveInternal(item);
+        OnChanged?.Invoke();
+    }
+
     /// <summary>Removes the item from the grid. Returns false if it wasn't placed.</summary>
     public bool Remove(ItemInstance item)
     {

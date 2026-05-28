@@ -99,6 +99,9 @@ public class SaveSystem : MonoBehaviour
         string path = GetScopePath(slotName, scope);
         File.WriteAllText(path, JsonUtility.ToJson(envelope, prettyPrint: true));
         Debug.Log($"[SaveSystem] Saved {scope} scope to {path}");
+
+        // Update flat sidecar for UI hover display
+        SaveMetadataIO.Write(slotName);
     }
 
     // ── Scope-aware Load ───────────────────────────────────────────────────

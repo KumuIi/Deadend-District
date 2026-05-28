@@ -9,7 +9,7 @@ using UnityEngine;
 /// Future: if the player has multiple containers (vest, backpack, stash) register one
 /// adapter per grid with a unique SaveId per container.
 /// </summary>
-public class InventorySaveAdapter : MonoBehaviour, ISaveable
+public class InventorySaveAdapter : MonoBehaviour, ISaveable, IRunLifecycleListener
 {
     [SerializeField] private InventoryUI _inventoryUI;
 
@@ -19,12 +19,28 @@ public class InventorySaveAdapter : MonoBehaviour, ISaveable
 
     private void Start()
     {
-        // Register in Start, not OnEnable — guarantees SaveSystem.Instance
-        // exists (initialized in Awake) before adapters attempt to register.
         SaveSystem.Instance?.Register(this);
+        RunManager.Instance?.RegisterListener(this);
     }
 
-    private void OnDisable() => SaveSystem.Instance?.Unregister(this);
+    private void OnDisable()
+    {
+        SaveSystem.Instance?.Unregister(this);
+        RunManager.Instance?.UnregisterListener(this);
+    }
+
+    // ── IRunLifecycleListener ──────────────────────────────────────────────
+
+    public void OnRunStarted() { }
+    public void OnRunExtracted() { }
+    public void OnReturnedToHub() { }
+
+    public void OnRunDied()
+    {
+        // ClearAll() removes data AND destroys item views — using Grid.ClearAll() alone leaves stale views
+        if (_inventoryUI != null)
+            _inventoryUI.ClearAll();
+    }
 
     public object CaptureSaveData()
     {

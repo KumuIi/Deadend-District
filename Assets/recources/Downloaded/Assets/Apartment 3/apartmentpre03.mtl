@@ -1,0 +1,74 @@
+# Blender MTL File: 'None'
+# Material Count: 5
+
+newmtl noname.001
+map_Kd ApartmentPre01gla.png
+map_Ka ApartmentPre01gla.png
+map_d ApartmentPre01gla_alpha.png
+map_Bump ApartmentPre01gla_n.png
+map_Ks ApartmentPre01gla_s.png
+Ns 865.051902
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl noname.002
+map_Kd ApartmentPre01dcl.png
+map_Ka ApartmentPre01dcl.png
+map_d ApartmentPre01dcl_alpha.png
+map_Bump ApartmentPre01dcl_n.png
+map_Ks ApartmentPre01dcl_s.png
+Ns 743.801648
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl noname.003
+map_Kd ApartmentPre03.png
+map_Ka ApartmentPre03.png
+map_Bump ApartmentPre03_n.png
+map_Ks ApartmentPre03_s.png
+Ns 743.801648
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl noname.004
+map_Kd ApartmentPre04.png
+map_Ka ApartmentPre04.png
+map_Bump ApartmentPre04_n.png
+map_Ks ApartmentPre04_s.png
+Ns 743.801648
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+
+newmtl noname.005
+map_Kd ApartmentPre01.png
+map_Ka ApartmentPre01.png
+map_Bump ApartmentPre01_n.png
+map_Ks ApartmentPre01_s.png
+Ns 743.801648
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
