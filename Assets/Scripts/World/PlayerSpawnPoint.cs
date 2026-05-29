@@ -1,42 +1,68 @@
 using UnityEngine;
 
 /// <summary>
-/// Place one in the Hub and one in each sector.
-/// Teleports the player to this position on scene start.
-/// Hub spawn points (tick Is Hub Spawn) also fire when the player
-/// returns from a run so they land back at the hub entrance.
+/// Marker that defines where the player should appear in a scene.
+/// Place one in the Hub (tick Is Hub Spawn) and one in each sector.
+///
+/// Teleportation is driven by SceneTransitionManager after each transition
+/// completes — not by Start() — so it always fires after the fade and after
+/// old scene geometry is fully unloaded.
+///
+/// Start() still teleports on the very first scene load (no transition running),
+/// so the player lands at the correct position when entering Play Mode directly.
 /// </summary>
-public class PlayerSpawnPoint : MonoBehaviour, IRunLifecycleListener
+public class PlayerSpawnPoint : MonoBehaviour
 {
     [SerializeField] private string _playerTag  = "Player";
     [SerializeField] private bool   _isHubSpawn = false;
 
-    private void Start()          => TeleportPlayer();
-    private void OnEnable()       => RunManager.Instance?.RegisterListener(this);
-    private void OnDisable()      => RunManager.Instance?.UnregisterListener(this);
+    public bool IsHubSpawn => _isHubSpawn;
 
-    public void OnRunStarted()    { }
-    public void OnRunExtracted()  { }
-    public void OnRunDied()       { }
-
-    public void OnReturnedToHub()
+    private void Start()
     {
-        if (_isHubSpawn) TeleportPlayer();
+        // Only self-teleport on first scene boot — SceneTransitionManager owns it during transitions
+        if (SceneTransitionManager.Instance == null || !SceneTransitionManager.Instance.IsTransitioning)
+            Teleport();
     }
 
-    private void TeleportPlayer()
+    public void Teleport()
     {
         var player = GameObject.FindWithTag(_playerTag);
+
+        if (player == null)
+        {
+            // FindWithTag skips inactive objects — search by component as fallback
+            foreach (PlayerHealth ph in Resources.FindObjectsOfTypeAll(typeof(PlayerHealth)))
+            {
+                if (ph.hideFlags != HideFlags.None) continue; // skip prefab assets
+                player = ph.gameObject;
+                break;
+            }
+        }
+
         if (player == null)
         {
             Debug.LogWarning($"[PlayerSpawnPoint] No GameObject tagged '{_playerTag}' found.");
             return;
         }
 
-        var cc = player.GetComponent<CharacterController>();
-        if (cc != null) cc.enabled = false;
-        player.transform.SetPositionAndRotation(transform.position, transform.rotation);
-        if (cc != null) cc.enabled = true;
+        // PlayerMotor uses a kinematic Rigidbody — must go through its Teleport method
+        // to update rb.position and zero velocity. Setting transform.position directly
+        // doesn't update rb.position and gets corrected back on the next FixedUpdate.
+        var motor = player.GetComponent<PlayerMotor>();
+        if (motor != null)
+        {
+            motor.Teleport(transform.position, transform.rotation);
+        }
+        else
+        {
+            var cc = player.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false;
+            player.transform.SetPositionAndRotation(transform.position, transform.rotation);
+            if (cc != null) cc.enabled = true;
+        }
+
+        Debug.Log($"[PlayerSpawnPoint] Teleported player to '{name}' at {transform.position}.");
     }
 
 #if UNITY_EDITOR

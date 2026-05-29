@@ -81,6 +81,21 @@ public class PlayerMotor : MonoBehaviour
     private int _normalCount;
 
     // ─── Public API ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Immediately moves the player to the given position and zeroes all velocity.
+    /// Use this for any spawn/respawn — never set transform.position directly on a Rigidbody.
+    /// </summary>
+    public void Teleport(Vector3 position, Quaternion rotation)
+    {
+        _velocity        = Vector3.zero;
+        _rb.position     = position;
+        _rb.rotation     = rotation;
+        _rb.linearVelocity       = Vector3.zero;
+        _rb.angularVelocity = Vector3.zero;
+        transform.SetPositionAndRotation(position, rotation);
+    }
+
     public bool    IsGrounded             => _grounded;
     public bool    IsCrouching            => _isCrouching;
     public bool    IsSprinting            => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching

@@ -35,6 +35,8 @@ public class SceneTransitionManager : MonoBehaviour
     public event Action OnSceneTransitionStarted;
     public event Action OnSceneTransitionFinished;
 
+    public bool IsTransitioning => _isTransitioning;
+
     private CanvasGroup _fadeGroup;
     private bool        _isTransitioning;
     private string      _activeSectorName;
@@ -106,6 +108,9 @@ public class SceneTransitionManager : MonoBehaviour
 
         yield return FadeIn();
 
+        // Teleport after fade — hub geometry is visible and old sector is fully gone
+        if (hub.IsValid()) TeleportToSpawnInScene(hub, hubOnly: true);
+
         _isTransitioning = false;
         OnSceneTransitionFinished?.Invoke();
     }
@@ -116,6 +121,21 @@ public class SceneTransitionManager : MonoBehaviour
         OnSceneTransitionStarted?.Invoke();
 
         yield return FadeOut();
+
+        // Unload the current sector if one is already loaded (sector-to-sector transition)
+        if (!string.IsNullOrEmpty(_activeSectorName))
+        {
+            Scene current = SceneManager.GetSceneByName(_activeSectorName);
+            if (current.IsValid())
+            {
+                foreach (var root in current.GetRootGameObjects())
+                    foreach (var entity in root.GetComponentsInChildren<IPoolableSpawnedEntity>(true))
+                        entity.OnDespawned();
+
+                yield return SceneManager.UnloadSceneAsync(_activeSectorName);
+            }
+            _activeSectorName = null;
+        }
 
         // Hide hub so only the sector is visible
         if (_hubRoot != null) _hubRoot.SetActive(false);
@@ -131,8 +151,27 @@ public class SceneTransitionManager : MonoBehaviour
 
         yield return FadeIn();
 
+        // Teleport after fade — sector geometry is loaded and hub is fully hidden
+        if (sector.IsValid()) TeleportToSpawnInScene(sector, hubOnly: false);
+
         _isTransitioning = false;
         OnSceneTransitionFinished?.Invoke();
+    }
+
+    // ── Spawn helpers ──────────────────────────────────────────────────────
+
+    private static void TeleportToSpawnInScene(Scene scene, bool hubOnly = false)
+    {
+        foreach (var root in scene.GetRootGameObjects())
+        {
+            foreach (var spawn in root.GetComponentsInChildren<PlayerSpawnPoint>(true))
+            {
+                if (hubOnly && !spawn.IsHubSpawn) continue;
+                spawn.Teleport();
+                return;
+            }
+        }
+        Debug.LogWarning($"[SceneTransitionManager] No PlayerSpawnPoint found in '{scene.name}' (hubOnly={hubOnly}).");
     }
 
     // ── Fade helpers ───────────────────────────────────────────────────────

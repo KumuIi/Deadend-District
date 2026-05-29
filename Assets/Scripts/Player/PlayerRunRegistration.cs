@@ -21,6 +21,13 @@ public class PlayerRunRegistration : MonoBehaviour
             RunManager.Instance.RegisterPlayer(_health);
     }
 
+    private void Start()
+    {
+        // Fallback: if OnEnable fired before RunManager.Awake set Instance, register now.
+        if (RunManager.Instance != null)
+            RunManager.Instance.RegisterPlayer(_health);
+    }
+
     private void OnDisable()
     {
         if (RunManager.Instance != null)
