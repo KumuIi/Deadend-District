@@ -31,11 +31,20 @@ public class RunManager : MonoBehaviour
     /// </summary>
     public string ActiveSaveSlot { get; private set; }
 
-    private void Start() => ActiveSaveSlot = _defaultSaveSlot;
+    private const string SlotPrefKey = "LastSaveSlot";
+
+    private void Start()
+    {
+        // Restore the slot the player last explicitly chose; fall back to inspector default.
+        ActiveSaveSlot = PlayerPrefs.GetString(SlotPrefKey, _defaultSaveSlot);
+    }
 
     public void SetActiveSlot(string slot)
     {
-        if (!string.IsNullOrEmpty(slot)) ActiveSaveSlot = slot;
+        if (string.IsNullOrEmpty(slot)) return;
+        ActiveSaveSlot = slot;
+        PlayerPrefs.SetString(SlotPrefKey, slot);
+        PlayerPrefs.Save();
     }
 
     // ── Player registration ────────────────────────────────────────────────
@@ -104,6 +113,7 @@ public class RunManager : MonoBehaviour
         State = RunState.InRun;
         SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
         SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
+        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
         Broadcast(l => l.OnRunStarted());
         Debug.Log("[RunManager] Run started in place.");
     }
@@ -127,6 +137,10 @@ public class RunManager : MonoBehaviour
         State = RunState.InRun;
         SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
         SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
+        // Clear any leftover Run save from a previous extraction so items don't
+        // ghost across runs. Remove this once StashSystem (W2-08) is implemented
+        // and extracted items are moved to the stash (Profile scope) on extraction.
+        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
         Broadcast(l => l.OnRunStarted());
     }
 

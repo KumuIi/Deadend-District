@@ -12,7 +12,7 @@ using UnityEngine.Animations.Rigging;
 /// Awake() initialises all weapons while they are still inactive so
 /// every gun's Start() always runs with valid refs when first enabled.
 /// </summary>
-public class WeaponManager : MonoBehaviour
+public class WeaponManager : MonoBehaviour, IRunLifecycleListener
 {
     // ── Inspector ──────────────────────────────────────────────────────────
 
@@ -108,8 +108,30 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
+        RunManager.Instance?.RegisterListener(this);
         if (_weapons.Count > 0) Equip(0);
         else                    EquipNothing();
+    }
+
+    private void OnDisable()
+    {
+        RunManager.Instance?.UnregisterListener(this);
+    }
+
+    // ── IRunLifecycleListener ──────────────────────────────────────────────
+
+    public void OnRunStarted()   { }
+    public void OnRunExtracted() { }
+    public void OnReturnedToHub() { }
+
+    public void OnRunDied()
+    {
+        // Inventory grid is cleared by InventorySaveAdapter — we just need to
+        // unequip visually and eject magazines so guns don't retain stale ammo state.
+        foreach (var gun in _weapons)
+            gun.EjectMagazine();
+
+        EquipNothing();
     }
 
     // ── Weapon registration ────────────────────────────────────────────────

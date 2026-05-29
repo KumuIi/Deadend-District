@@ -80,7 +80,7 @@
 - [ ] **[W3-03]** `MonsterAI` (extends `BaseEnemyAI`)
 - [ ] **[W3-04]** `EnemySpawnSystem`
 - [ ] **[W3-05]** `HitZone` component + `GunController` migration to `DamageContext`
-- [ ] **[W3-09]** `WeaponStateSaveAdapter` — save chambered round + loaded magazine per weapon slot so gun state survives save/load (pairs with W3-05 GunController work)
+- [ ] **[W3-09]** `WeaponStateSaveAdapter` — save chambered round + loaded magazine per weapon slot so gun state survives save/load (pairs with W3-05 GunController work); also save magazine bullet count + ammo type inside each `MagazineItemInstance` so partial mags are restored correctly (currently bullet count is lost on save/load)
 - [ ] **[W3-06]** `LadderClimbing` — `Ladder : IInteractable` + `PlayerMotor` ladder mode
 - [ ] **[W3-07]** NavMesh off-mesh links for enemy ladder traversal
 - [ ] **[W3-08]** `FallDamage` — velocity threshold → `DamageContext` → `IDamageable`

@@ -23,16 +23,19 @@ public class MainMenu : MonoBehaviour
 
     // ── Button callbacks — wire these to MenuButton3D.OnClick in inspector ─
 
-    /// <summary>Load the most recent profile save and go straight to the hub.</summary>
+    /// <summary>Load the most recently saved slot and go straight to the hub.</summary>
     public void ContinueGame()
     {
         if (SaveSystem.Instance == null) return;
-        string slot = RunManager.Instance?.ActiveSaveSlot ?? "slot0";
-        if (!SaveSystem.Instance.SlotExists(slot))
+
+        string slot = SaveMetadataIO.FindMostRecentSlot();
+        if (slot == null || !SaveSystem.Instance.SlotExists(slot))
         {
             Debug.LogWarning("[MainMenu] No save found for Continue.");
             return;
         }
+
+        RunManager.Instance?.SetActiveSlot(slot);
         SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Profile, slot);
         SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.World, slot);
         SceneManager.LoadScene(_hubScene);

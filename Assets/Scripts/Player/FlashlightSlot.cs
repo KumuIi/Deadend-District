@@ -13,7 +13,7 @@ using UnityEngine;
 /// Dual-wield rule: flashlight is visible only when WeaponSO.allowsOffHandItem is true
 /// on the currently equipped weapon, OR when no weapon is equipped.
 /// </summary>
-public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
+public class FlashlightSlot : MonoBehaviour, IEquipmentSlot, IRunLifecycleListener
 {
     [SerializeField] private WeaponManager  _weaponManager;
     [SerializeField] private FlashlightView _flashlightView;
@@ -65,6 +65,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
             _weaponManager.OnWeaponEquipped += HandleWeaponEquipped;
             _activeReloadDip = FindReloadDip(_weaponManager.CurrentWeapon);
         }
+        RunManager.Instance?.RegisterListener(this);
     }
 
     private void OnDisable()
@@ -72,7 +73,16 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot
         if (_weaponManager != null)
             _weaponManager.OnWeaponEquipped -= HandleWeaponEquipped;
         CancelInventoryAim();
+        RunManager.Instance?.UnregisterListener(this);
     }
+
+    // ── IRunLifecycleListener ──────────────────────────────────────────────
+
+    public void OnRunStarted()    { }
+    public void OnRunExtracted()  { }
+    public void OnReturnedToHub() { }
+
+    public void OnRunDied() => Unequip();
 
     private void Update()
     {

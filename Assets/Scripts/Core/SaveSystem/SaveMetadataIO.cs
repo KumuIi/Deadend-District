@@ -62,6 +62,39 @@ public static class SaveMetadataIO
 
     public static bool Exists(string slotName) => File.Exists(GetPath(slotName));
 
+    /// <summary>
+    /// Scans all save sidecar files and returns the slot name with the most recent SaveTime.
+    /// Returns null if no saves exist.
+    /// </summary>
+    public static string FindMostRecentSlot()
+    {
+        string[] files;
+        try { files = Directory.GetFiles(Application.persistentDataPath, "save_*_meta.json"); }
+        catch { return null; }
+
+        string   bestSlot = null;
+        DateTime bestTime = DateTime.MinValue;
+
+        foreach (var file in files)
+        {
+            string baseName = Path.GetFileNameWithoutExtension(file); // "save_slot0_meta"
+            if (!baseName.StartsWith("save_") || !baseName.EndsWith("_meta")) continue;
+            string slotName = baseName.Substring(5, baseName.Length - 10); // strip "save_" and "_meta"
+
+            var meta = Read(slotName);
+            if (meta == null) continue;
+
+            if (DateTime.TryParse(meta.SaveTime, null,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var dt) && dt > bestTime)
+            {
+                bestTime = dt;
+                bestSlot = slotName;
+            }
+        }
+
+        return bestSlot;
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private static string GetPath(string slotName)
