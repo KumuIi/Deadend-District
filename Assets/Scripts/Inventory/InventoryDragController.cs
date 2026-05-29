@@ -35,6 +35,23 @@ public sealed class InventoryDragController
     /// </summary>
     public Func<ItemInstance, ItemInstance, DragInteractionResult> OnDroppedOnItem;
 
+    /// <summary>
+    /// Optional callback fired when the item cannot be placed in THIS grid (cursor released
+    /// outside it, or over an occupied cell). Gives another open InventoryUI (e.g. the stash)
+    /// the chance to receive the item and take ownership of its view.
+    /// Returns true if another grid accepted the item — in that case this controller must not
+    /// restore the item to its origin.
+    /// </summary>
+    public Func<InventoryItemView, Vector2, bool> TryCrossGridDrop;
+
+    /// <summary>
+    /// Optional callback fired each drag frame when the cursor is outside this grid.
+    /// Lets another open panel show its own cell highlight so the player sees where the item
+    /// will land. The callback should clear its highlight and return false if the cursor is not
+    /// over that panel. InventoryUI wires this to TryHandoffHighlight.
+    /// </summary>
+    public Func<ItemInstance, Vector2, bool> TryCrossGridHighlight;
+
     // ── Drag state ────────────────────────────────────────────────────────
     private InventoryItemView _draggedView;
     private Vector2Int        _dragOriginPos;
@@ -74,6 +91,9 @@ public sealed class InventoryDragController
         _grid.Remove(view.Item);
         view.SetDragging(true);
         view.transform.SetParent(_dragLayer, true);
+        // Shift pivot to center so the item follows the cursor centered on the item body.
+        // Must happen after SetParent so world corners are in the correct canvas space.
+        view.CenterPivotForDrag();
     }
 
     /// <summary>Called by InventoryItemView.OnDrag.</summary>
@@ -85,6 +105,11 @@ public sealed class InventoryDragController
                 _dragLayer, e.position, uiCam, out Vector3 worldPos))
             view.transform.position = worldPos;
 
+        // Keep the 3D model positioned at the dragged view's current location every frame.
+        // LateUpdate only refreshes views in _views, but the dragged view has been removed from
+        // the source grid so its model would otherwise freeze at the last placed position.
+        view.PlaceModel(forceCanvasUpdate: true);
+
         Vector2Int? cell = ScreenToCell(e.position);
         if (cell.HasValue)
         {
@@ -93,10 +118,14 @@ public sealed class InventoryDragController
                                            view.Item.CurrentSize.y / 2),
                 view.Item.CurrentSize);
             _highlighter.HighlightCells(view.Item, snapPos);
+            // Cursor is over this grid — clear any highlight on other panels.
+            TryCrossGridHighlight?.Invoke(null, e.position);
         }
         else
         {
             _highlighter.ClearHighlight();
+            // Cursor is outside this grid — let another open panel show its highlight.
+            TryCrossGridHighlight?.Invoke(view.Item, e.position);
         }
     }
 
@@ -104,8 +133,9 @@ public sealed class InventoryDragController
     public void OnEndDrag(InventoryItemView view, PointerEventData e)
     {
         _highlighter.ClearHighlight();
+        // Clear any highlight that was showing on a cross-grid panel during the drag.
+        TryCrossGridHighlight?.Invoke(null, e.position);
 
-        bool placed = false;
         Vector2Int? cell = ScreenToCell(e.position);
         if (cell.HasValue)
         {
@@ -142,20 +172,61 @@ public sealed class InventoryDragController
                 }
             }
 
-            placed = _grid.TryPlace(view.Item, snapPos);
+            if (_grid.TryPlace(view.Item, snapPos))
+            {
+                view.transform.SetParent(_itemsLayer, true);
+                view.SetDragging(false);
+                view.RefreshLayout(_cellSize);
+                _draggedView = null;
+                return;
+            }
         }
 
-        if (!placed)
+        // Couldn't place in this grid — offer the item to another open grid (e.g. the stash).
+        // On success the target panel reparents the view and takes ownership, so we must not
+        // restore it to our origin or touch it further.
+        if (TryCrossGridDrop != null && TryCrossGridDrop(view, e.position))
         {
-            // Restore to origin
-            view.Item.isRotated = _dragOriginRotated;
-            _grid.TryPlace(view.Item, _dragOriginPos);
+            _draggedView = null;
+            return;
         }
 
+        // Nothing accepted it — restore to origin in this grid.
+        view.Item.isRotated = _dragOriginRotated;
+        _grid.TryPlace(view.Item, _dragOriginPos);
         view.transform.SetParent(_itemsLayer, true);
         view.SetDragging(false);
         view.RefreshLayout(_cellSize);
         _draggedView = null;
+    }
+
+    /// <summary>
+    /// Returns the grid cell under <paramref name="screenPos"/> in this panel's coordinate space.
+    /// Used by other panels to perform highlight mapping without duplicating coordinate logic.
+    /// </summary>
+    public bool TryGetCellUnderCursor(Vector2 screenPos, out Vector2Int cell)
+    {
+        var result = ScreenToCell(screenPos);
+        cell = result ?? default;
+        return result.HasValue;
+    }
+
+    /// <summary>
+    /// Places <paramref name="item"/> into THIS grid at the cell under <paramref name="screenPos"/>,
+    /// if it fits. Used when an item is dragged in from another InventoryUI. The item must already
+    /// be removed from its source grid (it is, once a drag begins). Returns false if the cursor is
+    /// outside this grid or the target cells are occupied.
+    /// </summary>
+    public bool TryPlaceExternal(ItemInstance item, Vector2 screenPos)
+    {
+        Vector2Int? cell = ScreenToCell(screenPos);
+        if (!cell.HasValue) return false;
+
+        Vector2Int snapPos = ClampToGrid(
+            cell.Value - new Vector2Int(item.CurrentSize.x / 2, item.CurrentSize.y / 2),
+            item.CurrentSize);
+
+        return _grid.TryPlace(item, snapPos);
     }
 
     /// <summary>
@@ -166,7 +237,9 @@ public sealed class InventoryDragController
     {
         if (_draggedView == null) return;
         _draggedView.Item.isRotated = !_draggedView.Item.isRotated;
-        _draggedView.RefreshLayout(_cellSize);
+        // RefreshDraggedRotation updates size + model only — does not reset anchoredPosition.
+        // RefreshLayout would snap the view back to its grid origin coords.
+        _draggedView.RefreshDraggedRotation(_cellSize);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

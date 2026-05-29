@@ -22,6 +22,6 @@ public sealed class InventoryInputHandler : MonoBehaviour
             _ui.SetOpen(!_ui.IsOpen);
 
         if (Input.GetKeyDown(rotateKey))
-            _ui.RequestRotate();
+            InventoryUI.BroadcastRotate();
     }
 }

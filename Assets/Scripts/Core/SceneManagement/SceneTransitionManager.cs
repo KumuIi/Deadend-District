@@ -102,9 +102,12 @@ public class SceneTransitionManager : MonoBehaviour
         Scene hub = SceneManager.GetSceneByName(_hubSceneName);
         if (hub.IsValid()) SceneManager.SetActiveScene(hub);
 
-        // Queue save restores — flush one frame after Start() on hub objects
-        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Profile, ActiveSlot);
-        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.World, ActiveSlot);
+        // NOTE: No save restore here. The hub is permanent — it never reloads — so its objects
+        // keep their in-memory state across a run, and RunManager already saves Profile before
+        // returning to hub. A RestoreAfterSceneLoad(...) call here would never flush (no
+        // SceneManager.sceneLoaded fires when only a sector is unloaded) and would instead leak
+        // into the next sector load's flush. Explicit loads (main menu / flashdrive) handle their
+        // own restore separately.
 
         yield return FadeIn();
 

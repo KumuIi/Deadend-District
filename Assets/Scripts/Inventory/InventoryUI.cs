@@ -112,6 +112,13 @@ public sealed class InventoryUI : MonoBehaviour
     private readonly Dictionary<ItemInstance, InventoryItemView> _views
         = new Dictionary<ItemInstance, InventoryItemView>();
 
+    /// <summary>
+    /// All live InventoryUI instances. Used to route a drag that leaves one grid into another
+    /// open grid (player inventory ↔ stash). Registered in Awake, removed in OnDestroy.
+    /// All participating panels must share the same modelLayer so transferred 3D models render.
+    /// </summary>
+    private static readonly List<InventoryUI> _activePanels = new List<InventoryUI>();
+
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
     private void Awake()
@@ -157,7 +164,11 @@ public sealed class InventoryUI : MonoBehaviour
         _drag = new InventoryDragController(
             Grid, _highlighter, _canvas, _itemsLayer, _dragLayer, cellSize);
 
-        _drag.OnDroppedOnItem = HandleDragInteraction;
+        _drag.OnDroppedOnItem      = HandleDragInteraction;
+        _drag.TryCrossGridDrop     = TryHandoffToOtherPanel;
+        _drag.TryCrossGridHighlight = TryHandoffHighlight;
+
+        _activePanels.Add(this);
 
         if (_canvas != null)
         {
@@ -220,6 +231,7 @@ public sealed class InventoryUI : MonoBehaviour
     {
         if (IsOpen) GameInputState.Unblock();
         flashlightSlot?.EndInventoryAim();
+        _activePanels.Remove(this);
     }
 
     // ── Public API ────────────────────────────────────────────────────────
@@ -265,6 +277,10 @@ public sealed class InventoryUI : MonoBehaviour
     /// <summary>Opens or closes the inventory panel.</summary>
     public void SetOpen(bool open)
     {
+        // Idempotent: each open Blocks GameInputState and each close Unblocks it. Re-issuing the
+        // current state would corrupt the shared (reference-counted) block count, so no-op here.
+        if (open == IsOpen) return;
+
         _panel.gameObject.SetActive(open);
 
         foreach (var view in _views.Values)
@@ -293,16 +309,29 @@ public sealed class InventoryUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Rotates the dragged item (if dragging) or the hovered item (if hovering).
-    /// Called by InventoryInputHandler on the rotate key.
+    /// Rotates whatever needs rotating across ALL open panels.
+    /// Called by InventoryInputHandler — works regardless of which panel has focus so the stash
+    /// (which has no InventoryInputHandler) responds to R without any forwarding chain.
     /// </summary>
-    public void RequestRotate()
+    public static void BroadcastRotate()
     {
-        if (_drag.IsDragging)
-            _drag.RotateDragged();
-        else if (_hoveredView != null)
-            OnItemRotate(_hoveredView);
+        // Drag in progress takes priority — check all panels first.
+        foreach (var panel in _activePanels)
+        {
+            if (!panel.IsOpen) continue;
+            if (panel._drag.IsDragging) { panel._drag.RotateDragged(); return; }
+        }
+        // Rotate the hovered item on whichever panel the cursor is over.
+        foreach (var panel in _activePanels)
+        {
+            if (!panel.IsOpen || panel._hoveredView == null) continue;
+            panel.OnItemRotate(panel._hoveredView);
+            return;
+        }
     }
+
+    /// <summary>Instance-level rotate — kept for any external callers.</summary>
+    public void RequestRotate() => BroadcastRotate();
 
     /// <summary>Convenience wrapper for InventoryGrid.GetSaveData().</summary>
     public System.Collections.Generic.List<InventoryGrid.GridSaveEntry> GetSaveData() =>
@@ -509,32 +538,8 @@ public sealed class InventoryUI : MonoBehaviour
             return;
         }
 
-        // Unequip flashlight before dropping
-        if (item is FlashlightItemInstance)
-        {
-            if (flashlightSlot == null)
-                Debug.LogError("[InventoryUI] FlashlightSlot is not assigned — flashlight dropped without unequipping.", this);
-            else if (flashlightSlot.EquippedItem == item)
-                flashlightSlot.Unequip();
-        }
-
-        // Clean up weapon state after successful spawn
-        if (item is WeaponItemInstance droppedWeapon)
-        {
-            // Unequip only if this is the currently active weapon
-            if (droppedWeapon == _equippedItem)
-            {
-                _equippedItem = null;
-                weaponManager?.EquipNothing();
-            }
-
-            // Always remove from switchable list — applies even to holstered weapons
-            if (droppedWeapon.LinkedGun != null)
-            {
-                weaponManager?.RemoveWeapon(droppedWeapon.LinkedGun);
-                droppedWeapon.LinkedGun = null;
-            }
-        }
+        // Detach any live equipment state tied to this item before it leaves the inventory.
+        DetachEquipmentFor(item);
 
         RemoveItem(item);
     }
@@ -604,6 +609,125 @@ public sealed class InventoryUI : MonoBehaviour
         }
 
         return DragInteractionResult.NotHandled;
+    }
+
+    // ── Cross-grid drag (player inventory ↔ stash) ────────────────────────
+
+    /// <summary>
+    /// Called each drag frame when the cursor is outside this panel's grid.
+    /// Passes null item to clear highlights; passes a real item to show where it would land.
+    /// </summary>
+    private bool TryHandoffHighlight(ItemInstance item, Vector2 screenPos)
+    {
+        bool handled = false;
+        foreach (var panel in _activePanels)
+        {
+            if (panel == this || !panel.IsOpen) continue;
+            handled |= panel.TryHighlight(item, screenPos);
+        }
+        return handled;
+    }
+
+    /// <summary>
+    /// Shows (or clears) a cell highlight on THIS panel for an item being dragged from another.
+    /// Pass null item to clear. Returns true if the cursor is over this panel's grid.
+    /// </summary>
+    private bool TryHighlight(ItemInstance item, Vector2 screenPos)
+    {
+        if (item == null)
+        {
+            _highlighter.ClearHighlight();
+            return false;
+        }
+
+        // Reuse the drag controller's coordinate mapping to find which cell the cursor is over.
+        if (!_drag.TryGetCellUnderCursor(screenPos, out Vector2Int cell))
+        {
+            _highlighter.ClearHighlight();
+            return false;
+        }
+
+        Vector2Int snapPos = new Vector2Int(
+            Mathf.Clamp(cell.x - item.CurrentSize.x / 2, 0, Grid.Width  - item.CurrentSize.x),
+            Mathf.Clamp(cell.y - item.CurrentSize.y / 2, 0, Grid.Height - item.CurrentSize.y));
+        _highlighter.HighlightCells(item, snapPos);
+        return true;
+    }
+
+    /// <summary>
+    /// Called by this panel's drag controller when an item is released outside this grid.
+    /// Offers the dragged view to every other open panel until one accepts it.
+    /// </summary>
+    private bool TryHandoffToOtherPanel(InventoryItemView view, Vector2 screenPos)
+    {
+        foreach (var panel in _activePanels)
+        {
+            if (panel == this || !panel.IsOpen) continue;
+            if (panel.AcceptCrossGridDrop(view, screenPos)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Receives a view dragged out of another panel. Places the item in this grid under the
+    /// cursor, then reparents the view and transfers ownership. Returns false if it doesn't fit.
+    /// </summary>
+    private bool AcceptCrossGridDrop(InventoryItemView view, Vector2 screenPos)
+    {
+        if (!_drag.TryPlaceExternal(view.Item, screenPos)) return false;
+
+        InventoryUI source = view.Owner;
+        if (source != null && source != this)
+        {
+            // The item is leaving the source panel — tear down any live equipment state it
+            // held there (equipped weapon/flashlight, weapon-switcher entry) so the gun/light
+            // doesn't keep running after the item is moved to another grid (e.g. the stash).
+            source.DetachEquipmentFor(view.Item);
+            source._views.Remove(view.Item); // item already left the source grid at begin-drag
+        }
+
+        // worldPositionStays: false — let RefreshLayout set anchoredPosition from grid coords.
+        // true would convert the player-panel world position into this panel's local space, which
+        // is garbage when the two panels have different rotations (tilt angles).
+        view.transform.SetParent(_itemsLayer, false);
+        view.Owner = this;
+        view.SetDragging(false);
+        // Force the canvas layout to recalculate BEFORE RefreshLayout reads world corners,
+        // so PlaceModel gets correct geometry in the same frame (no one-frame wrong-position flash).
+        Canvas.ForceUpdateCanvases();
+        view.RefreshLayout(cellSize);
+        _views[view.Item] = view;
+        return true;
+    }
+
+    /// <summary>
+    /// Tears down live equipment state for an item that is about to leave this inventory
+    /// (dropped to the world, or transferred to another grid). Unequips the active weapon or
+    /// flashlight and removes the weapon from the switcher. Safe to call on a non-equipped item.
+    /// </summary>
+    private void DetachEquipmentFor(ItemInstance item)
+    {
+        if (item is FlashlightItemInstance)
+        {
+            if (flashlightSlot != null && flashlightSlot.EquippedItem == item)
+                flashlightSlot.Unequip();
+        }
+        else if (item is WeaponItemInstance weapon)
+        {
+            // Unequip only if this is the currently active weapon.
+            if (weapon == _equippedItem)
+            {
+                _equippedItem = null;
+                weaponManager?.EquipNothing();
+            }
+
+            // Always remove from the switchable list — applies even to holstered weapons.
+            if (weapon.LinkedGun != null)
+            {
+                weaponManager?.RemoveWeapon(weapon.LinkedGun);
+                weapon.LinkedGun = null;
+            }
+        }
     }
 
     // ── View management ───────────────────────────────────────────────────

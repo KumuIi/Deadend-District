@@ -63,7 +63,7 @@
 - [ ] **[W2-05]** `Death/FailHandling` in `RunManager`
 - [ ] **[W2-06]** `SaveSystem` scope-aware operations wired to `RunManager` events
 - [ ] **[W2-07]** `MenuSystem` — minimal pause + main menu (GameInputState.Block integration)
-- [ ] **[W2-08]** `StashSystem` + `StashSaveAdapter`
+- [x] **[W2-08]** `StashSystem` + `StashSaveAdapter`
 - [ ] **[W2-09]** `LootSpawnSystem` + `LootSpawnPoint`
 - [ ] **[W2-10]** `CurrencySystem` (`CurrencyService` + WSM mirror key `economy.credits`)
 - [ ] **[W2-11]** `RechargeStation` (IInteractable)

@@ -25,7 +25,12 @@ public sealed class InventoryItemView : MonoBehaviour,
     IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
     public ItemInstance Item  { get; private set; }
-    public InventoryUI  Owner { get; private set; }
+
+    /// <summary>
+    /// The InventoryUI that currently owns this view. Set on Initialize and reassigned
+    /// by InventoryUI when an item is dragged from one grid into another (player ↔ stash).
+    /// </summary>
+    public InventoryUI Owner { get; internal set; }
 
     private RectTransform _rect;
     private RawImage      _image;
@@ -132,6 +137,18 @@ public sealed class InventoryItemView : MonoBehaviour,
         PlaceModel();
     }
 
+    /// <summary>
+    /// Updates only the rect size and 3D model after a rotation during drag.
+    /// Does NOT reset anchoredPosition — during drag, position is controlled by OnDrag via
+    /// world coords, so resetting it here would snap the item back to its grid origin.
+    /// </summary>
+    public void RefreshDraggedRotation(float cellSize)
+    {
+        Vector2Int sz = Item.CurrentSize;
+        _rect.sizeDelta = new Vector2(sz.x * cellSize, sz.y * cellSize);
+        PlaceModel();
+    }
+
     public void SetModelVisible(bool visible)
     {
         if (_model != null) _model.SetActive(visible);
@@ -140,7 +157,28 @@ public sealed class InventoryItemView : MonoBehaviour,
     public void SetDragging(bool dragging)
     {
         _group.blocksRaycasts = !dragging;
-        if (_model != null) _model.SetActive(!dragging);
+        // Keep the 3D model visible while dragging so the item is identifiable across both grids.
+        // PlaceModel is called each frame (LateUpdate or OnDrag) so it follows the cursor.
+
+        if (!dragging)
+        {
+            // Restore top-left pivot so RefreshLayout's anchoredPosition math is correct.
+            _rect.pivot = new Vector2(0f, 1f);
+        }
+    }
+
+    /// <summary>
+    /// Shifts the rect pivot to center (0.5, 0.5) while preserving the current visual position.
+    /// Call after reparenting to the drag layer so OnDrag world-position sets place the cursor
+    /// at the item's center rather than its top-left corner.
+    /// </summary>
+    public void CenterPivotForDrag()
+    {
+        _rect.GetWorldCorners(_corners);
+        Vector3 center = (_corners[0] + _corners[1] + _corners[2] + _corners[3]) * 0.25f;
+        _rect.pivot = new Vector2(0.5f, 0.5f);
+        // Re-apply center position — Unity doesn't auto-compensate pivot changes in code.
+        transform.position = center;
     }
 
     private void OnDestroy()
