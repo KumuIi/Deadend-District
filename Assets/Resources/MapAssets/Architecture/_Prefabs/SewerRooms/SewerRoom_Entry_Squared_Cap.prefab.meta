@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 39263720131054b42a45280db1f622f9
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/SewerRooms/SewerRoom_Entry_Squared_Cap.prefab
+  uploadId: 523599

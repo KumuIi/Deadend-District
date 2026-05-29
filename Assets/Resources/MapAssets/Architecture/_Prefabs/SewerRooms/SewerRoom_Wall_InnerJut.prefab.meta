@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 15038f98cee894cc09f83411c70ad8ff
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/SewerRooms/SewerRoom_Wall_InnerJut.prefab
+  uploadId: 523599

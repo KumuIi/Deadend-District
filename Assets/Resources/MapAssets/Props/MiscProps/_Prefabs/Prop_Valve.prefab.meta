@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3f01b77ba2bfc4d7e8a6c1f46d993ff8
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/MiscProps/_Prefabs/Prop_Valve.prefab
+  uploadId: 523599

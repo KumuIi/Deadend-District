@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7b9bae6f5fe0d451b99ed5697e2a66c4
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/Sewer
+    Sections/SewerSection_Curve_180_Wide.prefab
+  uploadId: 523599

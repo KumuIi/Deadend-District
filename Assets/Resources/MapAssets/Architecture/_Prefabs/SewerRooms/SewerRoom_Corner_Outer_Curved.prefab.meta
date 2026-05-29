@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0895107f933584e8e9996a5aace0cce4
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/SewerRooms/SewerRoom_Corner_Outer_Curved.prefab
+  uploadId: 523599

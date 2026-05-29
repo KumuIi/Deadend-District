@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4ba6e29d6649a4b82b555587629f293d
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/Electronics/_Prefabs/Prop_ElectricalBox_03.prefab
+  uploadId: 523599

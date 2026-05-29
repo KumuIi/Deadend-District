@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 77b6970b4141a49439a57699241e68e0
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/CorridorSections/Corridor_Squared_Straight.prefab
+  uploadId: 523599

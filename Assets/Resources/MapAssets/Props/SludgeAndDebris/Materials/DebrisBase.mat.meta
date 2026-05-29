@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 930ad6fc7b9144babaca943376bf70f2
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/SludgeAndDebris/Materials/DebrisBase.mat
+  uploadId: 523599

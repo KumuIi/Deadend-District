@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 07dfa30faecde4a5d96bb393c07eec9c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/MiscProps/Materials/LanternGlass.mat
+  uploadId: 523599

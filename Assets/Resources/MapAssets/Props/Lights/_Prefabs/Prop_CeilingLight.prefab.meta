@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 457ea688df9f8479f8e459d4939b143f
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/Lights/_Prefabs/Prop_CeilingLight.prefab
+  uploadId: 523599

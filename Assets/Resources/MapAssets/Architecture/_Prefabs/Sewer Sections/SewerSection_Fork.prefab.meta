@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f01356b354e1d42a3845e4d2f8e29de4
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/Sewer
+    Sections/SewerSection_Fork.prefab
+  uploadId: 523599

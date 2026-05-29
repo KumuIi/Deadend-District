@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: da4b56c6046164a6f9342b9c4e28acc0
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/SewerRooms/SewerRoom_Floor.prefab
+  uploadId: 523599

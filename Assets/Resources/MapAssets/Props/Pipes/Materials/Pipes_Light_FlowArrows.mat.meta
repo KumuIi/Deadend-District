@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 21a8917c549724460bca2b9fa994e3e7
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/Pipes/Materials/Pipes_Light_FlowArrows.mat
+  uploadId: 523599

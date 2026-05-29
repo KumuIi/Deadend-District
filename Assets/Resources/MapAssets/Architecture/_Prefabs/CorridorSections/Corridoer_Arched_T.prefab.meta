@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b309c65c1869046a69db936dae4e155e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/CorridorSections/Corridoer_Arched_T.prefab
+  uploadId: 523599

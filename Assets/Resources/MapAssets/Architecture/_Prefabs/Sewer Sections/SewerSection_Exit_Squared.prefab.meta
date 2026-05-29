@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6ad26120233e944e095dae6ab787bde5
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/Sewer
+    Sections/SewerSection_Exit_Squared.prefab
+  uploadId: 523599

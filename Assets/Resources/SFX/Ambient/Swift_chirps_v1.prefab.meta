@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 81d6b68573266304189b435a56f4ecf7
+timeCreated: 1526482255
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/SFX/Ambient/Swift_chirps_v1.prefab
+  uploadId: 247219

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6fb366503ca8e41829bbc1e7905ad884
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/SewerRooms/SewerRoom_Entry_Arched.prefab
+  uploadId: 523599

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 2db5a493464d8e84fa98dee50e8ee146
+timeCreated: 1526704606
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 118988
+  packageName: RPG/FPS Game Assets for PC/Mobile (Industrial Set v4.0)
+  packageVersion: 4.0
+  assetPath: Assets/RPG_FPS_game_assets_industrial/VFX/Particles/Dust/Dust_v2/Dust_v2_2.prefab
+  uploadId: 247219

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 64311c0085ad14d8d8488b214e3120f9
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Props/MetalProps/_Prefabs/Props_EndCap_Grate.prefab
+  uploadId: 523599

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 1ff2bca9776f446399e91c03f057c4b7
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 231852
+  packageName: Modular PSX Sewer Kit
+  packageVersion: 1.0.0
+  assetPath: Assets/Modular Sewer Kit/SewerDemo/Sewer Kit/Architecture/_Prefabs/SewerRooms/SewerRoom_Corner_Inner_Angled.prefab
+  uploadId: 523599
