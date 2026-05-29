@@ -323,6 +323,9 @@ MonoBehaviour:
   _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
+  _shakeStrength: 0.04
+  _shakeDuration: 0.4
+  _shakeVibrato: 20
 --- !u!1 &668270264291127041
 GameObject:
   m_ObjectHideFlags: 0
@@ -459,6 +462,9 @@ MonoBehaviour:
   _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
+  _shakeStrength: 0.04
+  _shakeDuration: 0.4
+  _shakeVibrato: 20
 --- !u!1 &1349547749117341773
 GameObject:
   m_ObjectHideFlags: 0
@@ -1079,6 +1085,7 @@ MonoBehaviour:
   _flyInStagger: 0.08
   _flyOutStagger: 0.06
   _flashdriveMenu: {fileID: 7613298210274984466}
+  _saveButton: {fileID: 8896394590392023390}
   _mainMenuScene: MainMenu
 --- !u!1 &1700265519539491544
 GameObject:
@@ -2280,6 +2287,9 @@ MonoBehaviour:
   _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
+  _shakeStrength: 0.04
+  _shakeDuration: 0.4
+  _shakeVibrato: 20
 --- !u!1 &3821213816160710038
 GameObject:
   m_ObjectHideFlags: 0
@@ -4202,6 +4212,7 @@ GameObject:
   - component: {fileID: 5558102581320971767}
   - component: {fileID: 7343357344315091651}
   - component: {fileID: 494421223063518258}
+  - component: {fileID: 6489920741919275096}
   m_Layer: 7
   m_Name: '[Player]'
   m_TagString: Player
@@ -4770,6 +4781,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33bd46dc8ae5c3644b55be7874bcfee9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerRunRegistration
+--- !u!114 &6489920741919275096
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3776e3477d88e7b4fbe3d8dccbe2680d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerTransformSaveAdapter
+  _motor: {fileID: 3513889191098211496}
+  _camera: {fileID: 1198579033372320372}
 --- !u!1 &6631947371988985609
 GameObject:
   m_ObjectHideFlags: 0
@@ -5498,6 +5523,9 @@ MonoBehaviour:
   _flyOutDistance: 0.2
   _flyOutDuration: 0.18
   _flyOutEase: 26
+  _shakeStrength: 0.04
+  _shakeDuration: 0.4
+  _shakeVibrato: 20
 --- !u!1 &7309073094997209912
 GameObject:
   m_ObjectHideFlags: 0

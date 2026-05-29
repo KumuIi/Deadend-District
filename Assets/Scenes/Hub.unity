@@ -839,7 +839,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1155335476}
   - component: {fileID: 1155335474}
-  - component: {fileID: 1155335475}
+  - component: {fileID: 1155335477}
   m_Layer: 6
   m_Name: SM_Door_double_a
   m_TagString: Untagged
@@ -868,19 +868,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.3111883, y: 1.9064137, z: 1}
   m_Center: {x: 0.54130584, y: 1.1131077, z: -5.4587496e-15}
---- !u!114 &1155335475
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1155335473}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c94da96c0571dfa42b88090160008d1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ExtractionPoint
-  _destinationScene: Sewer1
 --- !u!4 &1155335476
 Transform:
   m_ObjectHideFlags: 0
@@ -896,6 +883,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1036366625}
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
+--- !u!114 &1155335477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1155335473}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 353753f8c7105b14499a9698d47d2e43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RunEntryPoint
+  _sectorScene: Sewer1
 --- !u!114 &1308986025 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8371605008115463076, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}

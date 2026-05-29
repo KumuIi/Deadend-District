@@ -238,8 +238,12 @@ public class FlashdriveMenuController : MonoBehaviour
         }
         else
         {
-            RunManager.Instance?.SetActiveSlot(drive.SlotName);
-            SaveSystem.Instance.LoadAll(drive.SlotName);
+            // Route through RunManager so a mid-run load returns to the hub before restoring.
+            // (In the hub it just restores in place.) SetActiveSlot is handled inside LoadSlot.
+            if (RunManager.Instance != null)
+                RunManager.Instance.LoadSlot(drive.SlotName);
+            else
+                SaveSystem.Instance.LoadAll(drive.SlotName);
         }
 
         StartCoroutine(ExecuteCloseSequence());

@@ -36,8 +36,11 @@ public class MainMenu : MonoBehaviour
         }
 
         RunManager.Instance?.SetActiveSlot(slot);
+        // Restore all scopes so a loaded slot is a complete snapshot: Profile (stash/quests),
+        // World (timers), and Run (inventory, health, player position + look).
         SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Profile, slot);
         SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.World, slot);
+        SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Run, slot);
         SceneManager.LoadScene(_hubScene);
     }
 

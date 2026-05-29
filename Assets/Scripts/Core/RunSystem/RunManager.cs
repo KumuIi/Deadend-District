@@ -111,9 +111,12 @@ public class RunManager : MonoBehaviour
             return;
         }
         State = RunState.InRun;
-        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
-        SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
-        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+        // MANUAL-SAVE MODEL: the lifecycle no longer autosaves to the player's slot.
+        // Saving is the player's responsibility (flashdrive menu). Re-enable these for
+        // Tarkov-style permanent death (commits state to disk on entry, no save-scum).
+        // SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        // SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
+        // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
         Broadcast(l => l.OnRunStarted());
         Debug.Log("[RunManager] Run started in place.");
     }
@@ -135,12 +138,14 @@ public class RunManager : MonoBehaviour
         }
         // Set state AFTER load is confirmed to start — prevents InRun with no sector loaded
         State = RunState.InRun;
-        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
-        SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
-        // Clear any leftover Run save from a previous extraction so items don't
-        // ghost across runs. Remove this once StashSystem (W2-08) is implemented
-        // and extracted items are moved to the stash (Profile scope) on extraction.
-        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+        // MANUAL-SAVE MODEL: the lifecycle no longer autosaves to the player's slot.
+        // Saving is the player's responsibility (flashdrive menu). Re-enable these for
+        // Tarkov-style permanent death (commits state to disk on entry, no save-scum).
+        // NOTE: if you re-enable ClearRun here, it deletes the player's manual Run snapshot
+        // for ActiveSaveSlot — route it to a dedicated working slot instead (see notes).
+        // SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        // SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
+        // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
         Broadcast(l => l.OnRunStarted());
     }
 
@@ -150,8 +155,11 @@ public class RunManager : MonoBehaviour
         if (State != RunState.InRun) return;
         State = RunState.Extracting;
 
-        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
-        SaveSystem.Instance?.SaveRun(ActiveSaveSlot);
+        // MANUAL-SAVE MODEL: extraction no longer autosaves. The player keeps their
+        // extracted inventory in memory and saves manually when they choose.
+        // Re-enable for Tarkov-style auto-commit of extracted loot.
+        // SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        // SaveSystem.Instance?.SaveRun(ActiveSaveSlot);
         Broadcast(l => l.OnRunExtracted());
 
         var stm = SceneTransitionManager.Instance;
@@ -171,7 +179,8 @@ public class RunManager : MonoBehaviour
             SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterExtract;
         State = RunState.InHub;
         Broadcast(l => l.OnReturnedToHub());
-        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+        // MANUAL-SAVE MODEL: no autosave/clear on return. Re-enable for Tarkov-style permadeath.
+        // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
     }
 
     /// <summary>Called by PlayerHealth.OnDeath (via PlayerRunRegistration).</summary>
@@ -201,10 +210,14 @@ public class RunManager : MonoBehaviour
         else
             yield return new WaitForSecondsRealtime(_deathFadeDelay);
 
+        // Death clears the inventory in MEMORY only: InventorySaveAdapter implements
+        // IRunLifecycleListener and empties itself on OnRunDied. Nothing is written to disk,
+        // so reloading a save slot restores the pre-raid inventory (manual-save model).
         Broadcast(l => l.OnRunDied());
-        // InventorySaveAdapter implements IRunLifecycleListener and clears itself on OnRunDied
 
-        SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
+        // MANUAL-SAVE MODEL: do NOT persist the death. Re-enable to commit the loss to disk
+        // for Tarkov-style permanent death (player cannot reload to recover lost loot).
+        // SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
 
         var stm = SceneTransitionManager.Instance;
         if (stm == null) { Debug.LogError("[RunManager] SceneTransitionManager missing — cannot load hub after death."); yield break; }
@@ -223,7 +236,65 @@ public class RunManager : MonoBehaviour
             SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterDeath;
         State = RunState.InHub;
         Broadcast(l => l.OnReturnedToHub());
-        SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+        // MANUAL-SAVE MODEL: no autosave/clear on return. Re-enable for Tarkov-style permadeath.
+        // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+    }
+
+    // ── Load ───────────────────────────────────────────────────────────────
+
+    private string _pendingLoadSlot;
+
+    /// <summary>
+    /// Loads a save slot. In the hub, restores in place. During a run, returns to the hub
+    /// first — saves are hub-only, so a load always lands in the hub — then restores once
+    /// the transition completes. Called by the flashdrive load menu.
+    /// </summary>
+    public void LoadSlot(string slot)
+    {
+        if (string.IsNullOrEmpty(slot)) return;
+        SetActiveSlot(slot);
+
+        if (State == RunState.InHub)
+        {
+            SaveSystem.Instance?.LoadAll(slot);
+            return;
+        }
+
+        // Mid-run: abandon the run, transition back to the hub, then restore on arrival.
+        var stm = SceneTransitionManager.Instance;
+        if (stm == null)
+        {
+            Debug.LogError("[RunManager] LoadSlot: SceneTransitionManager missing — restoring in place.");
+            State = RunState.InHub;
+            SaveSystem.Instance?.LoadAll(slot);
+            return;
+        }
+
+        _pendingLoadSlot = slot;
+        stm.OnSceneTransitionFinished += OnReturnedToHubAfterLoad;
+        if (!stm.LoadHub())
+        {
+            stm.OnSceneTransitionFinished -= OnReturnedToHubAfterLoad;
+            _pendingLoadSlot = null;
+            Debug.LogWarning("[RunManager] LoadSlot: LoadHub rejected (transition in progress) — load aborted.");
+        }
+    }
+
+    private void OnReturnedToHubAfterLoad()
+    {
+        if (SceneTransitionManager.Instance != null)
+            SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterLoad;
+
+        State = RunState.InHub;
+        Broadcast(l => l.OnReturnedToHub());
+
+        // Hub is permanent (the player rig persists, so adapters are still registered) —
+        // restore directly. This runs after the transition's spawn teleport, so the saved
+        // position wins. LoadAll restores Profile + World + Run.
+        var slot = _pendingLoadSlot;
+        _pendingLoadSlot = null;
+        if (!string.IsNullOrEmpty(slot))
+            SaveSystem.Instance?.LoadAll(slot);
     }
 
     private void OnDisable()
@@ -232,5 +303,6 @@ public class RunManager : MonoBehaviour
         if (SceneTransitionManager.Instance == null) return;
         SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterExtract;
         SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterDeath;
+        SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterLoad;
     }
 }

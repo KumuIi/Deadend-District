@@ -71,6 +71,11 @@ public sealed class InventoryUI : MonoBehaviour
     [Tooltip("Layer the dropped item's collider is placed on — must match PlayerInteractor's interaction mask. Default 6 = InteractI.")]
     [SerializeField] private int _droppedItemLayer = 6;
 
+    [Header("=== Equipment ===")]
+    [Tooltip("If false, the right-click menu omits Equip/Unequip. Uncheck on the stash so items " +
+             "can't be equipped while stored — move them to the player inventory to equip.")]
+    [SerializeField] private bool _allowEquip = true;
+
     [Header("=== Prefabs (optional) ===")]
     [Tooltip("Simple Image prefab for grid cells. Leave null to auto-create.")]
     public GameObject cellPrefab;
@@ -175,6 +180,7 @@ public sealed class InventoryUI : MonoBehaviour
             _tooltip     = new InventoryTooltip(_canvas);
             _contextMenu = new InventoryContextMenu(_canvas);
 
+            _contextMenu.AllowEquip       = _allowEquip;
             _contextMenu.OnEquip          = ContextMenu_Equip;
             _contextMenu.OnUnequip        = ContextMenu_Unequip;
             _contextMenu.OnRemoveMagazine = ContextMenu_RemoveMagazine;

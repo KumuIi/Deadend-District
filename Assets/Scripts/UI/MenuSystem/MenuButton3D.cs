@@ -32,7 +32,20 @@ public class MenuButton3D : MonoBehaviour
     [SerializeField] private float _flyOutDuration = 0.18f;
     [SerializeField] private Ease _flyOutEase = Ease.InBack;
 
+    [Header("Shake (rejected click — e.g. saving outside the hub)")]
+    [Tooltip("Sideways shake distance along the button's local X when a click is blocked.")]
+    [SerializeField] private float _shakeStrength = 0.04f;
+    [SerializeField] private float _shakeDuration = 0.4f;
+    [SerializeField] private int   _shakeVibrato  = 20;
+
     public event Action<MenuButton3D> OnClicked;
+
+    /// <summary>
+    /// Optional gate evaluated when the button is clicked. If set and it returns false,
+    /// the click is rejected: the button shakes in place instead of flying out / firing.
+    /// PauseMenu uses this to block saving outside the hub.
+    /// </summary>
+    public Func<bool> ClickGuard { get; set; }
 
     private Vector3 _baseLocalPos;
     private Vector3 _baseWorldPos;
@@ -116,6 +129,14 @@ public class MenuButton3D : MonoBehaviour
     public void Click()
     {
         if (_hasFledOut) return;
+
+        // Rejected click (e.g. saving outside the hub): shake in place, don't fly out or fire.
+        if (ClickGuard != null && !ClickGuard())
+        {
+            Shake();
+            return;
+        }
+
         _hasFledOut = true;
         _isHovered = false;
 
@@ -124,6 +145,21 @@ public class MenuButton3D : MonoBehaviour
                  .SetEase(_flyOutEase)
                  .SetUpdate(true)
                  .OnComplete(FireAction);
+    }
+
+    /// <summary>
+    /// Plays a sideways shake to signal a rejected click. Does not fire the action or fly
+    /// the button out — the menu stays intact. Uses unscaled time so it works while paused.
+    /// </summary>
+    public void Shake()
+    {
+        transform.DOKill();
+        transform.position = _baseWorldPos;   // shake around the resting pose
+        _isHovered = false;
+
+        transform.DOShakePosition(_shakeDuration, _flyDir * _shakeStrength,
+                                  _shakeVibrato, randomness: 0f, snapping: false, fadeOut: true)
+                 .SetUpdate(true);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────

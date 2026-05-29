@@ -25,6 +25,10 @@ public class PauseMenu : MonoBehaviour
     [Header("Flashdrive menu")]
     [SerializeField] private FlashdriveMenuController _flashdriveMenu;
 
+    [Header("Save gating (hub-only)")]
+    [Tooltip("The Save button. Clicking it outside the hub shakes instead of opening the menu.")]
+    [SerializeField] private MenuButton3D _saveButton;
+
     [Header("Scene")]
     [SerializeField] private string _mainMenuScene = "MainMenu";
 
@@ -39,11 +43,32 @@ public class PauseMenu : MonoBehaviour
         foreach (var btn in _buttons)
             if (btn != null) btn.OnClicked += OnButtonClicked;
 
+        // Saving is hub-only (manual-save model): the guard makes the Save button shake
+        // instead of opening the flashdrive when clicked during a run. Loading is allowed
+        // anywhere — a mid-run load routes through RunManager.LoadSlot back to the hub.
+        if (_saveButton != null) _saveButton.ClickGuard = IsInHub;
+
+        // A gated button must also be one of _buttons (the array drives fly-in/cascade). If it
+        // isn't, the inspector ref is wrong and the guard silently governs the wrong object.
+        WarnIfNotAButton(_saveButton, nameof(_saveButton));
+
         if (_flashdriveMenu != null)
         {
             _flashdriveMenu.OnReturnRequested += ShowBullets;
             _flashdriveMenu.OnActionExecuted  += OnFlashdriveActionExecuted;
         }
+    }
+
+    /// <summary>True only in the hub — the one safe place to save/load (see manual-save model).</summary>
+    private bool IsInHub() =>
+        RunManager.Instance == null || RunManager.Instance.State == RunManager.RunState.InHub;
+
+    private void WarnIfNotAButton(MenuButton3D btn, string fieldName)
+    {
+        if (btn == null) return;
+        if (System.Array.IndexOf(_buttons, btn) < 0)
+            Debug.LogWarning($"[PauseMenu] {fieldName} is not in the _buttons array — " +
+                             "its gate won't be applied to the real menu button.", this);
     }
 
     private void OnDestroy()
@@ -154,8 +179,15 @@ public class PauseMenu : MonoBehaviour
         // Deactivation handled by OnButtonClicked cascade
     }
 
-    public void OnSave() => _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Save);
+    public void OnSave()
+    {
+        // Defensive: the Save button's ClickGuard normally blocks this outside the hub,
+        // but guard here too in case OnSave is invoked from another path.
+        if (!IsInHub()) return;
+        _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Save);
+    }
 
+    // Loading is allowed anywhere; a mid-run load returns to the hub via RunManager.LoadSlot.
     public void OnLoad() => _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Load);
 
     /// <summary>Re-fly bullets in — called when flashdrive menu returns without action.</summary>

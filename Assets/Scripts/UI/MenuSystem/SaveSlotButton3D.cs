@@ -96,8 +96,11 @@ public class SaveSlotButton3D : MonoBehaviour
         {
             if (!string.IsNullOrEmpty(_sceneToLoad))
             {
+                // Restore all scopes so a loaded slot is a complete snapshot: Profile
+                // (stash/quests), World (timers), and Run (inventory, health, position + look).
                 SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Profile, _slotName);
                 SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.World, _slotName);
+                SaveSystem.Instance.RestoreAfterSceneLoad(RunScopeTag.Run, _slotName);
                 UnityEngine.SceneManagement.SceneManager.LoadScene(_sceneToLoad);
             }
             else

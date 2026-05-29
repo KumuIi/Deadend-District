@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -61,6 +62,18 @@ public sealed class InventoryItemView : MonoBehaviour,
         if (item.data.modelPrefab == null) return;
 
         _model = Instantiate(item.data.modelPrefab);
+
+        // Bind the model's lifetime to the persistent inventory rig, NOT the active scene.
+        // Instantiate with no parent adopts SceneManager.GetActiveScene() — which is the SECTOR
+        // during a run-entry inventory restore (the restore flushes one frame after
+        // SetActiveScene(sector)). Those sector-owned models are destroyed by UnloadSceneAsync on
+        // extraction, leaving the item interactive but invisible. Move it to the owner's scene
+        // (Hub/DontDestroyOnLoad) so it survives sector unloads. Kept unparented so the canvas
+        // RectTransform scale never distorts the mesh; PlaceModel drives its world transform.
+        Scene targetScene = owner != null ? owner.gameObject.scene : gameObject.scene;
+        if (targetScene.IsValid() && targetScene.isLoaded)
+            SceneManager.MoveGameObjectToScene(_model, targetScene);
+
         _model.SetActive(false);
         _model.SetLayerRecursive(modelLayer);
 

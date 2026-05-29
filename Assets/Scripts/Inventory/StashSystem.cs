@@ -102,11 +102,14 @@ public class StashSystem : MonoBehaviour, ILootContainer
         if (_stashUI != null && _stashUI.IsOpen)                     _stashUI.SetOpen(false);
         if (_playerInventoryUI != null && _playerInventoryUI.IsOpen) _playerInventoryUI.SetOpen(false);
 
-        // Persist the stash (Profile scope) so closing the chest is a safe save point even if the
-        // player quits before the next run-start save. SaveProfile captures all profile saveables.
-        string slot = RunManager.Instance?.ActiveSaveSlot;
-        if (string.IsNullOrEmpty(slot)) slot = "slot0";
-        SaveSystem.Instance?.SaveProfile(slot);
+        // MANUAL-SAVE MODEL: closing the stash no longer autosaves.
+        // Auto-committing Profile scope here (while Run/inventory only saves manually) let a
+        // reload stitch a fresh stash onto an old inventory — an item dupe. Saving is now fully
+        // the player's responsibility via the flashdrive menu, so all scopes commit together.
+        // Re-enable for Tarkov-style auto-commit (and route inventory/stash through one save point).
+        // string slot = RunManager.Instance?.ActiveSaveSlot;
+        // if (string.IsNullOrEmpty(slot)) slot = "slot0";
+        // SaveSystem.Instance?.SaveProfile(slot);
     }
 
     // ── ILootContainer ─────────────────────────────────────────────────────

@@ -35,6 +35,20 @@ public class CameraController : MonoBehaviour
     /// </summary>
     public float LeanWeight { get; private set; }
 
+    /// <summary>Current vertical look angle (pitch) in degrees. Read by the save system.</summary>
+    public float Pitch => _pitch;
+
+    /// <summary>
+    /// Sets the vertical look angle directly. Used by the save system to restore where the
+    /// player was looking. Clamped to the configured vertical look limit.
+    /// </summary>
+    public void SetPitch(float pitch)
+    {
+        _pitch = config != null
+            ? Mathf.Clamp(pitch, -config.verticalLookLimit, config.verticalLookLimit)
+            : pitch;
+    }
+
     private PlayerMotor _motor;
     private float   _pitch;
     private float   _fovRatio;

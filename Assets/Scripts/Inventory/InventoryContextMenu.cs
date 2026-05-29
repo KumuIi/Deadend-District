@@ -34,6 +34,9 @@ public sealed class InventoryContextMenu
     /// <summary>Return true if the given item is currently the equipped weapon. Used to toggle Equip/Unequip.</summary>
     public Func<ItemInstance, bool> IsItemEquipped;
 
+    /// <summary>When false, the Equip/Unequip entry is omitted (e.g. the stash — items can't be equipped while stored).</summary>
+    public bool AllowEquip = true;
+
     public InventoryContextMenu(Canvas canvas)
     {
         _canvas = canvas;
@@ -78,22 +81,28 @@ public sealed class InventoryContextMenu
 
         if (item is WeaponItemInstance wi)
         {
-            bool equipped = IsItemEquipped?.Invoke(item) ?? false;
-            if (equipped)
-                entries.Add(("Unequip",         () => { OnUnequip?.Invoke(item);        Hide(); }));
-            else
-                entries.Add(("Equip",           () => { OnEquip?.Invoke(item);          Hide(); }));
+            if (AllowEquip)
+            {
+                bool equipped = IsItemEquipped?.Invoke(item) ?? false;
+                if (equipped)
+                    entries.Add(("Unequip",         () => { OnUnequip?.Invoke(item);        Hide(); }));
+                else
+                    entries.Add(("Equip",           () => { OnEquip?.Invoke(item);          Hide(); }));
+            }
 
             if (wi.LoadedMagazine != null)
                 entries.Add(("Remove Magazine", () => { OnRemoveMagazine?.Invoke(item); Hide(); }));
         }
         else if (item is FlashlightItemInstance fi)
         {
-            bool equipped = IsItemEquipped?.Invoke(item) ?? false;
-            if (equipped)
-                entries.Add(("Unequip", () => { OnUnequip?.Invoke(item); Hide(); }));
-            else
-                entries.Add(("Equip",   () => { OnEquip?.Invoke(item);   Hide(); }));
+            if (AllowEquip)
+            {
+                bool equipped = IsItemEquipped?.Invoke(item) ?? false;
+                if (equipped)
+                    entries.Add(("Unequip", () => { OnUnequip?.Invoke(item); Hide(); }));
+                else
+                    entries.Add(("Equip",   () => { OnEquip?.Invoke(item);   Hide(); }));
+            }
 
             if (fi.InsertedBattery != null)
                 entries.Add(("Remove Battery", () => { OnRemoveBattery?.Invoke(item); Hide(); }));
