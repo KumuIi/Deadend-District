@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8304072988335964326}
   - component: {fileID: 4866108319577277830}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: LootDropCommon
   m_TagString: Untagged
   m_Icon: {fileID: 0}

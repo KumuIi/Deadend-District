@@ -25,9 +25,10 @@ public class RechargeStation : MonoBehaviour, IInteractable
 
     // ── IInteractable ──────────────────────────────────────────────────────
 
-    public bool CanInteract(GameObject interactor) => HasAnythingToRecharge();
+    public bool CanInteract(GameObject interactor) => true;
 
-    public string GetPrompt(GameObject interactor) => "Recharge Batteries";
+    public string GetPrompt(GameObject interactor) =>
+        HasAnythingToRecharge() ? "Recharge Batteries" : "Nothing to Recharge";
 
     public void Interact(GameObject interactor)
     {

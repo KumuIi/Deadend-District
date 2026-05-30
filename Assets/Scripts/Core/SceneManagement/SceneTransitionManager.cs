@@ -143,9 +143,6 @@ public class SceneTransitionManager : MonoBehaviour
         // Hide hub so only the sector is visible
         if (_hubRoot != null) _hubRoot.SetActive(false);
 
-        // Queue Run restore before load so sceneLoaded fires with pending scopes
-        SaveSystem.Instance?.RestoreAfterSceneLoad(RunScopeTag.Run, ActiveSlot);
-
         yield return SceneManager.LoadSceneAsync(sectorName, LoadSceneMode.Additive);
 
         _activeSectorName = sectorName;
