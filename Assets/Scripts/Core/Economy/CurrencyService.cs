@@ -9,7 +9,7 @@ using UnityEngine;
 /// Scope: WorldStateManager saves as one World-scoped blob, so credits persist across death
 /// and extraction (money is not lost on a failed run) — the intended behaviour.
 ///
-/// All economy code (TraderUI, RechargeStation, quest rewards) goes through here so there is
+/// All economy code (TraderSystem, RechargeStation, quest rewards) goes through here so there is
 /// one choke point for spend/earn and one event to drive the HUD wallet display.
 /// </summary>
 public static class CurrencyService

@@ -13,6 +13,12 @@ public sealed class InventoryTooltip
     private readonly TextMeshProUGUI _text;
     private readonly Canvas          _canvas;
 
+    /// <summary>
+    /// Optional extra line appended to the tooltip body (e.g. a trader's "Sell: 50 cr").
+    /// Null by default so normal inventory tooltips are unaffected. Return null/empty to add nothing.
+    /// </summary>
+    public System.Func<ItemInstance, string> ExtraLineProvider;
+
     public InventoryTooltip(Canvas canvas)
     {
         _canvas = canvas;
@@ -55,7 +61,12 @@ public sealed class InventoryTooltip
     public void Show(ItemInstance item, Vector2 screenPos)
     {
         _rt.gameObject.SetActive(true);   // activate before positioning so anchor is applied immediately
-        _text.text = BuildText(item);
+
+        string body  = BuildText(item);
+        string extra = ExtraLineProvider?.Invoke(item);
+        if (!string.IsNullOrEmpty(extra)) body += "\n" + extra;
+        _text.text = body;
+
         MoveToScreen(screenPos);
         _rt.transform.SetAsLastSibling();
     }

@@ -12,4 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8226e29d46e8b81459284832b376f094, type: 3}
   m_Name: CommonItems
   m_EditorClassIdentifier: Assembly-CSharp::LootPoolSO
-  Entries: []
+  Entries:
+  - Item: {fileID: 11400000, guid: b2c8bb3b765373743850e7c47205f83b, type: 2}
+    Weight: 0.185
+  - Item: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
+    Weight: 1
+  - Item: {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
+    Weight: 0.038

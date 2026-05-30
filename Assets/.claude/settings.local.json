@@ -34,7 +34,10 @@
       "Bash(xargs grep -l \"IStimulusListener\\\\|IFactionProvider\")",
       "WebSearch",
       "WebFetch(domain:sergioabreu-g.medium.com)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "Bash(Remove-Item -Force 'Scripts\\\\UI\\\\TraderUI.cs','Scripts\\\\UI\\\\TraderUI.cs.meta','Scripts\\\\UI\\\\TraderListRow.cs','Scripts\\\\UI\\\\TraderListRow.cs.meta' -ErrorAction SilentlyContinue)",
+      "Bash(Get-ChildItem 'Scripts\\\\UI\\\\Trader*','Scripts\\\\Economy' -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Name)"
     ]
   }
 }

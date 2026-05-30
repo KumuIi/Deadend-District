@@ -37,6 +37,20 @@ public sealed class InventoryContextMenu
     /// <summary>When false, the Equip/Unequip entry is omitted (e.g. the stash — items can't be equipped while stored).</summary>
     public bool AllowEquip = true;
 
+    /// <summary>
+    /// When false, the standard mutation entries (Remove Magazine, Remove Battery, Drop) are
+    /// omitted. Used by view-only grids like the trader stock, which expose only injected
+    /// entries (Buy) via <see cref="ExtraEntriesProvider"/>.
+    /// </summary>
+    public bool AllowItemActions = true;
+
+    /// <summary>
+    /// Optional hook to append context-agnostic extra entries (e.g. a trader's "Buy"/"Sell").
+    /// Null by default so normal inventory menus are unchanged. The menu stays economy-agnostic —
+    /// it just renders whatever (label, action) pairs it is handed.
+    /// </summary>
+    public Func<ItemInstance, List<(string label, Action action)>> ExtraEntriesProvider;
+
     public InventoryContextMenu(Canvas canvas)
     {
         _canvas = canvas;
@@ -90,7 +104,7 @@ public sealed class InventoryContextMenu
                     entries.Add(("Equip",           () => { OnEquip?.Invoke(item);          Hide(); }));
             }
 
-            if (wi.LoadedMagazine != null)
+            if (AllowItemActions && wi.LoadedMagazine != null)
                 entries.Add(("Remove Magazine", () => { OnRemoveMagazine?.Invoke(item); Hide(); }));
         }
         else if (item is FlashlightItemInstance fi)
@@ -104,10 +118,22 @@ public sealed class InventoryContextMenu
                     entries.Add(("Equip",   () => { OnEquip?.Invoke(item);   Hide(); }));
             }
 
-            if (fi.InsertedBattery != null)
+            if (AllowItemActions && fi.InsertedBattery != null)
                 entries.Add(("Remove Battery", () => { OnRemoveBattery?.Invoke(item); Hide(); }));
         }
-        entries.Add(("Drop", () => { OnDrop?.Invoke(item); Hide(); }));
+
+        if (AllowItemActions)
+            entries.Add(("Drop", () => { OnDrop?.Invoke(item); Hide(); }));
+
+        // Injected, economy-agnostic entries (Buy/Sell). Hide() after each so a refresh that
+        // destroys this item's view can't leave a dangling menu.
+        var extra = ExtraEntriesProvider?.Invoke(item);
+        if (extra != null)
+            foreach (var (label, action) in extra)
+                entries.Add((label, () => { action?.Invoke(); Hide(); }));
+
+        // Nothing to show (e.g. a view-only grid item the trader won't buy) — don't pop an empty menu.
+        if (entries.Count == 0) { Hide(); return; }
 
         _panelRT.sizeDelta = new Vector2(ButtonW, ButtonH * entries.Count);
 

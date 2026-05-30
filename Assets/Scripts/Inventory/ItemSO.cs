@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Base ScriptableObject for every item that can live in the inventory grid.
@@ -34,10 +35,12 @@ public abstract class ItemSO : ScriptableObject
     public float weightKg = 0.5f;
 
     [Header("=== Economy ===")]
-    [Tooltip("Intrinsic worth in credits. Traders pay a fraction of this when buying from the " +
-             "player (see TraderSO.SellFraction). 0 = the item cannot be sold.")]
+    [Tooltip("Price the player receives when selling this item to a trader (in credits). " +
+             "Traders may scale it via TraderSO.SellFraction (default 1 = pay this exactly). " +
+             "0 = the item cannot be sold.")]
     [Min(0)]
-    public int baseValue = 0;
+    [FormerlySerializedAs("baseValue")]
+    public int sellValue = 0;
 
     [Header("=== Visuals ===")]
     [Tooltip("3D model instantiated in the scene and physically placed over the inventory panel.")]

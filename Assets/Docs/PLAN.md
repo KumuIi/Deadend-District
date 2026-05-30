@@ -18,57 +18,57 @@
 ### Wave 0 — Contracts  
 *Doc: [`waves/wave-0.md`](waves/wave-0.md)*
 
-- [ ] **[W0-01]** `IBatteryDrainer` interface
-- [ ] **[W0-02]** `IDamageable` / `IHitReceiver` interface
-- [ ] **[W0-03]** `IRunResettable` — extend `ISaveable` with `RunScopeTag`
-- [ ] **[W0-04]** `IRunLifecycleListener` interface
-- [ ] **[W0-05]** `PlayerStatModifier` struct + modifier stack on `PlayerMotor` and `PlayerHealth`
-- [ ] **[W0-06]** `DamageContext` struct
-- [ ] **[W0-07]** `ILootContainer` interface
-- [ ] **[W0-08]** `IVisibilityContributor` interface
-- [ ] **[W0-09]** `IEquipmentSlot` + `EquipmentController` skeleton
-- [ ] **[W0-10]** `IFactionProvider` / `TeamId` enum
-- [ ] **[W0-11]** `LootPoolSO` ScriptableObject
-- [ ] **[W0-12]** `RunScopeTag` enum + scope-aware save methods on `SaveSystem`
-- [ ] **[W0-13]** `IPoolableSpawnedEntity` interface
-- [ ] **[W0-14]** WSM key pre-registration workflow — add `WsmKeyRegistrySO` entries for all keys used in Waves 1–2 before writing a single line of system code
+- [x] **[W0-01]** `IBatteryDrainer` interface
+- [x] **[W0-02]** `IDamageable` / `IHitReceiver` interface
+- [x] **[W0-03]** `IRunResettable` — extend `ISaveable` with `RunScopeTag`
+- [x] **[W0-04]** `IRunLifecycleListener` interface
+- [x] **[W0-05]** `PlayerStatModifier` struct + modifier stack on `PlayerMotor` and `PlayerHealth`
+- [x] **[W0-06]** `DamageContext` struct
+- [x] **[W0-07]** `ILootContainer` interface
+- [x] **[W0-08]** `IVisibilityContributor` interface
+- [x] **[W0-09]** `IEquipmentSlot` + `EquipmentController` skeleton
+- [x] **[W0-10]** `IFactionProvider` / `TeamId` enum
+- [x] **[W0-11]** `LootPoolSO` ScriptableObject
+- [x] **[W0-12]** `RunScopeTag` enum + scope-aware save methods on `SaveSystem`
+- [x] **[W0-13]** `IPoolableSpawnedEntity` interface
+- [x] **[W0-14]** WSM key pre-registration workflow — add `WsmKeyRegistrySO` entries for all keys used in Waves 1–2 before writing a single line of system code
 
 ---
 
 ### Wave 1 — The Pressure  
 *Doc: [`waves/wave-1.md`](waves/wave-1.md)*
 
-- [ ] **[W1-01]** `EncumbranceSystem`
-- [ ] **[W1-02]** Stamina integration into `PlayerHealth` (NOT a new MonoBehaviour)
-- [ ] **[W1-03]** `BatteryItemSO` + `BatteryItemInstance`
-- [ ] **[W1-04]** `BatterySystem`
-- [ ] **[W1-05]** `LightSource` component + `ILightSource` interface
-- [ ] **[W1-06]** `DarknessState` — gameplay writer (WSM) + visual observer (post-process) kept separate
-- [ ] **[W1-07]** HUD additions — battery bar, stamina bar, weight indicator
-- [ ] **[W1-08]** `LowBatteryWarning` (SECONDARY pulled early — 1 day, unlocks battery feel testing)
-- [ ] **[W1-09]** `BaseEnemyAI` abstract class
-- [ ] **[W1-10]** `GuardAI` (extends `BaseEnemyAI`)
-- [ ] **[W1-11]** `EnemySpawnPoint` component
-- [ ] **[W1-12]** NavMesh base bake for test level + layer mask documentation pass
+- [x] **[W1-01]** `EncumbranceSystem`
+- [x] **[W1-02]** Stamina integration into `PlayerHealth` (NOT a new MonoBehaviour)
+- [x] **[W1-03]** `BatteryItemSO` + `BatteryItemInstance`
+- [x] **[W1-04]** `BatterySystem`
+- [x] **[W1-05]** `LightSource` component + `ILightSource` interface
+- [x] **[W1-06]** `DarknessState` — gameplay writer (WSM) + visual observer (post-process) kept separate
+- [x] **[W1-07]** HUD additions — battery bar, stamina bar, weight indicator
+- [x] **[W1-08]** `LowBatteryWarning` (SECONDARY pulled early — 1 day, unlocks battery feel testing)
+- [x] **[W1-09]** `BaseEnemyAI` abstract class
+- [x] **[W1-10]** `GuardAI` (extends `BaseEnemyAI`)
+- [x] **[W1-11]** `EnemySpawnPoint` component
+- [x] **[W1-12]** NavMesh base bake for test level + layer mask documentation pass
 
 ---
 
 ### Wave 2 — The Loop  
 *Doc: [`waves/wave-2.md`](waves/wave-2.md)*
 
-- [ ] **[W2-01]** `SceneTransitionManager`
-- [ ] **[W2-02]** Hub/Bar scene setup
-- [ ] **[W2-03]** `RunManager` singleton + run state machine
-- [ ] **[W2-04]** `ExtractionPoint` (IInteractable)
-- [ ] **[W2-05]** `Death/FailHandling` in `RunManager`
-- [ ] **[W2-06]** `SaveSystem` scope-aware operations wired to `RunManager` events
-- [ ] **[W2-07]** `MenuSystem` — minimal pause + main menu (GameInputState.Block integration)
+- [x] **[W2-01]** `SceneTransitionManager`
+- [x] **[W2-02]** Hub/Bar scene setup
+- [x] **[W2-03]** `RunManager` singleton + run state machine
+- [x] **[W2-04]** `ExtractionPoint` (IInteractable)
+- [x] **[W2-05]** `Death/FailHandling` in `RunManager`
+- [x] **[W2-06]** `SaveSystem` scope-aware operations wired to `RunManager` events
+- [x] **[W2-07]** `MenuSystem` — minimal pause + main menu (GameInputState.Block integration)
 - [x] **[W2-08]** `StashSystem` + `StashSaveAdapter`
-- [ ] **[W2-09]** `LootSpawnSystem` + `LootSpawnPoint`
-- [ ] **[W2-10]** `CurrencySystem` (`CurrencyService` + WSM mirror key `economy.credits`)
-- [ ] **[W2-11]** `RechargeStation` (IInteractable)
-- [ ] **[W2-12]** `HotbarSystem` (completes `WeaponSwitcher` stub)
-- [ ] **[W2-13]** `TraderSystem` (`TraderSO` + `TraderUI` using `ILootContainer`)
+- [x] **[W2-09]** `LootSpawnSystem` + `LootSpawnPoint`
+- [x] **[W2-10]** `CurrencySystem` (`CurrencyService` + WSM mirror key `economy.credits`)
+- [x] **[W2-11]** `RechargeStation` (IInteractable)
+- [x] **[W2-12]** `HotbarSystem` (completes `WeaponSwitcher` stub)
+- [x] **[W2-13]** `TraderSystem` (`TraderSO` + `TraderUI` using `ILootContainer`)
 
 ---
 

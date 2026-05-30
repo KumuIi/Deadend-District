@@ -31,10 +31,11 @@ public class TraderSO : ScriptableObject
     public StockEntry[] Stock = System.Array.Empty<StockEntry>();
 
     [Header("Buying FROM the player")]
-    [Tooltip("Fraction of an item's Base Value paid when the player sells it to this trader.")]
-    [Range(0f, 1f)] public float SellFraction = 0.5f;
+    [Tooltip("Multiplier on an item's Sell Value when the player sells it here. 1 = pay the item's " +
+             "Sell Value exactly; lower this for a stingier trader.")]
+    [Range(0f, 1f)] public float SellFraction = 1f;
 
-    [Tooltip("When true, this trader buys any item with Base Value > 0. When false, it only buys " +
+    [Tooltip("When true, this trader buys any item with Sell Value > 0. When false, it only buys " +
              "items it also stocks.")]
     public bool BuysAnything = true;
 

@@ -76,6 +76,18 @@ public sealed class InventoryUI : MonoBehaviour
              "can't be equipped while stored — move them to the player inventory to equip.")]
     [SerializeField] private bool _allowEquip = true;
 
+    [Header("=== Mutation Gates (uncheck all for a view-only economy grid) ===")]
+    [Tooltip("If false, items in this grid cannot be picked up / dragged.")]
+    [SerializeField] private bool _allowDrag = true;
+    [Tooltip("If false, items in this grid cannot be rotated (also skipped by the global rotate broadcast).")]
+    [SerializeField] private bool _allowRotate = true;
+    [Tooltip("If false, the right-click menu omits the standard mutation entries " +
+             "(Remove Magazine, Remove Battery, Drop). Injected entries like Buy still show.")]
+    [SerializeField] private bool _allowStandardItemActions = true;
+    [Tooltip("If false, items cannot be dragged between this grid and another (e.g. trader). " +
+             "A handoff requires BOTH grids to allow it — the stash leaves this on, the trader turns it off.")]
+    [SerializeField] private bool _allowCrossGridHandoff = true;
+
     [Header("=== Prefabs (optional) ===")]
     [Tooltip("Simple Image prefab for grid cells. Leave null to auto-create.")]
     public GameObject cellPrefab;
@@ -198,6 +210,7 @@ public sealed class InventoryUI : MonoBehaviour
             _contextMenu = new InventoryContextMenu(_canvas);
 
             _contextMenu.AllowEquip       = _allowEquip;
+            _contextMenu.AllowItemActions = _allowStandardItemActions;
             _contextMenu.OnEquip          = ContextMenu_Equip;
             _contextMenu.OnUnequip        = ContextMenu_Unequip;
             _contextMenu.OnRemoveMagazine = ContextMenu_RemoveMagazine;
@@ -338,16 +351,21 @@ public sealed class InventoryUI : MonoBehaviour
     /// </summary>
     public static void BroadcastRotate()
     {
-        // Drag in progress takes priority — check all panels first.
+        // Drag in progress takes priority — check all panels first. A drag consumes the rotate
+        // input even on a no-rotate grid (so it doesn't fall through to the hovered loop).
         foreach (var panel in _activePanels)
         {
             if (!panel.IsOpen) continue;
-            if (panel._drag.IsDragging) { panel._drag.RotateDragged(); return; }
+            if (panel._drag.IsDragging)
+            {
+                if (panel._allowRotate) panel._drag.RotateDragged();
+                return;
+            }
         }
-        // Rotate the hovered item on whichever panel the cursor is over.
+        // Rotate the hovered item on whichever panel the cursor is over (skip view-only grids).
         foreach (var panel in _activePanels)
         {
-            if (!panel.IsOpen || panel._hoveredView == null) continue;
+            if (!panel.IsOpen || panel._hoveredView == null || !panel._allowRotate) continue;
             panel.OnItemRotate(panel._hoveredView);
             return;
         }
@@ -389,17 +407,30 @@ public sealed class InventoryUI : MonoBehaviour
 
     // ── Internal callbacks (called by InventoryItemView) ──────────────────
 
-    public void OnItemBeginDrag(InventoryItemView view, PointerEventData e) =>
+    // All three drag callbacks are gated: Unity still fires OnDrag/OnEndDrag after a blocked
+    // OnBeginDrag, and the drag controller doesn't re-check for an active view — so a view-only
+    // grid (trader stock) must drop every drag event, not just the begin.
+    public void OnItemBeginDrag(InventoryItemView view, PointerEventData e)
+    {
+        if (!_allowDrag) return;
         _drag.OnBeginDrag(view, e);
+    }
 
-    public void OnItemDrag(InventoryItemView view, PointerEventData e) =>
+    public void OnItemDrag(InventoryItemView view, PointerEventData e)
+    {
+        if (!_allowDrag) return;
         _drag.OnDrag(view, e);
+    }
 
-    public void OnItemEndDrag(InventoryItemView view, PointerEventData e) =>
+    public void OnItemEndDrag(InventoryItemView view, PointerEventData e)
+    {
+        if (!_allowDrag) return;
         _drag.OnEndDrag(view, e);
+    }
 
     public void OnItemRotate(InventoryItemView view)
     {
+        if (!_allowRotate) return; // view-only grid — stock orientation is fixed
         Vector2Int savedPos = view.Item.gridPosition;
         bool       savedRot = view.Item.isRotated;
 
@@ -414,6 +445,29 @@ public sealed class InventoryUI : MonoBehaviour
 
         view.RefreshLayout(cellSize);
     }
+
+    // ── Economy hooks (trader) ─────────────────────────────────────────────
+    // Set by TraderSystem on open, cleared (null) on close, so normal inventory is unaffected.
+
+    /// <summary>Injects extra right-click entries (e.g. trader Buy/Sell). Pass null to clear.</summary>
+    public void SetContextExtraEntries(
+        System.Func<ItemInstance, List<(string label, System.Action action)>> provider)
+    {
+        if (_contextMenu != null) _contextMenu.ExtraEntriesProvider = provider;
+    }
+
+    /// <summary>Sets the tooltip's optional extra line (e.g. "Sell: 50 cr"). Pass null to clear.</summary>
+    public void SetTooltipExtraLine(System.Func<ItemInstance, string> provider)
+    {
+        if (_tooltip != null) _tooltip.ExtraLineProvider = provider;
+    }
+
+    /// <summary>
+    /// Hides this panel's open right-click menu. Call when a trade ends so an already-open
+    /// injected Buy/Sell entry (with its captured action) can't linger on a panel that the
+    /// player keeps open after the trader closes.
+    /// </summary>
+    public void HideContextMenu() => _contextMenu?.Hide();
 
     public void SetHovered(InventoryItemView view)
     {
@@ -646,6 +700,7 @@ public sealed class InventoryUI : MonoBehaviour
         foreach (var panel in _activePanels)
         {
             if (panel == this || !panel.IsOpen) continue;
+            if (!_allowCrossGridHandoff || !panel._allowCrossGridHandoff) continue; // trader is non-transferable
             handled |= panel.TryHighlight(item, screenPos);
         }
         return handled;
@@ -686,6 +741,7 @@ public sealed class InventoryUI : MonoBehaviour
         foreach (var panel in _activePanels)
         {
             if (panel == this || !panel.IsOpen) continue;
+            if (!_allowCrossGridHandoff || !panel._allowCrossGridHandoff) continue; // trader is non-transferable
             if (panel.AcceptCrossGridDrop(view, screenPos)) return true;
         }
         return false;

@@ -15,6 +15,8 @@ MonoBehaviour:
   itemName: Makarov Magazine
   gridSize: {x: 1, y: 2}
   cellOffsets: []
+  weightKg: 0.5
+  sellValue: 15
   modelPrefab: {fileID: 919132149155446097, guid: 3338c533e28134847a9e7a45dd4be7a9, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   modelOrientationOffset: {x: 0, y: 0, z: 0}
