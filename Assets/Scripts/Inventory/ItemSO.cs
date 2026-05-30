@@ -33,6 +33,12 @@ public abstract class ItemSO : ScriptableObject
     [Range(0f, 50f)]
     public float weightKg = 0.5f;
 
+    [Header("=== Economy ===")]
+    [Tooltip("Intrinsic worth in credits. Traders pay a fraction of this when buying from the " +
+             "player (see TraderSO.SellFraction). 0 = the item cannot be sold.")]
+    [Min(0)]
+    public int baseValue = 0;
+
     [Header("=== Visuals ===")]
     [Tooltip("3D model instantiated in the scene and physically placed over the inventory panel.")]
     public GameObject modelPrefab;

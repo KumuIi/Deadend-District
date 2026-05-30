@@ -29,9 +29,11 @@ public class LootItemWorld : MonoBehaviour, IInteractable
 
     private void Start()
     {
-        _inventory = FindObjectOfType<InventoryUI>();
+        // Route to the PLAYER inventory specifically — FindObjectOfType could bind to the stash
+        // (or any other) grid now that multiple InventoryUI panels exist.
+        _inventory = InventoryUI.Player;
         if (_inventory == null)
-            Debug.LogWarning("[LootItemWorld] No InventoryUI found in scene.", this);
+            Debug.LogWarning("[LootItemWorld] No player InventoryUI registered.", this);
     }
 
     public bool   CanInteract(GameObject interactor) => (_itemSO != null) && _inventory != null;

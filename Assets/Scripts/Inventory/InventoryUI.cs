@@ -124,6 +124,23 @@ public sealed class InventoryUI : MonoBehaviour
     /// </summary>
     private static readonly List<InventoryUI> _activePanels = new List<InventoryUI>();
 
+    /// <summary>
+    /// The player's own inventory panel — definitionally the one wired to a WeaponManager
+    /// (secondary container panels like the stash have none). World pickups route items here
+    /// instead of letting FindObjectOfType pick an arbitrary panel once a second grid exists.
+    /// Returns null (not an arbitrary panel) if no panel declares a WeaponManager — routing a
+    /// pickup into the stash would be worse than failing loudly; callers log the null.
+    /// </summary>
+    public static InventoryUI Player
+    {
+        get
+        {
+            foreach (var p in _activePanels)
+                if (p != null && p.weaponManager != null) return p;
+            return null;
+        }
+    }
+
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
     private void Awake()
@@ -711,6 +728,17 @@ public sealed class InventoryUI : MonoBehaviour
     /// (dropped to the world, or transferred to another grid). Unequips the active weapon or
     /// flashlight and removes the weapon from the switcher. Safe to call on a non-equipped item.
     /// </summary>
+    /// <summary>
+    /// Removes an item from the grid, first detaching any live equipment state tied to it
+    /// (active weapon → EquipNothing + RemoveWeapon, equipped flashlight → Unequip). Use this
+    /// instead of RemoveItem when the item may currently be equipped — e.g. selling to a trader.
+    /// </summary>
+    public void RemoveItemAndDetach(ItemInstance item)
+    {
+        DetachEquipmentFor(item);
+        RemoveItem(item);
+    }
+
     private void DetachEquipmentFor(ItemInstance item)
     {
         if (item is FlashlightItemInstance)
