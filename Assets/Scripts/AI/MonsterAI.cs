@@ -81,11 +81,11 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
     [SerializeField] private float _pauseMax = 3.5f;
 
     [Header("Height Switching")]
-    [Tooltip("Seconds between flips of the up/down travel bias, so the Mimic changes the " +
-             "height it travels at (climbs/descends walls) instead of holding one band.")]
-    [SerializeField] private float _heightSwitchInterval = 3.5f;
-    [Tooltip("Strength of the vertical drift added to travel while crawling a wall.")]
-    [SerializeField] private float _verticalDrift = 0.6f;
+    [Tooltip("Seconds between flips of the up/down travel bias.")]
+    [SerializeField] private float _heightSwitchInterval = 2f;
+    [Tooltip("Strength of the vertical drift. Needs to be significant to push the Mimic off " +
+             "the floor and onto walls/ceiling — values around 1.5-3 work well.")]
+    [SerializeField] private float _verticalDrift = 2.5f;
 
     [Header("Detection")]
     [Tooltip("Player within this range (and not behind a wall) is noticed → Hunt.")]
@@ -110,6 +110,8 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
     [SerializeField] private float _knockback = 1.5f;
     [Tooltip("Seconds frozen/stunned after being shot.")]
     [SerializeField] private float _stunDuration = 1f;
+    [Tooltip("Seconds after a stun ends before it can be stunned again. Prevents infinite stun-lock.")]
+    [SerializeField] private float _stunCooldown = 3f;
     [Tooltip("Speed multiplier while enraged (right after the stun).")]
     [SerializeField] private float _enragedSpeedMult = 2f;
     [Tooltip("Seconds the enraged double-speed charge lasts before returning to normal.")]
@@ -154,8 +156,9 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
     private float   _attackTimer;      // cooldown after an attack
 
     private bool    _stunned;
-    private bool    _pausing;          // true while idle pause coroutine runs
-    private float   _speedMult = 1f;   // 1 normal, _enragedSpeedMult while enraged
+    private bool    _pausing;
+    private float   _speedMult = 1f;
+    private float   _stunCooldownTimer;   // counts down after a stun; blocks re-stun while > 0
     private Coroutine _reactionRoutine;
 
     // Stuck detection: sampled every _stuckCheckInterval seconds.
@@ -263,7 +266,8 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
     {
         if (_stunned) return;
 
-        if (_attackTimer > 0f) _attackTimer -= Time.deltaTime;
+        if (_attackTimer > 0f)      _attackTimer      -= Time.deltaTime;
+        if (_stunCooldownTimer > 0f) _stunCooldownTimer -= Time.deltaTime;
 
         UpdateTimers();
         UpdateState();
@@ -419,20 +423,21 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
         if (desired.sqrMagnitude < 0.0001f) return;
         desired.Normalize();
 
-        if (TryFindSurface(pos, desired, out Vector3 surfacePoint, out Vector3 surfaceNormal))
+        // Include the vertical drift in the probe direction so the probe finds walls/ceiling
+        // ahead of the body when climbing — not just the floor beneath it.
+        Vector3 drift       = Vector3.up * (_heightSign * _verticalDrift);
+        Vector3 travelDir   = (desired + drift * 0.5f).normalized;
+
+        if (TryFindSurface(pos, travelDir, out Vector3 surfacePoint, out Vector3 surfaceNormal))
         {
-            // Clamp how fast the surface normal can rotate — prevents a doorframe wall hit
-            // from instantly flipping the body sideways before the Mimic has passed through.
             float maxDelta = _maxNormalTurnRate * dt;
             _surfaceNormal = Vector3.RotateTowards(_surfaceNormal, surfaceNormal, maxDelta * Mathf.Deg2Rad, 1f).normalized;
 
-            // Move along the surface plane, plus an up/down bias so it travels at
-            // varying heights when the surface is a wall.
-            Vector3 tangent = Vector3.ProjectOnPlane(desired, _surfaceNormal);
-            tangent += Vector3.up * (_heightSign * _verticalDrift);
-            tangent  = Vector3.ProjectOnPlane(tangent, _surfaceNormal);
-            if (tangent.sqrMagnitude < 0.0001f) tangent = Vector3.ProjectOnPlane(Vector3.up, _surfaceNormal);
-            tangent.Normalize();
+            // Project desired onto surface, add drift — do NOT re-project drift so it actually
+            // pushes the body off the floor toward walls/ceiling instead of being cancelled out.
+            Vector3 tangent = Vector3.ProjectOnPlane(desired, _surfaceNormal).normalized;
+            tangent = (tangent + drift * 0.4f).normalized;
+            if (tangent.sqrMagnitude < 0.0001f) tangent = Vector3.up;
 
             Vector3 candidate = SafeMove(pos, tangent * speed * dt);
 
@@ -457,43 +462,34 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
     }
 
     /// <summary>
-    /// Conservative surface probe: always tries the ESTABLISHED surface direction first.
-    /// Only if that's lost does it check a forward-lean and finally pure down, so a wall
-    /// beside a doorframe never hijacks the surface normal while the Mimic is passing through.
+    /// Probes three directions and returns the NEAREST hit so whichever surface the body
+    /// is physically closest to wins — floor, wall, or ceiling. This lets the Mimic
+    /// transition between surfaces naturally as it drifts toward them.
+    /// Only three directions (not 8) so random side walls in doorframes still can't hijack.
     /// </summary>
     private bool TryFindSurface(Vector3 origin, Vector3 travelDir, out Vector3 point, out Vector3 normal)
     {
         point  = Vector3.zero;
         normal = Vector3.up;
 
-        // Primary: cast along the established surface direction. This keeps the Mimic glued
-        // to whatever it is currently on (floor, ceiling) without being pulled toward walls it passes.
-        if (Physics.Raycast(origin, -_surfaceNormal, out RaycastHit hit, _surfaceStickRange,
-                            _surfaceMask, QueryTriggerInteraction.Ignore))
-        {
-            point  = hit.point;
-            normal = hit.normal;
-            return true;
-        }
+        float   best  = Mathf.Infinity;
+        bool    found = false;
 
-        // Forward-lean: slightly ahead of travel — lets it tip onto a new surface (e.g. ramp).
-        Vector3 lean = Vector3.Slerp(-_surfaceNormal, travelDir, 0.35f).normalized;
-        if (Physics.Raycast(origin, lean, out hit, _surfaceStickRange,
-                            _surfaceMask, QueryTriggerInteraction.Ignore))
-        {
-            point  = hit.point;
-            normal = hit.normal;
-            return true;
-        }
+        // Current surface — keeps the Mimic glued while steady.
+        Probe(origin, -_surfaceNormal,   _surfaceStickRange,       ref best, ref point, ref normal, ref found);
+        // Travel direction (includes vertical drift) — finds approaching wall/ceiling.
+        Probe(origin, travelDir,          _surfaceStickRange,       ref best, ref point, ref normal, ref found);
+        // Straight down fallback — recovers after losing a surface.
+        Probe(origin, Vector3.down,       _surfaceStickRange * 2f,  ref best, ref point, ref normal, ref found);
 
-        // Last resort: straight down — recovers if the surface was lost completely
-        // (e.g. crossed a step, ran off an edge).
-        if (Physics.Raycast(origin, Vector3.down, out hit, _surfaceStickRange * 2f,
-                            _surfaceMask, QueryTriggerInteraction.Ignore))
+        return found;
+
+        void Probe(Vector3 o, Vector3 d, float range, ref float b, ref Vector3 p, ref Vector3 n, ref bool f)
         {
-            point  = hit.point;
-            normal = hit.normal;
-            return true;
+            if (d.sqrMagnitude < 0.0001f) return;
+            if (Physics.Raycast(o, d.normalized, out RaycastHit h, range,
+                                _surfaceMask, QueryTriggerInteraction.Ignore) && h.distance < b)
+            { b = h.distance; p = h.point; n = h.normal; f = true; }
         }
 
         return false;
@@ -722,6 +718,7 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
 
     private void OnDamaged(DamageContext ctx)
     {
+        if (_stunCooldownTimer > 0f) return; // immune — still cooling down from last stun
         if (_reactionRoutine != null) StopCoroutine(_reactionRoutine);
         _reactionRoutine = StartCoroutine(HitReaction(ctx));
     }
@@ -753,7 +750,8 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
         float remain = _stunDuration - kbTime;
         if (remain > 0f) yield return new WaitForSeconds(remain);
 
-        _stunned = false;
+        _stunned           = false;
+        _stunCooldownTimer = _stunCooldown; // immune until this expires
 
         // ENRAGE — commit to the player and charge at double speed briefly.
         if (_player != null)
@@ -771,8 +769,8 @@ public class MonsterAI : MonoBehaviour, IStimulusListener, IPoolableSpawnedEntit
     private void OnDeath()
     {
         StopAllCoroutines();
-        // EnemyHealth disables itself; the body stays for the art/ragdoll. Free-float stops.
-        enabled = false;
+        if (_agent != null) _agent.isStopped = true;
+        Destroy(gameObject);
     }
 
     // ── Stimulus ──────────────────────────────────────────────────────────────
