@@ -159,6 +159,17 @@ public class EnemyBrain : MonoBehaviour
 
     private void Start() => SetState(BrainState.Patrol);
 
+    /// <summary>
+    /// Assigns the patrol route for this guard. Called by <see cref="EnemySpawnPoint"/>
+    /// right after Instantiate — before Start() runs PatrolRoutine, so the route is in
+    /// place by the time patrolling begins. Lets one guard prefab serve many spawn points
+    /// with different scene routes, instead of baking a route into the prefab.
+    /// </summary>
+    public void AssignPatrolRoute(PatrolRoute route)
+    {
+        if (route != null) _patrolRoute = route;
+    }
+
     private void Update()
     {
         _scanPhase += Time.deltaTime * _scanRate;

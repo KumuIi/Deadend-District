@@ -51,6 +51,10 @@ public class RunManager : MonoBehaviour
 
     private PlayerHealth _playerHealth;
 
+    /// <summary>The currently-registered player, or null in the hub before registration.
+    /// AI prefer this over FindObjectOfType (rulebook) — the player registers on spawn.</summary>
+    public PlayerHealth PlayerHealth => _playerHealth;
+
     public void RegisterPlayer(PlayerHealth health)
     {
         if (_playerHealth == health) return;
