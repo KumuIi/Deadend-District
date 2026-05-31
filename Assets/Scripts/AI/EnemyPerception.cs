@@ -31,6 +31,13 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     [Header("Occlusion")]
     [SerializeField] private LayerMask _occlusionMask;
 
+    [Header("Sight Geometry")]
+    [Tooltip("Eye height above the guard's own transform that sight rays cast from.")]
+    [SerializeField] private float _eyeHeight = 1.4f;
+    [Tooltip("Height above the player's root to aim at when no PlayerSightPoint is " +
+             "registered (used as a head-height fallback).")]
+    [SerializeField] private float _fallbackAimHeight = 1.6f;
+
     // ── Public state ─────────────────────────────────────────────────────────
 
     public Transform Target            { get; private set; }
@@ -160,14 +167,26 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     }
 
     /// <summary>
-    /// Casts from eye height to target chest, stopping 0.3 m short so the ray
-    /// never reaches the target's own collider and falsely reports blocked.
+    /// World point the guard must see to spot the player — the player's head
+    /// (<see cref="PlayerSightPoint"/>) when one is registered, otherwise a
+    /// head-height fallback above the player's root.
+    /// </summary>
+    private Vector3 TargetSightPoint() =>
+        PlayerSightPoint.Current != null
+            ? PlayerSightPoint.Current.position
+            : Target.position + Vector3.up * _fallbackAimHeight;
+
+    /// <summary>
+    /// Casts from eye height to the player's head, stopping 0.3 m short so the ray
+    /// never reaches the target's own collider and falsely reports blocked. Because
+    /// it targets the head, the player can break LOS by keeping their head behind
+    /// cover even if their body is exposed.
     /// </summary>
     private bool HasLineOfSight()
     {
-        Vector3 eye    = transform.position + Vector3.up * 1.4f;
-        Vector3 chest  = Target.position    + Vector3.up * 0.8f;
-        Vector3 dir    = chest - eye;
+        Vector3 eye    = transform.position + Vector3.up * _eyeHeight;
+        Vector3 head   = TargetSightPoint();
+        Vector3 dir    = head - eye;
         float   dist   = dir.magnitude - 0.3f;
         if (dist <= 0f) return true;
         return !Physics.Raycast(eye, dir.normalized, dist, _occlusionMask);
