@@ -1,6 +1,6 @@
 # Wave 3 — The Threat
 
-**What this wave delivers:** The threat is real. Enemies hear you, see you based on light, and punish mistakes. Shooting someone draws monsters. Being in the dark makes you hunted. Ladders give you vertical escape routes. Headshots matter.
+**What this wave delivers:** The threat is real. Enemies hear you, see you based on light, and punish mistakes. Shooting someone draws monsters. Being in the dark makes you hunted. Ladders give you vertical escape routes. Headshots matter. enemies push when they are hiding and hear you reloading.
 
 **Prerequisite:** Wave 2 complete. RunLoop is working. You can do a full run and come back alive.
 
@@ -91,6 +91,13 @@ public class MonsterAI : BaseEnemyAI, IStimulusListener
 **Leave space for:** `EnemyTypeSO` (Wave 5) will define wander radius, charge speed, and attack damage in data. For now, serialize those fields directly on the component.
 
 **Watch out for:** Monster must respond to the 999-radius hunt trigger from `DarknessStateWriter`. The `OnStimulus` handler checks `s.Radius >= 999f` as a sentinel. Consider using a dedicated `StimulusType.HuntTrigger` enum value instead if the sentinel value feels fragile — add the enum value to `Stimulus.cs`.
+
+use the mimic preset its an orb that automatically places leg to closest object (meaning it can climb on walls and movefreely) make it attack by coming close.
+
+give it behaviours like a sensetive creature, on shoot gets pushed backa little and is stunned for a second before charging double as fast for 1 second and returning to normal speed.
+additionally the creature will switch height it travels since it can go on walls and stuff. (but make sure it does not exeed out of the walls or roof/floor).
+on player notice it should make a sound (only use audio clips) and just make sounds while treversing on random from an array of sounds.(if possible not very loud but not to quite where its to late(you should be able to avoid it by hearing whre it is))
+it can attack if close enough by dashin at the player. also make that it feels like some mimic creature where it shakes constantly(weard movement yet moves at the player)
 
 ---
 

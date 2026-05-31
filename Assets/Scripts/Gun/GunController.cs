@@ -46,6 +46,17 @@ public class GunController : MonoBehaviour
     [Tooltip("Empty placed at the iron sight / optic centre.")]
     public Transform aimSocket;
 
+    // ── Inspector — noise ──────────────────────────────────────────────────
+
+    [Header("=== Noise ===")]
+    [Tooltip("Player's NoiseEmitter (on the player root). Routes the gunshot through " +
+             "the shared noise path so the encumbrance multiplier and instigator are " +
+             "consistent. If null, falls back to a direct broadcast.")]
+    [SerializeField] private NoiseEmitter _noiseEmitter;
+    [Tooltip("Gunshot noise profile. Suggested BaseRadius 40, Intensity 1. If null, " +
+             "the legacy weaponData.range-based radius is used.")]
+    [SerializeField] private NoiseProfileSO _gunshotNoise;
+
     // ── Inspector — IK grip targets ────────────────────────────────────────
 
     [Header("=== IK Grip Targets ===")]
@@ -469,15 +480,30 @@ public class GunController : MonoBehaviour
         if (_muzzleFlash) _muzzleFlash.Play();
         if (weaponData.gunshotClip) _audio.PlayOneShot(weaponData.gunshotClip);
 
+        // Gunshot noise → AI hearing. Routed through NoiseEmitter so it shares the
+        // player's noise multiplier and instigator with footsteps.
         // TODO: replace range * 0.6f with a dedicated WeaponSO.hearingRadius field once
         // suppressor/subsonic support is needed — AI hearing radius should be decoupled from ballistic range.
-        StimulusSystem.Instance?.Broadcast(new Stimulus(
-            StimulusType.Sound,
-            muzzlePoint ? muzzlePoint.position : transform.position,
-            radius:    weaponData.range * 0.6f,
-            intensity: weaponData.baseDamage,
-            source:    gameObject,
-            instigator: _playerMotor ? _playerMotor.gameObject : gameObject));
+        Vector3 shotPos = muzzlePoint ? muzzlePoint.position : transform.position;
+        if (_noiseEmitter != null && _gunshotNoise != null)
+        {
+            _noiseEmitter.Emit(_gunshotNoise, shotPos);
+        }
+        else if (_noiseEmitter != null)
+        {
+            // Profile not wired — keep range-based radius but normalise loudness to 1 (loud).
+            _noiseEmitter.Emit(StimulusType.Sound, weaponData.range * 0.6f, 1f, shotPos);
+        }
+        else
+        {
+            StimulusSystem.Instance?.Broadcast(new Stimulus(
+                StimulusType.Sound,
+                shotPos,
+                radius:    weaponData.range * 0.6f,
+                intensity: 1f,
+                source:    gameObject,
+                instigator: _playerMotor ? _playerMotor.gameObject : gameObject));
+        }
 
         EjectCasing();
         _recoil?.AddRecoil(IsAiming);

@@ -19,7 +19,7 @@ using UnityEngine.AI;
 [RequireComponent(typeof(NavMeshAgent))]
 public class EnemyBrain : MonoBehaviour
 {
-    private enum BrainState  { Patrol, Investigate, Engage }
+    private enum BrainState  { Patrol, Suspicious, Investigate, Engage }
     private enum EngagePhase { BadPosition, Peek, SeekCover }
     private enum CoverIntent { Reload, QuickCover, LostLOS, ForcedRelocation }
 
@@ -81,6 +81,20 @@ public class EnemyBrain : MonoBehaviour
 
     [Header("Investigate")]
     [SerializeField] private float _investigateTimeout = 8f;
+    [Tooltip("Wary movement speed while investigating a sound — slower than patrol so the guard reads as cautious.")]
+    [SerializeField] private float _investigateMoveSpeed = 1.6f;
+
+    [Header("Awareness — Sound Reaction")]
+    [Tooltip("Heard-sound loudness (0..1) at/above which the guard turns and investigates the location (sprint footstep, gunshot).")]
+    [SerializeField] private float _investigateLoudness = 0.45f;
+    [Tooltip("Heard-sound loudness (0..1) at/above which the guard pauses and grows suspicious (someone walking nearby).")]
+    [SerializeField] private float _suspiciousLoudness  = 0.15f;
+    [Tooltip("Seconds the guard scans in place when suspicious before resuming patrol.")]
+    [SerializeField] private float _suspiciousScanTime  = 4f;
+    [Tooltip("How far left/right (degrees) the guard sweeps its view while suspicious or investigating.")]
+    [SerializeField] private float _scanSweepAngle      = 70f;
+    [Tooltip("Sweep oscillation speed (radians/sec) for the look-around scan.")]
+    [SerializeField] private float _scanRate            = 2.2f;
 
     [Header("Movement")]
     [SerializeField] private float _rotationSpeed = 360f;
@@ -102,6 +116,10 @@ public class EnemyBrain : MonoBehaviour
     private Coroutine    _stateCoroutine;
     private Transform    _playerTransform;
     private int          _patrolIndex;
+
+    // Awareness scan
+    private float        _scanPhase;    // advances every frame; drives the look-around sweep
+    private Vector3      _scanBaseDir;  // facing the heard sound while Suspicious
 
     // Death
     private Vector3 _lastHitNormal; // direction of the killing/last shot — used to throw the dropped weapon
@@ -143,6 +161,7 @@ public class EnemyBrain : MonoBehaviour
 
     private void Update()
     {
+        _scanPhase += Time.deltaTime * _scanRate;
         RotateBody();
 
         if (_state == BrainState.Engage)
@@ -162,16 +181,29 @@ public class EnemyBrain : MonoBehaviour
 
         if (_state == BrainState.Engage && _playerTransform != null)
         {
+            // Lock straight onto the player — no sweep while fighting.
             targetDir   = _playerTransform.position - transform.position;
             targetDir.y = 0f;
         }
+        else if (_state == BrainState.Suspicious)
+        {
+            // Stand and sweep around the direction the sound came from ("looking around").
+            targetDir = ApplyScanSweep(_scanBaseDir);
+        }
         else
         {
+            // Patrol / Investigate: face travel direction. While investigating, weave the
+            // view left/right so the guard reads as alert and scanning rather than tunnel-walking.
             if (_agent.velocity.sqrMagnitude > 0.04f)
                 targetDir = _agent.velocity;
+            else if (_state == BrainState.Investigate)
+                targetDir = transform.forward; // standing mid-investigate — keep scanning in place
             else
                 return;
+
             targetDir.y = 0f;
+            if (_state == BrainState.Investigate)
+                targetDir = ApplyScanSweep(targetDir);
         }
 
         if (targetDir.sqrMagnitude < 0.001f) return;
@@ -180,6 +212,15 @@ public class EnemyBrain : MonoBehaviour
             transform.rotation,
             Quaternion.LookRotation(targetDir),
             _rotationSpeed * Time.deltaTime);
+    }
+
+    /// <summary>Rotates a base facing direction left/right by an oscillating yaw to fake a head/body scan.</summary>
+    private Vector3 ApplyScanSweep(Vector3 baseDir)
+    {
+        baseDir.y = 0f;
+        if (baseDir.sqrMagnitude < 0.001f) return baseDir;
+        float yaw = Mathf.Sin(_scanPhase) * _scanSweepAngle * 0.5f;
+        return Quaternion.Euler(0f, yaw, 0f) * baseDir;
     }
 
     // ── Validate / setup ──────────────────────────────────────────────────────
@@ -219,6 +260,7 @@ public class EnemyBrain : MonoBehaviour
         _stateCoroutine = next switch
         {
             BrainState.Patrol      => StartCoroutine(PatrolRoutine()),
+            BrainState.Suspicious  => StartCoroutine(SuspiciousRoutine()),
             BrainState.Investigate => StartCoroutine(InvestigateRoutine()),
             BrainState.Engage      => StartCoroutine(EngageRoutine()),
             _                      => null
@@ -261,16 +303,62 @@ public class EnemyBrain : MonoBehaviour
         }
     }
 
+    // ── Suspicious ────────────────────────────────────────────────────────────
+    //
+    // Light reaction to a faint sound (someone walking nearby): the guard halts,
+    // turns toward the noise and sweeps its view for a few seconds. It does NOT
+    // commit to walking over. Escalates to Engage on sight, or to Investigate if a
+    // louder sound arrives (handled in OnPerceptionEvent). Otherwise resumes patrol.
+
+    private IEnumerator SuspiciousRoutine()
+    {
+        Debug.Log("[Brain] Suspicious — heard something faint, scanning.");
+        _aimComponent?.SetEngaged(false);
+        _weaponDriver?.ClearAim();
+        _agent.isStopped = true;
+
+        if (_perception != null)
+        {
+            Vector3 toSound = _perception.LastKnownPosition - transform.position;
+            toSound.y = 0f;
+            if (toSound.sqrMagnitude > 0.001f) _scanBaseDir = toSound;
+        }
+
+        float elapsed = 0f;
+        while (elapsed < _suspiciousScanTime)
+        {
+            if (_perception != null && _perception.CanSeeTarget)
+            {
+                _agent.isStopped = false;
+                SetState(BrainState.Engage);
+                yield break;
+            }
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        _agent.isStopped = false;
+        _agent.speed     = _defaultAgentSpeed;
+        SetState(BrainState.Patrol);
+    }
+
     // ── Investigate ───────────────────────────────────────────────────────────
+    //
+    // Stronger reaction (sprint footstep, gunshot): the guard turns to face the
+    // sound, then moves toward it at a wary, reduced speed while sweeping its view
+    // ("looking around while moving"). It never sprints blindly to the spot.
 
     private IEnumerator InvestigateRoutine()
     {
         _aimComponent?.SetEngaged(false);
         _weaponDriver?.ClearAim();
-        _agent.isStopped = false;
 
-        if (_perception != null)
-            _agent.SetDestination(_perception.LastKnownPosition);
+        // Turn to face the sound first ("turn around to check") before moving off.
+        _agent.isStopped = false;
+        _agent.speed     = _investigateMoveSpeed;
+
+        Vector3 lastDest = _perception != null ? _perception.LastKnownPosition : transform.position;
+        _agent.SetDestination(lastDest);
 
         float elapsed = 0f;
         while (elapsed < _investigateTimeout)
@@ -281,6 +369,15 @@ public class EnemyBrain : MonoBehaviour
                 SetState(BrainState.Engage);
                 yield break;
             }
+
+            // Pick up a refreshed sound position (another noise heard mid-investigate).
+            if (_perception != null && _perception.LastKnownPosition != lastDest)
+            {
+                lastDest = _perception.LastKnownPosition;
+                _agent.SetDestination(lastDest);
+                elapsed = 0f; // fresh lead — extend the search
+            }
+
             elapsed += Time.deltaTime;
             yield return null;
         }
@@ -668,13 +765,38 @@ public class EnemyBrain : MonoBehaviour
                 break;
 
             case EnemyPerception.PerceptionEvent.SoundHeard:
-                if (_state == BrainState.Patrol)
-                    SetState(BrainState.Investigate);
+                ReactToSound(_perception != null ? _perception.LastHeardIntensity : 1f);
                 break;
 
             case EnemyPerception.PerceptionEvent.TargetLost:
                 break;
         }
+    }
+
+    /// <summary>
+    /// Grades the guard's response to a heard sound by its normalised loudness:
+    ///   loud  (sprint footstep / gunshot) → Investigate: turn and warily approach, scanning.
+    ///   faint (someone walking nearby)    → Suspicious: halt and look around in place.
+    /// Already-engaged guards ignore noise (they're fighting). A faint cue never downgrades
+    /// an in-progress Investigate, and a loud cue can escalate Suspicious → Investigate.
+    /// </summary>
+    private void ReactToSound(float loudness)
+    {
+        if (_state == BrainState.Engage) return;
+
+        if (loudness >= _investigateLoudness)
+        {
+            // Restart Investigate even if already investigating, so the guard re-orients
+            // to the newest, louder cue.
+            SetState(BrainState.Investigate);
+        }
+        else if (loudness >= _suspiciousLoudness)
+        {
+            // Don't pull an actively-investigating guard back to a weaker reaction.
+            if (_state == BrainState.Patrol || _state == BrainState.Suspicious)
+                SetState(BrainState.Suspicious);
+        }
+        // Below the suspicious floor (e.g. crouch) → ignored.
     }
 
     // ── Death ─────────────────────────────────────────────────────────────────

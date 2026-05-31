@@ -25,6 +25,17 @@ public class FootstepAudio : MonoBehaviour
     [Header("=== References ===")]
     [SerializeField] private PlayerMotor _playerMotor;
     [SerializeField] private WeaponManager _weaponManager;
+    [Tooltip("Routes footstep noise to the AI StimulusSystem with the encumbrance " +
+             "multiplier applied. If null, falls back to a direct broadcast.")]
+    [SerializeField] private NoiseEmitter _noiseEmitter;
+
+    [Header("=== Footstep Noise Profiles ===")]
+    [Tooltip("Emitted while crouch-moving. Leave null (or BaseRadius 0) for silent sneaking.")]
+    [SerializeField] private NoiseProfileSO _crouchNoise;
+    [Tooltip("Emitted while walking. Suggested BaseRadius 4.")]
+    [SerializeField] private NoiseProfileSO _walkNoise;
+    [Tooltip("Emitted while sprinting. Suggested BaseRadius 8.")]
+    [SerializeField] private NoiseProfileSO _sprintNoise;
 
     [Header("=== Surface Sounds ===")]
     [Tooltip("Each entry maps a Unity tag to footstep audio clips for that surface type.")]
@@ -129,20 +140,14 @@ public class FootstepAudio : MonoBehaviour
         }
 
         // ── Step (skipped on landing frame to avoid doubling) ───────────
+        bool crouching = _playerMotor.IsCrouching;
+
         int step = Mathf.FloorToInt(_bobTimer / Mathf.PI);
         if (!justLanded && shouldStep && step != _lastStep)
         {
             _lastStep = step;
             PlayRandom(GetSurfaceClips(), _stepVolume);
-
-            float stepRadius = sprinting ? 8f : 4f;
-            StimulusSystem.Instance?.Broadcast(new Stimulus(
-                StimulusType.Sound,
-                transform.position,
-                radius:    stepRadius,
-                intensity: sprinting ? 0.6f : 0.3f,
-                source:    gameObject,
-                instigator: gameObject));
+            EmitFootstepNoise(crouching, sprinting);
         }
         else if (justLanded)
             _lastStep = step;
@@ -155,6 +160,41 @@ public class FootstepAudio : MonoBehaviour
     private void HandleJump()
     {
         PlayRandom(_jumpClips, _jumpVolume);
+    }
+
+    /// <summary>
+    /// Broadcasts the AI hearing stimulus for one footstep. Crouch-moving uses the
+    /// crouch profile (silent unless one is assigned with BaseRadius > 0), so a
+    /// crouching player can sneak past guards. Routes through NoiseEmitter so the
+    /// encumbrance noise multiplier is applied consistently with every other sound.
+    /// </summary>
+    private void EmitFootstepNoise(bool crouching, bool sprinting)
+    {
+        NoiseProfileSO profile = crouching ? _crouchNoise
+                               : sprinting ? _sprintNoise
+                                           : _walkNoise;
+
+        if (_noiseEmitter != null)
+        {
+            if (profile != null)
+                _noiseEmitter.Emit(profile);
+            else if (!crouching) // no profile wired yet — fall back to sensible defaults (crouch stays silent)
+                _noiseEmitter.Emit(StimulusType.Sound,
+                                   sprinting ? 8f : 4f,
+                                   sprinting ? 0.6f : 0.3f,
+                                   transform.position);
+            return;
+        }
+
+        // No NoiseEmitter wired — legacy direct broadcast (crouch stays silent).
+        if (crouching) return;
+        StimulusSystem.Instance?.Broadcast(new Stimulus(
+            StimulusType.Sound,
+            transform.position,
+            radius:    sprinting ? 8f : 4f,
+            intensity: sprinting ? 0.6f : 0.3f,
+            source:    gameObject,
+            instigator: gameObject));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum LightMode { Off, Dim, Bright }
@@ -28,7 +29,26 @@ public class LightSource : MonoBehaviour
         _                => 0f,
     };
 
+    /// <summary>Current Light.intensity (0 while off). Read by visibility contributors.</summary>
+    public float Intensity => _light != null && _light.enabled ? _light.intensity : 0f;
+    /// <summary>World position of the emitting light.</summary>
+    public Vector3 Position => transform.position;
+
+    // ── Active-light registry ───────────────────────────────────────────────
+    // Lights register themselves while enabled so LightIntensityContributor can
+    // iterate only the handful that are live, without scene-wide FindObjectsOfType.
+
+    private static readonly List<LightSource> _active = new List<LightSource>();
+    public static IReadOnlyList<LightSource> Active => _active;
+
     private void Awake() => _light = GetComponent<Light>();
+
+    private void OnEnable()
+    {
+        if (!_active.Contains(this)) _active.Add(this);
+    }
+
+    private void OnDisable() => _active.Remove(this);
 
     public void Toggle()
     {

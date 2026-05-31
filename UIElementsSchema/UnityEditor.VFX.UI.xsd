@@ -6,7 +6,7 @@
       <xs:restriction base="engine:VisualElementType">
         <xs:attribute default="" name="name" type="xs:string" use="optional" />
         <xs:attribute default="true" name="enabled" type="xs:boolean" use="optional" />
-        <xs:attribute default="dbb6e19c-9982-46e6-b233-dabcadf3f19b" name="view-data-key" type="xs:string" use="optional" />
+        <xs:attribute default="aebdd22d-f0a1-4132-b3a5-e8f05ade9f67" name="view-data-key" type="xs:string" use="optional" />
         <xs:attribute default="Ignore" name="picking-mode" type="engine:VisualElement_picking-mode_Type" use="optional" />
         <xs:attribute default="" name="tooltip" type="xs:string" use="optional" />
         <xs:attribute default="None" name="usage-hints" type="engine:VisualElement_usage-hints_Type" use="optional" />

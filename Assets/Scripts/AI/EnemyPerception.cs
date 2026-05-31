@@ -14,6 +14,12 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     [Header("Cold Sight (before first detection)")]
     [SerializeField] private float _coldSightAngle    = 60f;
     [SerializeField] private float _coldSightDistance = 15f;
+    [Tooltip("Detection score (PlayerVisibility * distance falloff) needed to spot an " +
+             "unaware player. Higher = the player can stay hidden in shadow / while still / crouched.\n" +
+             "NOTE: PlayerVisibility is multiplicative, so a still player caps near the movement " +
+             "'still' factor (~0.2). Keep this below that so a lit, close, motionless player is still " +
+             "spotted; raise it to make stealth more forgiving.")]
+    [SerializeField] private float _sightThreshold    = 0.15f;
 
     [Header("Hot Sight (after first detection — no FOV check)")]
     [SerializeField] private float _hotSightDistance = 25f;
@@ -33,6 +39,10 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     public bool      IsInHotMode       { get; private set; }
     public float     LostSightTimer    { get; private set; }
     public float     LostSightTimeout  => _lostSightTimeout;
+
+    /// <summary>Normalised loudness [0..1] of the most recently heard sound. The brain
+    /// grades its reaction off this (faint = grow suspicious, loud = investigate now).</summary>
+    public float     LastHeardIntensity { get; private set; }
 
     public event Action<PerceptionEvent, Vector3> OnPerceptionEvent;
 
@@ -79,7 +89,8 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
         bool fromTarget = Target != null && s.Instigator == Target.gameObject;
         if (fromTarget || s.Type == StimulusType.Damage)
         {
-            LastKnownPosition = s.Position;
+            LastKnownPosition  = s.Position;
+            LastHeardIntensity = s.Type == StimulusType.Damage ? 1f : s.Intensity;
             OnPerceptionEvent?.Invoke(PerceptionEvent.SoundHeard, s.Position);
         }
     }
@@ -128,9 +139,17 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     private bool CheckColdSight()
     {
         Vector3 toTarget = Target.position - transform.position;
-        if (toTarget.sqrMagnitude > _coldSightDistance * _coldSightDistance) return false;
+        float   sqrDist  = toTarget.sqrMagnitude;
+        if (sqrDist > _coldSightDistance * _coldSightDistance) return false;
         if (Vector3.Angle(transform.forward, toTarget) > _coldSightAngle * 0.5f) return false;
-        return HasLineOfSight();
+        if (!HasLineOfSight()) return false;
+
+        // Light/movement gating: a dark, still, crouched player can hide inside FOV.
+        // detectionScore = how visible the player is × how close (linear distance falloff).
+        float visibility   = VisibilitySystem.PlayerScore();
+        float normDistance = Mathf.Sqrt(sqrDist) / _coldSightDistance;
+        float detection    = visibility * (1f - normDistance);
+        return detection >= _sightThreshold;
     }
 
     private bool CheckHotSight()
