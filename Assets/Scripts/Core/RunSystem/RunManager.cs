@@ -121,6 +121,7 @@ public class RunManager : MonoBehaviour
         // SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
         // SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
         // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+        SpawnPersistence.AdvanceRunCounter(); // before broadcast so spawn systems see the new run #
         Broadcast(l => l.OnRunStarted());
         Debug.Log("[RunManager] Run started in place.");
     }
@@ -150,6 +151,7 @@ public class RunManager : MonoBehaviour
         // SaveSystem.Instance?.SaveProfile(ActiveSaveSlot);
         // SaveSystem.Instance?.SaveWorld(ActiveSaveSlot);
         // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
+        SpawnPersistence.AdvanceRunCounter(); // before broadcast so spawn systems see the new run #
         Broadcast(l => l.OnRunStarted());
     }
 

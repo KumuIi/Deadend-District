@@ -1,16 +1,20 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Spawns and manages a sector's enemies. One instance per sector scene — put the
-/// <see cref="EnemySpawnPoint"/> objects as children so collection is scene-scoped and we
-/// avoid FindObjectOfType (see RULEBOOK and the sibling LootSpawnSystem).
+/// <see cref="EnemySpawnPoint"/> objects (and any <see cref="EnemySpawnGroup"/> "grand
+/// spawners") as children so collection is scene-scoped and we avoid FindObjectOfType
+/// (see RULEBOOK and the sibling LootSpawnSystem).
 ///
-/// • OnRunStarted: spawns one enemy per point, up to <see cref="_maxEnemiesPerSector"/>.
-/// • Death:        if that point has a respawn delay and we're under the cap, respawns it.
+/// • OnRunStarted: spawns standalone points that are eligible + pass their chance roll, then
+///   asks each group for its random subset — all up to <see cref="_maxEnemiesPerSector"/>.
+/// • Death:        persists the kill via the point (limited points then stop spawning).
 /// • OnReturnedToHub: despawns every living enemy (OnDespawned for poolables, else Destroy).
+///
+/// There is no in-run respawn: kill an enemy and it stays dead for the run. "Coming back"
+/// is governed per-point by Limited Spawn + Runs Until Respawn (run-to-run, persisted).
 ///
 /// Mirrors LootSpawnSystem's additive-load catch-up: a sector loaded into an already-active
 /// run missed the OnRunStarted broadcast, so Start() spawns if State is already InRun.
@@ -20,9 +24,11 @@ public class EnemySpawnSystem : MonoBehaviour, IRunLifecycleListener
     [Tooltip("Hard cap on living enemies spawned by this system in this sector.")]
     [SerializeField] private int _maxEnemiesPerSector = 5;
 
-    private readonly List<EnemySpawnPoint> _points = new List<EnemySpawnPoint>();
-    private readonly List<Live> _live = new List<Live>();          // alive — drives cap + respawn
-    private readonly List<GameObject> _spawned = new List<GameObject>(); // every instance, for cleanup (incl. corpses)
+    private readonly List<EnemySpawnPoint> _standalonePoints = new List<EnemySpawnPoint>(); // not under a group
+    private readonly List<EnemySpawnGroup> _groups           = new List<EnemySpawnGroup>();
+    private readonly List<EnemySpawnPoint> _groupPicks       = new List<EnemySpawnPoint>(); // scratch reused per group
+    private readonly List<Live> _live = new List<Live>();                 // alive — drives the cap
+    private readonly List<GameObject> _spawned = new List<GameObject>();  // every instance, for cleanup (incl. corpses)
     private bool _collected;
     private bool _spawnedThisRun;
 
@@ -50,8 +56,30 @@ public class EnemySpawnSystem : MonoBehaviour, IRunLifecycleListener
     {
         if (_collected) return;
         _collected = true;
-        _points.Clear();
-        GetComponentsInChildren(true, _points);
+
+        _groups.Clear();
+        GetComponentsInChildren(true, _groups);
+
+        // Every point claimed by any group (drag-in array, else its children). Array members can
+        // live outside the group's hierarchy, so we ask the group rather than walk parents.
+        var owned = new HashSet<EnemySpawnPoint>();
+        var ownedBuf = new List<EnemySpawnPoint>();
+        foreach (var g in _groups)
+        {
+            if (g == null) continue;
+            ownedBuf.Clear();
+            g.GetOwnedPoints(ownedBuf);
+            foreach (var p in ownedBuf)
+                if (p != null) owned.Add(p);
+        }
+
+        // Standalone = every point under this system NOT claimed by a group.
+        var all = new List<EnemySpawnPoint>();
+        GetComponentsInChildren(true, all);
+        _standalonePoints.Clear();
+        foreach (var p in all)
+            if (p != null && !owned.Contains(p))
+                _standalonePoints.Add(p);
     }
 
     // ── Spawning ──────────────────────────────────────────────────────────────
@@ -63,16 +91,34 @@ public class EnemySpawnSystem : MonoBehaviour, IRunLifecycleListener
 
         CollectPoints();
 
-        foreach (var point in _points)
+        // Standalone points — each decides for itself (eligibility + chance).
+        foreach (var point in _standalonePoints)
         {
             if (_live.Count >= _maxEnemiesPerSector) break;
+            if (point == null || !point.HasPrefab) continue;
+            if (!point.IsAvailableThisRun()) continue;
+            if (!point.RollSpawnChance()) continue;
             SpawnAt(point);
         }
 
+        // Grand spawners — each contributes a random subset of its members.
+        foreach (var group in _groups)
+        {
+            if (group == null) continue;
+            group.SelectPointsForRun(_groupPicks);
+            foreach (var point in _groupPicks)
+            {
+                if (_live.Count >= _maxEnemiesPerSector) break;
+                SpawnAt(point);
+            }
+        }
+
         Debug.Log($"[EnemySpawnSystem] Spawned {_live.Count}/{_maxEnemiesPerSector} enemies " +
-                  $"across {_points.Count} point(s) in '{gameObject.scene.name}'.");
+                  $"across {_standalonePoints.Count} point(s) + {_groups.Count} group(s) in " +
+                  $"'{gameObject.scene.name}'.");
     }
 
+    /// <summary>Raw spawn — caller has already decided this point is eligible and rolled chance.</summary>
     private void SpawnAt(EnemySpawnPoint point)
     {
         if (point == null || !point.HasPrefab) return;
@@ -87,13 +133,13 @@ public class EnemySpawnSystem : MonoBehaviour, IRunLifecycleListener
 
         var entry = new Live { Go = go, Point = point };
         // Search children too — guards keep EnemyHealth on the root, but this is robust if a
-        // prefab nests it. Without it, death never decrements the cap or triggers respawn.
+        // prefab nests it. Without it, death never frees the cap slot or persists the kill.
         entry.Health = go.GetComponentInChildren<EnemyHealth>();
         if (entry.Health != null)
             entry.Health.OnDeath += () => OnEnemyDied(entry);
         else
             Debug.LogWarning($"[EnemySpawnSystem] '{go.name}' has no EnemyHealth — it won't " +
-                             "free its slot on death or respawn.");
+                             "free its slot on death or persist a limited-spawn kill.");
 
         if (go.TryGetComponent(out IPoolableSpawnedEntity poolable))
             poolable.OnSpawned();
@@ -106,25 +152,14 @@ public class EnemySpawnSystem : MonoBehaviour, IRunLifecycleListener
         _live.Remove(entry);
         // The corpse stays in _spawned so a same-scene rerun's DespawnAll cleans it up.
 
-        // Respawn only if this point opts in, we're still in a run, and we're under the cap.
-        if (entry.Point != null && entry.Point.RespawnDelay > 0f)
-            StartCoroutine(RespawnAfter(entry.Point, entry.Point.RespawnDelay));
-    }
-
-    private IEnumerator RespawnAfter(EnemySpawnPoint point, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        if (RunManager.Instance != null && RunManager.Instance.State == RunManager.RunState.InRun
-            && _live.Count < _maxEnemiesPerSector)
-            SpawnAt(point);
+        // Persist the kill: a limited-spawn point now stops spawning (or pauses for N runs).
+        entry.Point?.MarkConsumed();
     }
 
     // ── Despawn ────────────────────────────────────────────────────────────────
 
     private void DespawnAll()
     {
-        StopAllCoroutines(); // cancel pending respawns
-
         // Iterate every instance (alive AND corpses) so same-scene reruns don't stack bodies.
         foreach (var go in _spawned)
         {

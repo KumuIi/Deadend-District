@@ -75,10 +75,10 @@
 ### Wave 3 — The Threat  
 *Doc: [`waves/wave-3.md`](waves/wave-3.md)*
 
-- [ ] **[W3-01]** `NoiseProfileSO` + `NoiseEmitter` component
-- [ ] **[W3-02]** `PlayerVisibility` component + `VisibilitySystem`
-- [ ] **[W3-03]** `MonsterAI` (extends `BaseEnemyAI`)
-- [ ] **[W3-04]** `EnemySpawnSystem`
+- [x] **[W3-01]** `NoiseProfileSO` + `NoiseEmitter` component
+- [x] **[W3-02]** `PlayerVisibility` component + `VisibilitySystem`
+- [x] **[W3-03]** `MonsterAI` (extends `BaseEnemyAI`)
+- [x] **[W3-04]** `EnemySpawnSystem`
 - [ ] **[W3-05]** `HitZone` component + `GunController` migration to `DamageContext`
 - [ ] **[W3-09]** `WeaponStateSaveAdapter` — save chambered round + loaded magazine per weapon slot so gun state survives save/load (pairs with W3-05 GunController work); also save magazine bullet count + ammo type inside each `MagazineItemInstance` so partial mags are restored correctly (currently bullet count is lost on save/load. save ammo per bullet and stackable until a set amount(calculate selling ammo per bullet inside the SO 10xprice if 10 bullets) add a split ammo function)
 - [ ] **[W3-06]** `LadderClimbing` — `Ladder : IInteractable` + `PlayerMotor` ladder mode
