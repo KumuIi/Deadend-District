@@ -83,9 +83,11 @@
 
 **Watch out for:** Stock count decreases when player buys. When restocking, restore to `TraderSO` defaults — do not accumulate. A trader selling 5 flashlights should have 5 after restock, not 5 + remaining from last run.
 
+(check if already done since it might have already been added.)
+
 ---
 
-## W4-05 — `SectorLoading` + `SectorManager`
+## W4-05 — `SectorLoading` + `SectorManager` (!important!: ask user if thsi is needed and explain what exactly this feature is and what it will do and for what it is exactly!)
 
 **Files:** `Scripts/Core/SceneManagement/SectorManager.cs`, `Scripts/World/SectorTrigger.cs`
 
@@ -117,7 +119,7 @@
 
 ---
 
-## W4-06 — MenuSystem Polish (Settings + Save/Load Screen)
+## W4-06 — MenuSystem Polish (Settings + Save/Load Screen) (!important!: ask user how exactly he wants to polish the UI ideas will be below.)
 
 **Modify:** `Scripts/UI/MenuSystem/`
 

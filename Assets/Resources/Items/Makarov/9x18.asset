@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ec04b26b92055c043b9939ae2e0fb776, type: 3}
-  m_Name: Ammo
+  m_Name: 9x18
   m_EditorClassIdentifier: Assembly-CSharp::AmmunitionSO
-  itemName: Item
-  gridSize: {x: 1, y: 1}
+  itemName: AmmoBox 9x18
+  gridSize: {x: 3, y: 1}
   cellOffsets: []
-  weightKg: 0.5
-  sellValue: 0
-  modelPrefab: {fileID: 0}
+  weightKg: 2
+  sellValue: 5
+  modelPrefab: {fileID: 5588296941221126684, guid: 6226502884aad0b4888861a2b54cc4b8, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
-  modelOrientationOffset: {x: 0, y: 0, z: 0}
-  gridRotationAxis: {x: 0, y: 0, z: 1}
-  caliber: {fileID: 0}
-  stackSize: 30
-  pricePerRound: 0
+  modelOrientationOffset: {x: 0, y: 0, z: 90}
+  gridRotationAxis: {x: 4.36, y: 0, z: 0}
+  caliber: {fileID: 11400000, guid: 7b6eede7fd2b5a94b8e25469cd746b7c, type: 2}
+  stackSize: 60
+  pricePerRound: 10
   damage: 25
   velocity: 375
   damageFalloff:
@@ -33,16 +33,25 @@ MonoBehaviour:
       time: 0
       value: 1
       inSlope: 0
-      outSlope: -0.39999998
+      outSlope: 0
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
+      time: 0.75596035
+      value: 0.79738367
+      inSlope: -0.25433034
+      outSlope: -0.25433034
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.16221356
+      outWeight: 0.33333334
+    - serializedVersion: 3
       time: 1
       value: 0.6
       inSlope: -0.39999998
-      outSlope: 0
+      outSlope: -0.39999998
       tangentMode: 0
       weightedMode: 0
       inWeight: 0

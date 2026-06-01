@@ -20,10 +20,15 @@ public class PlayerMotor : MonoBehaviour
     [SerializeField] private float mouseSensitivity = 2f;
 
     [Header("Ladder")]
+    [Tooltip("Camera transform — its pitch decides climb direction (look up = ascend). " +
+             "Assign the player's Camera. If empty, falls back to plain W = up / S = down.")]
+    [SerializeField] private Transform _cameraTransform;
     [Tooltip("Vertical climb speed in m/s while on a ladder.")]
     [SerializeField] private float _ladderClimbSpeed = 3f;
     [Tooltip("How fast the player snaps onto the ladder's centre axis (lerp factor per fixed step).")]
     [SerializeField, Range(0f, 1f)] private float _ladderSnapStrength = 0.4f;
+    [Tooltip("How squarely the player must face the ladder to hug it (0..1 dot, higher = stricter).")]
+    [SerializeField, Range(0f, 1f)] private float _ladderGrabFacing = 0.35f;
     [Tooltip("Energy drained per metre climbed. 0 = climbing is free.")]
     [SerializeField] private float _ladderEnergyPerMeter = 0f;
 
@@ -64,6 +69,7 @@ public class PlayerMotor : MonoBehaviour
 
     private bool   _isOnLadder;
     private Ladder _currentLadder;
+    private float  _ladderGrabCooldown;   // blocks instant re-grab right after dismount/jump-off
 
     private const string CrouchRegenModId = "crouch.regen";
 
@@ -189,6 +195,8 @@ public class PlayerMotor : MonoBehaviour
     {
         _jumpedThisFrame = false;
 
+        if (_ladderGrabCooldown > 0f) _ladderGrabCooldown -= Time.fixedDeltaTime;
+
         if (!Mathf.Approximately(_pendingYaw, 0f))
         {
             _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, _pendingYaw, 0f));
@@ -298,7 +306,20 @@ public class PlayerMotor : MonoBehaviour
 
     // ─── Ladder (W3-06) ────────────────────────────────────────────────────
 
-    /// <summary>Begin climbing <paramref name="ladder"/>. Called by Ladder.Interact.</summary>
+    /// <summary>
+    /// Rust-style "hug" attach. Called every physics step by <see cref="Ladder"/> while the
+    /// player overlaps its trigger. Grabs on only when the player is pressing forward (W) and
+    /// roughly facing the ladder, so brushing past it sideways doesn't snag you.
+    /// </summary>
+    public void TryGrabLadder(Ladder ladder)
+    {
+        if (ladder == null || _isOnLadder || _ladderGrabCooldown > 0f) return;
+        if (_input.MoveInput.y <= 0.1f) return;                                   // must press into it
+        if (Vector3.Dot(transform.forward, -ladder.FrontNormal) < _ladderGrabFacing) return;
+        EnterLadderMode(ladder);
+    }
+
+    /// <summary>Begin climbing <paramref name="ladder"/>. Called by Ladder.Interact / TryGrabLadder.</summary>
     public void EnterLadderMode(Ladder ladder)
     {
         if (ladder == null || _isOnLadder) return;
@@ -314,8 +335,9 @@ public class PlayerMotor : MonoBehaviour
     /// <summary>Leave ladder mode and hand control back to the normal motor.</summary>
     public void ExitLadderMode()
     {
-        _isOnLadder    = false;
-        _currentLadder = null;
+        _isOnLadder         = false;
+        _currentLadder      = null;
+        _ladderGrabCooldown = 0.35f;   // don't re-hug the ladder we just left
     }
 
     /// <summary>
@@ -339,8 +361,22 @@ public class PlayerMotor : MonoBehaviour
             return;
         }
 
-        float   climb = _input.MoveInput.y;          // W = +1 (up), S = -1 (down)
-        Vector3 pos   = _rb.position;
+        // Rust-style climb: hold W to move along the ladder in the direction you look.
+        // Look up → ascend, look down → descend; S reverses. With no camera ref, fall back
+        // to plain W = up / S = down.
+        float forward = _input.MoveInput.y;          // W = +1, S = -1
+        float climb;
+        if (_cameraTransform != null && Mathf.Abs(forward) > 0.1f)
+        {
+            float lookSign = _cameraTransform.forward.y >= 0f ? 1f : -1f;   // + = looking up
+            climb = forward * lookSign;
+        }
+        else
+        {
+            climb = forward;
+        }
+
+        Vector3 pos = _rb.position;
 
         // Ease horizontally onto the ladder's centre line.
         Vector3 axis = _currentLadder.AxisXZ;

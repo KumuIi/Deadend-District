@@ -68,7 +68,13 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
         for (int i = 0; i < _stockRemaining.Length; i++)
         {
             int count = _trader.Stock[i].StockCount;
-            _stockRemaining[i] = count <= 0 ? -1 : count; // 0 in the asset = unlimited
+            if (count <= 0) { _stockRemaining[i] = -1; continue; } // 0 in the asset = unlimited
+
+            // Ammo is sold per round, so its stock is measured in rounds: StockCount boxes ×
+            // rounds-per-box. Everything else counts in whole items.
+            _stockRemaining[i] = _trader.Stock[i].Item is AmmunitionSO ammo
+                ? count * Mathf.Max(1, ammo.stackSize)
+                : count;
         }
         _runsUntilRestock = _trader.RestockIntervalRuns;
     }
@@ -182,6 +188,17 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
     private List<(string label, Action action)> BuyEntriesFor(ItemInstance view)
     {
         if (!_stockIndexByView.TryGetValue(view, out int idx)) return null;
+
+        // Ammo buys per round: offer x1, x10 (if the box is bigger), and a full box.
+        if (_trader.Stock[idx].Item is AmmunitionSO ammoDef)
+        {
+            int perRound = PerRoundPrice(idx, ammoDef);
+            var entries  = new List<(string, Action)>();
+            foreach (int qty in AmmoBuyQuantities(ammoDef.stackSize))
+                entries.Add(($"Buy x{qty} ({perRound * qty} cr)", () => BuyAmmoRounds(view, idx, qty)));
+            return entries;
+        }
+
         int price = _trader.Stock[idx].BuyPrice;
         return new List<(string, Action)> { ($"Buy ({price} cr)", () => BuyByView(view)) };
     }
@@ -189,10 +206,42 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
     private string BuyTooltipFor(ItemInstance view)
     {
         if (!_stockIndexByView.TryGetValue(view, out int idx)) return null;
-        int    price   = _trader.Stock[idx].BuyPrice;
-        int    rem     = _stockRemaining[idx];
-        string stock   = rem < 0 ? "" : $"  (Stock: x{rem})";
-        return $"<b>Buy: {price} cr</b>{stock}\nCredits: {CurrencyService.GetCredits()}";
+
+        int rem = _stockRemaining[idx];
+
+        if (_trader.Stock[idx].Item is AmmunitionSO ammoDef)
+        {
+            int    perRound = PerRoundPrice(idx, ammoDef);
+            string stock    = rem < 0 ? "" : $"  (Stock: {rem} rounds)";
+            return $"<b>Buy: {perRound} cr/round</b>{stock}\nCredits: {CurrencyService.GetCredits()}";
+        }
+
+        int    price = _trader.Stock[idx].BuyPrice;
+        string box   = rem < 0 ? "" : $"  (Stock: x{rem})";
+        return $"<b>Buy: {price} cr</b>{box}\nCredits: {CurrencyService.GetCredits()}";
+    }
+
+    /// <summary>The quantity tiers offered for an ammo box of the given size (deduped, ascending).</summary>
+    private static IEnumerable<int> AmmoBuyQuantities(int stackSize)
+    {
+        yield return 1;
+        if (stackSize > 10) yield return 10;
+        if (stackSize > 1 && stackSize != 10) yield return stackSize; // full box
+    }
+
+    /// <summary>
+    /// Per-round buy price. Uses the ammo's own <see cref="AmmunitionSO.pricePerRound"/> when set
+    /// (the authored, intuitive value), otherwise derives it from the entry's whole-box
+    /// <see cref="TraderSO.StockEntry.BuyPrice"/> spread over the stack size.
+    /// </summary>
+    private int PerRoundPrice(int stockIndex, AmmunitionSO ammoDef)
+    {
+        if (ammoDef.pricePerRound > 0) return ammoDef.pricePerRound;
+
+        int box = _trader.Stock[stockIndex].BuyPrice;
+        return box > 0
+            ? Mathf.Max(1, Mathf.CeilToInt(box / (float)Mathf.Max(1, ammoDef.stackSize)))
+            : Mathf.Max(1, ammoDef.EffectivePricePerRound);
     }
 
     private void BuyByView(ItemInstance view)
@@ -232,6 +281,73 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
         CurrencyService.Spend(entry.BuyPrice);
         if (remaining > 0) _stockRemaining[stockIndex] = remaining - 1; // unlimited (-1) stays put
         return true;
+    }
+
+    // ── Buy ammo per round ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Buys up to <paramref name="qty"/> rounds of an ammo entry. Clamps to what the player can
+    /// afford, what's in stock, and what fits in the inventory, then charges only for the rounds
+    /// actually delivered — so a full grid or thin wallet never burns credits.
+    /// </summary>
+    private void BuyAmmoRounds(ItemInstance view, int stockIndex, int qty)
+    {
+        if (_trader?.Stock == null || stockIndex < 0 || stockIndex >= _trader.Stock.Length) return;
+        if (_playerInventoryUI == null) return;
+        if (!(_trader.Stock[stockIndex].Item is AmmunitionSO ammoDef)) return;
+
+        int perRound  = PerRoundPrice(stockIndex, ammoDef);
+        int remaining = _stockRemaining[stockIndex];
+
+        int want = qty;
+        if (remaining >= 0) want = Mathf.Min(want, remaining);                       // stock cap
+        want = Mathf.Min(want, CurrencyService.GetCredits() / perRound);             // wallet cap
+        if (want <= 0) return;
+
+        int delivered = GiveRoundsToPlayer(ammoDef, want);                           // inventory cap
+        if (delivered <= 0) return;
+
+        CurrencyService.Spend(delivered * perRound);
+        if (remaining > 0) _stockRemaining[stockIndex] = remaining - delivered;
+
+        if (_stockRemaining[stockIndex] == 0)
+        {
+            _stockUI.RemoveItem(view);
+            _stockIndexByView.Remove(view);
+        }
+    }
+
+    /// <summary>
+    /// Delivers <paramref name="rounds"/> into the player grid: first topping up existing partial
+    /// stacks of the same ammo, then creating fresh boxes for the remainder. Returns how many
+    /// rounds were actually placed (may be fewer than requested if the grid fills up).
+    /// </summary>
+    private int GiveRoundsToPlayer(AmmunitionSO def, int rounds)
+    {
+        int given = 0;
+
+        // 1) Top up existing partial stacks of the same ammo type.
+        foreach (var inst in _playerInventoryUI.Grid.PlacedItems)
+        {
+            if (given >= rounds) break;
+            if (inst is AmmoItemInstance a && a.AmmoDef == def && !a.IsFull)
+            {
+                int toAdd    = rounds - given;
+                int overflow = a.AddRounds(toAdd);
+                given += toAdd - overflow;
+            }
+        }
+
+        // 2) New boxes for whatever's left, one stack at a time, until the grid is full.
+        while (given < rounds)
+        {
+            int chunk = Mathf.Min(def.stackSize, rounds - given);
+            var box   = new AmmoItemInstance(def, chunk);
+            if (_playerInventoryUI.TryPickup(box) != PickupResult.Placed) break;     // out of room
+            given += chunk;
+        }
+
+        return given;
     }
 
     // ── Sell (from player grid) ──────────────────────────────────────────────

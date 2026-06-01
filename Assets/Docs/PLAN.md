@@ -96,36 +96,34 @@
 - [ ] **[W4-04]** `StockRestock` (TraderSO + RunManager.OnRunComplete hook)
 - [ ] **[W4-05]** `SectorLoading` + `SectorManager` (additive scenes, NavMeshSurface per sector)
 - [ ] **[W4-06]** MenuSystem polish — settings screen, save/load screen
-- [ ] **[W4-07]** `MidRaidSave` — optional mid-run checkpoint: save player world position + current sector name, restore sector additively on load if save was made during a run *[DECISION PENDING — owner to confirm whether mid-raid saving fits the game's design]*
-
 ---
 
 ### Wave 5 — Depth  
 *Doc: [`waves/wave-5.md`](waves/wave-5.md)*
 
-- [ ] **[W5-01]** `SpatialAudioManager` + AudioMixer setup
+- [ ]together with [W5-23] **[W5-01]** `SpatialAudioManager` + AudioMixer setup
 - [ ] **[W5-02]** `DialogueSystem` (`DialogueSO` + `DialogueUI`)
-- [ ] **[W5-03]** `DocumentCollectible` (`ReadableDocumentSO` + `IInteractable`)
-- [ ] **[W5-04]** `JournalSystem` + `JournalUI`
-- [ ] **[W5-05]** `AugmentSystem` concrete implementations (`CyberneticSO` subclasses as `IBatteryDrainer` + `PlayerStatModifier`)
-- [ ] **[W5-06]** `Melee` (`MeleeWeaponSO` + `MeleeController`)
-- [ ] **[W5-07]** `ThrowableSystem` (`FlareItemSO` as `ILightSource`, `DistractionItemSO`)
-- [ ] **[W5-08]** `EnemyTypes` (`EnemyTypeSO` + `BaseEnemyAI` variants)
-- [ ] **[W5-09]** `HazardZones` (`HazardZoneSO` + trigger + `PlayerStatModifier` resistance)
+- [ ]skip for now **[W5-03]** `DocumentCollectible` (`ReadableDocumentSO` + `IInteractable`)
+- [ ]skip for now **[W5-04]** `JournalSystem` + `JournalUI`
+- [ ]skip for now **[W5-05]** `AugmentSystem` concrete implementations (`CyberneticSO` subclasses as `IBatteryDrainer` + `PlayerStatModifier`)
+- [ ]skip for now **[W5-06]** `Melee` (`MeleeWeaponSO` + `MeleeController`)
+- [ ]skip for now **[W5-07]** `ThrowableSystem` (`FlareItemSO` as `ILightSource`, `DistractionItemSO`)
+- [ ]skip for now **[W5-08]** `EnemyTypes` (`EnemyTypeSO` + `BaseEnemyAI` variants)
+- [ ]skip for now **[W5-09]** `HazardZones` (`HazardZoneSO` + trigger + `PlayerStatModifier` resistance)
 - [ ] **[W5-10]** `ShortcutSystem` (WSM World-scope flags + `IInteractable` shortcut opener)
-- [ ] **[W5-11]** `WallMarking` (decal placement via `IInteractable`)
-- [ ] **[W5-12]** `BlockedPaths` (`IInteractable` debris + quest/tool clear condition)
-- [ ] **[W5-13]** `KeypadCodeLocks` (code variant of `LockedDoor`)
-- [ ] **[W5-14]** `CommitmentDrops` (one-way trigger + WSM flag)
-- [ ] **[W5-15]** `MountedLight` + `Headlamp` (`ILightSource` + `IBatteryDrainer` variants)
-- [ ] **[W5-16]** `TuningData` (`GameBalanceSO` central config)
-- [ ] **[W5-17]** `WeaponMods/Attachments` *[POLISH]*
-- [ ] **[W5-18]** `WeaponDurability/Jamming` *[POLISH]*
-- [ ] **[W5-19]** `CompassOrLandmarks` *[POLISH]*
-- [ ] **[W5-20]** `DistractionMechanic` (throwable AI attention pull) *[POLISH]*
-- [ ] **[W5-21]** `Lockpicking` minigame *[POLISH]*
-- [ ] **[W5-22]** `Vault/Mantle` *[POLISH]*
-- [ ] **[W5-23]** `AmbientAndMusic` *[POLISH]*
+- [ ]skip for now **[W5-11]** `WallMarking` (decal placement via `IInteractable`)
+- [ ]skip for now **[W5-12]** `BlockedPaths` (`IInteractable` debris + quest/tool clear condition)
+- [ ]skip for now **[W5-13]** `KeypadCodeLocks` (code variant of `LockedDoor`)
+- [ ]skip for now **[W5-14]** `CommitmentDrops` (one-way trigger + WSM flag)
+- [ ]skip for now **[W5-15]** `MountedLight` + `Headlamp` (`ILightSource` + `IBatteryDrainer` variants)
+- [ ]skip for now **[W5-16]** `TuningData` (`GameBalanceSO` central config)
+- [ ]skip for now **[W5-17]** `WeaponMods/Attachments` *[POLISH]*
+- [ ]skip for now **[W5-18]** `WeaponDurability/Jamming` *[POLISH]*
+- [ ]skip for now **[W5-19]** `CompassOrLandmarks` *[POLISH]*
+- [ ]skip for now **[W5-20]** `DistractionMechanic` (throwable AI attention pull) *[POLISH]*
+- [ ]skip for now **[W5-21]** `Lockpicking` minigame *[POLISH]*
+- [ ]skip for now **[W5-22]** `Vault/Mantle` *[POLISH]*
+- [ ]IMPORTANT! SHOULD BE DONE THROUGHLY! (chat with user about it and give ideas how to give a horror feel (user has a lot of music and soundeffects of every kind)) **[W5-23]** `AmbientAndMusic` *[POLISH]*
 
 ---
 

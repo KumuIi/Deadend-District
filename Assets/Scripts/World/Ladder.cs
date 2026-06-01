@@ -1,8 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// A climbable ladder (W3-06). Implements <see cref="IInteractable"/>: the player presses
-/// E near either end to mount, then <see cref="PlayerMotor"/> drives the climb.
+/// A climbable ladder (W3-06). Rust-style: the player walks into the ladder while pressing
+/// forward and auto-attaches ("hugs" it), then climbs by holding W and looking up/down.
+/// <see cref="PlayerMotor"/> drives the actual climb. Pressing F still works as a fallback
+/// mount via <see cref="IInteractable"/>.
 ///
 /// Setup:
 ///   • Place an empty child at the bottom and top of the ladder and wire them as
@@ -11,6 +13,8 @@ using UnityEngine;
 ///   • Orient this transform so local +Z (blue arrow) points away from the wall toward the
 ///     player — that is the default jump-off / top-exit direction. Override per-ladder with
 ///     the direction fields if the ledge is elsewhere.
+///   • Add a Collider with Is Trigger = true (e.g. a BoxCollider) covering the climbable
+///     area in front of the rungs. Standing in it + pressing forward auto-attaches.
 /// </summary>
 public sealed class Ladder : MonoBehaviour, IInteractable
 {
@@ -42,6 +46,27 @@ public sealed class Ladder : MonoBehaviour, IInteractable
 
     public Vector3 JumpOffDirection => Horizontal(_jumpOffDirection, transform.forward);
     public Vector3 TopExitDirection => Horizontal(_topExitDirection, transform.forward);
+
+    /// <summary>Horizontal direction the ladder face points (toward the player). +Z by default.</summary>
+    public Vector3 FrontNormal => Horizontal(transform.forward, transform.forward);
+
+    // ── Auto-attach (Rust-style) ─────────────────────────────────────────────
+
+    private void Awake()
+    {
+        var col = GetComponent<Collider>();
+        if (col == null || !col.isTrigger)
+            Debug.LogWarning($"[Ladder] {name}: add a Collider with Is Trigger = true so the " +
+                             "player can hug the ladder to climb.", this);
+    }
+
+    // While the player stands inside the ladder's trigger volume and presses into it,
+    // the motor decides whether to grab on (it checks facing + forward input).
+    private void OnTriggerStay(Collider other)
+    {
+        var motor = other.GetComponentInParent<PlayerMotor>();
+        if (motor != null) motor.TryGrabLadder(this);
+    }
 
     // ── IInteractable ───────────────────────────────────────────────────────
 

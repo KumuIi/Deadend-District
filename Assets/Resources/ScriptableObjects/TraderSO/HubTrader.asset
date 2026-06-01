@@ -24,6 +24,9 @@ MonoBehaviour:
   - Item: {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
     BuyPrice: 1000
     StockCount: 3
+  - Item: {fileID: 11400000, guid: eeb9544d30d0f1844a66cc4eba9cf95b, type: 2}
+    BuyPrice: 15
+    StockCount: 3
   SellFraction: 1
   BuysAnything: 1
   RestockIntervalRuns: 3

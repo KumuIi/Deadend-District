@@ -216,6 +216,7 @@ public sealed class InventoryUI : MonoBehaviour
             _contextMenu.OnRemoveMagazine = ContextMenu_RemoveMagazine;
             _contextMenu.OnRemoveBattery  = ContextMenu_RemoveBattery;
             _contextMenu.OnDrop           = ContextMenu_Drop;
+            _contextMenu.OnSplitAmmo      = ContextMenu_SplitAmmo;
 
             // C# reference equality: each WeaponItemInstance is a unique object even
             // if two items share the same WeaponSO. No GUID needed for runtime checks.
@@ -619,6 +620,24 @@ public sealed class InventoryUI : MonoBehaviour
         DetachEquipmentFor(item);
 
         RemoveItem(item);
+    }
+
+    /// <summary>
+    /// Splits <paramref name="amount"/> rounds off <paramref name="ammo"/> into a new stack placed
+    /// in the first free slot. If there's no room the split is undone so no rounds are ever lost.
+    /// </summary>
+    private void ContextMenu_SplitAmmo(AmmoItemInstance ammo, int amount)
+    {
+        if (ammo == null) return;
+
+        var split = ammo.Split(amount);          // null if amount ≤ 0 or ≥ current count
+        if (split == null) return;
+
+        if (TryPickup(split) == PickupResult.NoSpace)
+        {
+            ammo.AddRounds(split.CurrentCount);  // grid full → merge the rounds back
+            Debug.LogWarning("[InventoryUI] Split failed — no free slot for the new stack.");
+        }
     }
 
     // ── Drag interaction handler ──────────────────────────────────────────

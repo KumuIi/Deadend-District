@@ -31,6 +31,9 @@ public sealed class InventoryContextMenu
     public Action<ItemInstance> OnRemoveBattery;
     public Action<ItemInstance> OnDrop;
 
+    /// <summary>Split <paramref name="amount"/> rounds off an ammo stack into a new stack. (item, amount)</summary>
+    public Action<AmmoItemInstance, int> OnSplitAmmo;
+
     /// <summary>Return true if the given item is currently the equipped weapon. Used to toggle Equip/Unequip.</summary>
     public Func<ItemInstance, bool> IsItemEquipped;
 
@@ -120,6 +123,15 @@ public sealed class InventoryContextMenu
 
             if (AllowItemActions && fi.InsertedBattery != null)
                 entries.Add(("Remove Battery", () => { OnRemoveBattery?.Invoke(item); Hide(); }));
+        }
+        else if (item is AmmoItemInstance ammo && AllowItemActions)
+        {
+            // Split halves the stack; Take 10 peels a fixed 10 off. Both leave ≥1 round behind,
+            // so they only appear when there's enough to split (Split.cs enforces the same rule).
+            if (ammo.CurrentCount > 1)
+                entries.Add(("Split",   () => { OnSplitAmmo?.Invoke(ammo, ammo.CurrentCount / 2); Hide(); }));
+            if (ammo.CurrentCount > 10)
+                entries.Add(("Take 10", () => { OnSplitAmmo?.Invoke(ammo, 10); Hide(); }));
         }
 
         if (AllowItemActions)

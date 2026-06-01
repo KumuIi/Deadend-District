@@ -328,6 +328,10 @@ PrefabInstance:
       propertyPath: weaponManager
       value: 
       objectReference: {fileID: 1127164329}
+    - target: {fileID: 4156353939456609279, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
+      propertyPath: 'testItems.Array.data[2]'
+      value: 
+      objectReference: {fileID: 11400000, guid: eeb9544d30d0f1844a66cc4eba9cf95b, type: 2}
     - target: {fileID: 6615256840996726013, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       propertyPath: m_Name
       value: '[System]'
@@ -709,6 +713,11 @@ Transform:
   - {fileID: 689120046}
   m_Father: {fileID: 492056714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1029032136 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6052119987546144178, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1716602091}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1036366624
 GameObject:
   m_ObjectHideFlags: 0
@@ -1356,6 +1365,63 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1001 &1606164257
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3.4011364
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.7872322
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.4784437
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2219705741734940833, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3861566600339610444, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
+      propertyPath: m_Name
+      value: Props_Ladder
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: bd56d626081414db3b6c5c83f177082b, type: 3}
 --- !u!1 &1637740184
 GameObject:
   m_ObjectHideFlags: 0
@@ -1519,8 +1585,12 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1127164351}
     - target: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _cameraTransform
+      value: 
+      objectReference: {fileID: 1029032136}
+    - target: {fileID: 3513889191098211496, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: _sprintDrainRate
-      value: 0.1
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4227657300526545024, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: _gunshotNoise
@@ -1649,8 +1719,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FallDamage
   _motor: {fileID: 1127164332}
   _health: {fileID: 1716602092}
-  _safeLandingSpeed: 10
-  _damagePerSpeedOverThreshold: 8
+  _safeLandingSpeed: 17
+  _damagePerSpeedOverThreshold: 1
   _regenSuppressOnLanding: 1.5
 --- !u!1 &1796430169
 GameObject:
@@ -1928,3 +1998,4 @@ SceneRoots:
   - {fileID: 1338166816}
   - {fileID: 492056714}
   - {fileID: 1692325779}
+  - {fileID: 1606164257}
