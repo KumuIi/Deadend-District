@@ -19,6 +19,14 @@ public class PlayerMotor : MonoBehaviour
     [Header("Mouse Look")]
     [SerializeField] private float mouseSensitivity = 2f;
 
+    [Header("Ladder")]
+    [Tooltip("Vertical climb speed in m/s while on a ladder.")]
+    [SerializeField] private float _ladderClimbSpeed = 3f;
+    [Tooltip("How fast the player snaps onto the ladder's centre axis (lerp factor per fixed step).")]
+    [SerializeField, Range(0f, 1f)] private float _ladderSnapStrength = 0.4f;
+    [Tooltip("Energy drained per metre climbed. 0 = climbing is free.")]
+    [SerializeField] private float _ladderEnergyPerMeter = 0f;
+
     private Rigidbody       _rb;
     private PlayerInput     _input;
     private CapsuleCollider _capsule;
@@ -53,6 +61,9 @@ public class PlayerMotor : MonoBehaviour
     private float _jumpChargeAccum;
     private bool  _jumpPending;
     private bool  _prevCrouching;
+
+    private bool   _isOnLadder;
+    private Ladder _currentLadder;
 
     private const string CrouchRegenModId = "crouch.regen";
 
@@ -97,6 +108,7 @@ public class PlayerMotor : MonoBehaviour
     }
 
     public bool    IsGrounded             => _grounded;
+    public bool    IsOnLadder             => _isOnLadder;
     public bool    IsCrouching            => _isCrouching;
     public bool    IsSprinting            => _input.SprintHeld && _input.MoveInput.y > 0f && !_isCrouching
                                              && !_staminaExhausted
@@ -182,6 +194,8 @@ public class PlayerMotor : MonoBehaviour
             _rb.MoveRotation(_rb.rotation * Quaternion.Euler(0f, _pendingYaw, 0f));
             _pendingYaw = 0f;
         }
+
+        if (_isOnLadder) { HandleLadder(); return; }
 
         CheckGround();
         HandleCrouch();
@@ -280,6 +294,87 @@ public class PlayerMotor : MonoBehaviour
     {
         if (_grounded && _velocity.y <= 0f) _velocity.y = 0f;
         else _velocity.y -= config.gravity * Time.fixedDeltaTime;
+    }
+
+    // ─── Ladder (W3-06) ────────────────────────────────────────────────────
+
+    /// <summary>Begin climbing <paramref name="ladder"/>. Called by Ladder.Interact.</summary>
+    public void EnterLadderMode(Ladder ladder)
+    {
+        if (ladder == null || _isOnLadder) return;
+        _currentLadder   = ladder;
+        _isOnLadder      = true;
+        _velocity        = Vector3.zero;
+        _isSliding       = false;
+        _inSlopeMode     = false;
+        _jumpPending     = false;
+        _jumpBufferTimer = 0f;
+    }
+
+    /// <summary>Leave ladder mode and hand control back to the normal motor.</summary>
+    public void ExitLadderMode()
+    {
+        _isOnLadder    = false;
+        _currentLadder = null;
+    }
+
+    /// <summary>
+    /// Drives movement while on a ladder. Replaces the normal gravity/move chain — gravity
+    /// is off, horizontal input is ignored, the player is snapped to the ladder axis and
+    /// moves vertically on W/S. Auto-dismounts at the ends; jump pushes off.
+    /// </summary>
+    void HandleLadder()
+    {
+        if (_currentLadder == null) { ExitLadderMode(); return; }
+
+        // Jump off — _jumpPending is set by Update() (JumpPressed is consumed there first).
+        if (_jumpPending)
+        {
+            _jumpPending     = false;
+            _jumpBufferTimer = 0f;
+            Vector3 off = _currentLadder.JumpOffDirection;
+            ExitLadderMode();
+            _velocity = off * config.jumpForce + Vector3.up * (config.jumpForce * 0.5f);
+            OnJumped?.Invoke();
+            return;
+        }
+
+        float   climb = _input.MoveInput.y;          // W = +1 (up), S = -1 (down)
+        Vector3 pos   = _rb.position;
+
+        // Ease horizontally onto the ladder's centre line.
+        Vector3 axis = _currentLadder.AxisXZ;
+        pos.x = Mathf.Lerp(pos.x, axis.x, _ladderSnapStrength);
+        pos.z = Mathf.Lerp(pos.z, axis.z, _ladderSnapStrength);
+
+        float dy   = climb * _ladderClimbSpeed * Time.fixedDeltaTime;
+        float newY = pos.y + dy;
+
+        // Auto-dismount over the top: step onto the ledge.
+        if (climb > 0f && newY >= _currentLadder.TopY)
+        {
+            Vector3 exit = _currentLadder.TopExitDirection;
+            ExitLadderMode();
+            _velocity = Vector3.zero;
+            _rb.MovePosition(new Vector3(pos.x, _currentLadder.TopY, pos.z) + exit * 0.6f);
+            return;
+        }
+
+        // Auto-dismount at the bottom: drop to grounded.
+        if (climb < 0f && newY <= _currentLadder.BottomY)
+        {
+            ExitLadderMode();
+            _velocity = Vector3.zero;
+            _rb.MovePosition(new Vector3(pos.x, _currentLadder.BottomY, pos.z));
+            return;
+        }
+
+        // Stamina drain per metre climbed (0 by default).
+        if (_ladderEnergyPerMeter > 0f && _playerHealth != null && !Mathf.Approximately(dy, 0f))
+            _playerHealth.UseEnergy(_ladderEnergyPerMeter * Mathf.Abs(dy));
+
+        _velocity = Vector3.zero;
+        _rb.MovePosition(new Vector3(pos.x, newY, pos.z));
     }
 
     // ─── Jump ─────────────────────────────────────────────────────────────

@@ -142,6 +142,9 @@ public class EnemyBrain : MonoBehaviour
         _agent.updateRotation = false;
         _defaultAgentSpeed    = _agent.speed;
 
+        // W3-07: ladders are Mimic-only. Guards must never path over ladder NavMeshLinks.
+        NavAreas.ExcludeLadder(_agent);
+
         ValidateRefs();
 
         var ph = Object.FindObjectOfType<PlayerHealth>();

@@ -176,18 +176,29 @@ it can attack if close enough by dashin at the player. also make that it feels l
 
 ---
 
-## W3-07 — NavMesh Off-Mesh Links for Enemy Ladder Traversal
+## W3-07 — NavMesh Links for **Mimic-Only** Ladder Traversal
 
-**No new scripts.** Editor setup pass.
+**Scope change (owner decision):** Only the **Mimic** traverses ladders — it is a wall-crawler
+that ascends the rungs naturally. Bipedal **guards do NOT use ladders** (a vertical link would
+make them teleport/slide up, which looks wrong). Enforced in code via NavMesh area masks.
 
-**How to build:**
-- On each `Ladder` GameObject: add a `NavMeshLink` component (Unity's NavMesh Surface package).
-- Start point = ladder bottom, End point = ladder top, Width = agent width.
-- Set bi-directional if enemies can go up and down.
-- `BaseEnemyAI` does not need special code — NavMeshAgent traverses off-mesh links automatically.
-- Bake NavMesh surfaces to include the new links.
+**Code (done):**
+- `Scripts/AI/NavAreas.cs` — defines the `"LadderClimb"` area name + `ExcludeLadder(agent)`.
+- `EnemyBrain.Awake` calls `NavAreas.ExcludeLadder(_agent)` so guards strip the ladder area bit
+  from their `areaMask` and never path over ladder links. `MonsterAI` (mimic) keeps the full
+  mask, so its agent paths over the link and `CrawlToward`'s climb bias carries the body up.
 
-**Watch out for:** Player ladder climbing is NOT via NavMesh off-mesh links. It's a custom `PlayerMotor` mode. Enemy traversal IS via NavMesh. Keep these separate — they're different movement systems.
+**Editor setup (required):**
+1. Navigation ▸ **Areas**: add a custom area named exactly **`LadderClimb`**. (Until this exists,
+   `NavAreas` no-ops and guards simply behave as before — nothing breaks.)
+2. On each `Ladder` GameObject: add a `NavMeshLink`. Start = ladder bottom, End = ladder top,
+   Width ≈ agent width, **Area = `LadderClimb`**. Bi-directional if mimics descend too.
+3. Bake NavMesh surfaces so the links connect the floor islands at top/bottom.
+4. Ensure the ladder's climbable face is on the mimic's `_surfaceMask` so it sticks while ascending.
+
+**Watch out for:** Player ladder climbing is the custom `PlayerMotor` mode (W3-06), NOT NavMesh —
+keep the two systems separate. Guards path *around* ladders to other routes; make sure the level
+has an alternate guard path or guards will simply never follow the player up a mimic ladder.
 
 ---
 

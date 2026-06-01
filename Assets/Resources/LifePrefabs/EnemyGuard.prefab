@@ -1141,6 +1141,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -1781356600409242780, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5737480495279105060}
+    - targetCorrespondingSourceObject: {fileID: -1781356600409242780, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2543368889830644297}
     - targetCorrespondingSourceObject: {fileID: -9070493210130169274, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 71473636959262567}
@@ -1576,6 +1579,20 @@ CharacterJoint:
   m_EnablePreprocessing: 0
   m_MassScale: 1
   m_ConnectedMassScale: 1
+--- !u!114 &2543368889830644297
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2888277043102483330}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d678b001d8c5fd47ac31a87dd80a475, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HitZone
+  _zoneId: head
+  _damageMultiplier: 2.5
 --- !u!4 &2976172856996208349 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -1864740628597940677, guid: 46b95901a4ab08e40b4a37ad523aa02b, type: 3}
@@ -2060,6 +2077,12 @@ MonoBehaviour:
   _holdGroundTimeout: 30
   _investigateSlowSpeed: 1.5
   _investigateTimeout: 8
+  _investigateMoveSpeed: 1.6
+  _investigateLoudness: 0.45
+  _suspiciousLoudness: 0.15
+  _suspiciousScanTime: 4
+  _scanSweepAngle: 70
+  _scanRate: 2.2
   _rotationSpeed: 360
   _hitsToChangeCover: 3
   _reactionDelay: 1
@@ -2091,12 +2114,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyPerception
   _coldSightAngle: 156
   _coldSightDistance: 15
+  _sightThreshold: 0.15
   _hotSightDistance: 25
   _sightCheckInterval: 0.15
   _lostSightTimeout: 5
   _occlusionMask:
     serializedVersion: 2
     m_Bits: 1
+  _eyeHeight: 1.4
+  _fallbackAimHeight: 1.6
 --- !u!114 &813630713552513832
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -148,14 +148,46 @@ public class InventoryGrid
     {
         var entries = new List<GridSaveEntry>(_placed.Count);
         foreach (var item in _placed)
-            entries.Add(new GridSaveEntry
+        {
+            var entry = new GridSaveEntry
             {
                 soName    = item.data.name,
                 gridX     = item.gridPosition.x,
                 gridY     = item.gridPosition.y,
                 isRotated = item.isRotated,
-            });
+            };
+
+            // W3-09: capture mutable typed-instance state so ammo/magazine contents survive
+            // save/load (previously only placement was stored).
+            switch (item)
+            {
+                case AmmoItemInstance ammo:
+                    entry.ammoCount = ammo.CurrentCount;
+                    break;
+                case MagazineItemInstance mag:
+                    entry.mag = CaptureMag(mag.RuntimeMag);
+                    break;
+                case WeaponItemInstance wi when wi.LoadedMagazine != null:
+                    // The live gun shares this MagazineInstance (GunController.InsertMagazine),
+                    // so this snapshot is the equipped weapon's real ammo state too.
+                    entry.loadedMag = CaptureMag(wi.LoadedMagazine.RuntimeMag);
+                    break;
+            }
+
+            entries.Add(entry);
+        }
         return entries;
+    }
+
+    /// <summary>Serializes a magazine's loaded rounds (by ammo SO name, fire order preserved).</summary>
+    private static MagState CaptureMag(MagazineInstance m)
+    {
+        if (m == null) return null;
+        var state = new MagState { magSoName = m.data.name, rounds = new List<string>(m.BulletCount) };
+        var loaded = m.Rounds;
+        for (int i = 0; i < loaded.Count; i++)
+            if (loaded[i] != null) state.rounds.Add(loaded[i].name);
+        return state;
     }
 
     /// <summary>
@@ -181,6 +213,8 @@ public class InventoryGrid
             item.gridPosition = new Vector2Int(entry.gridX, entry.gridY);
             item.isRotated    = entry.isRotated;
 
+            RestoreInstanceState(item, entry, resolver);
+
             if (!TryPlace(item, item.gridPosition))
                 Debug.LogWarning($"[InventoryGrid] Could not place '{entry.soName}' at " +
                                  $"({entry.gridX},{entry.gridY}) during load — position occupied or out of bounds.");
@@ -188,7 +222,47 @@ public class InventoryGrid
         OnChanged?.Invoke();
     }
 
-    /// <summary>Serialisable record for one item's grid placement. Store this; rebuild everything else from the SO.</summary>
+    /// <summary>Restores W3-09 typed-instance state (ammo count, magazine rounds) after creation.</summary>
+    private static void RestoreInstanceState(ItemInstance item, GridSaveEntry entry, IItemSOResolver resolver)
+    {
+        switch (item)
+        {
+            // Always restore (even 0): the factory defaults an ammo box to a FULL stack,
+            // so skipping restore would refill a depleted box. Pre-W3-09 saves (no ammoCount
+            // field → 0) will load ammo as empty — acceptable; the save format changed here.
+            case AmmoItemInstance ammo:
+                ammo.RestoreCount(entry.ammoCount);
+                break;
+
+            case MagazineItemInstance mag:
+                ApplyMag(mag.RuntimeMag, entry.mag, resolver);
+                break;
+
+            case WeaponItemInstance wi when HasMag(entry.loadedMag):
+                if (resolver.Resolve(entry.loadedMag.magSoName) is MagazineSO magSO)
+                {
+                    var magItem = new MagazineItemInstance(magSO);
+                    ApplyMag(magItem.RuntimeMag, entry.loadedMag, resolver);
+                    wi.LoadMagazine(magItem);
+                }
+                break;
+        }
+    }
+
+    /// <summary>Fills <paramref name="target"/> with the rounds described by <paramref name="state"/>.</summary>
+    private static void ApplyMag(MagazineInstance target, MagState state, IItemSOResolver resolver)
+    {
+        if (target == null || !HasMag(state) || state.rounds == null) return;
+        var rounds = new List<AmmunitionSO>(state.rounds.Count);
+        foreach (var name in state.rounds)
+            if (resolver.Resolve(name) is AmmunitionSO ammo) rounds.Add(ammo);
+        target.RestoreRounds(rounds);
+    }
+
+    /// <summary>True when a MagState actually describes a magazine (JsonUtility never yields null).</summary>
+    private static bool HasMag(MagState state) => state != null && !string.IsNullOrEmpty(state.magSoName);
+
+    /// <summary>Serialisable record for one item's grid placement plus its mutable instance state.</summary>
     [System.Serializable]
     public class GridSaveEntry
     {
@@ -197,5 +271,21 @@ public class InventoryGrid
         public int    gridX;
         public int    gridY;
         public bool   isRotated;
+
+        // ── W3-09 typed-instance state (defaults are inert for items that don't use them) ──
+        /// <summary>AmmoItemInstance stack count. 0 = not ammo / unspecified.</summary>
+        public int      ammoCount;
+        /// <summary>MagazineItemInstance loaded rounds. Empty magSoName = none.</summary>
+        public MagState mag;
+        /// <summary>WeaponItemInstance's loaded magazine + its rounds. Empty magSoName = none.</summary>
+        public MagState loadedMag;
+    }
+
+    /// <summary>Serialisable magazine contents: the mag SO name + each loaded round's ammo SO name (fire order).</summary>
+    [System.Serializable]
+    public class MagState
+    {
+        public string       magSoName;
+        public List<string> rounds;
     }
 }

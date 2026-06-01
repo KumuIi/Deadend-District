@@ -79,11 +79,11 @@
 - [x] **[W3-02]** `PlayerVisibility` component + `VisibilitySystem`
 - [x] **[W3-03]** `MonsterAI` (extends `BaseEnemyAI`)
 - [x] **[W3-04]** `EnemySpawnSystem`
-- [ ] **[W3-05]** `HitZone` component + `GunController` migration to `DamageContext`
-- [ ] **[W3-09]** `WeaponStateSaveAdapter` — save chambered round + loaded magazine per weapon slot so gun state survives save/load (pairs with W3-05 GunController work); also save magazine bullet count + ammo type inside each `MagazineItemInstance` so partial mags are restored correctly (currently bullet count is lost on save/load. save ammo per bullet and stackable until a set amount(calculate selling ammo per bullet inside the SO 10xprice if 10 bullets) add a split ammo function)
-- [ ] **[W3-06]** `LadderClimbing` — `Ladder : IInteractable` + `PlayerMotor` ladder mode
-- [ ] **[W3-07]** NavMesh off-mesh links for enemy ladder traversal
-- [ ] **[W3-08]** `FallDamage` — velocity threshold → `DamageContext` → `IDamageable`
+- [x] **[W3-05]** `HitZone` component + `GunController` migration to `DamageContext` — *code-done; needs HitZone components on enemy body-part colliders (see wave-3.md note)*
+- [x] **[W3-09]** Weapon/ammo state persistence + ammo economy — *code-done.* **Design note:** no separate `WeaponStateSaveAdapter` was needed — the live `GunController` shares its `MagazineInstance` with the inventory `WeaponItemInstance.LoadedMagazine` (`GunController.InsertMagazine` stores by reference), so persisting the inventory grid captures equipped-weapon ammo for free. There is no separate "chambered round" model in this codebase (rounds live only in the magazine). Implemented: (1) `InventoryGrid.GridSaveEntry` extended with `ammoCount` + `MagState` (mag SO + ordered round SO names) for grid-placed mags AND a weapon's loaded mag; `GetSaveData`/`LoadFromSaveData` capture/restore it — partial mags now survive save/load. (2) `MagazineInstance.Rounds`/`RestoreRounds`. (3) `AmmunitionSO.pricePerRound` + `EffectivePricePerRound` (falls back to `sellValue/stackSize`); `AmmoItemInstance.StackSellValue` = per-round × count. (4) `AmmoItemInstance.AddRounds` (stack to cap) + `Split(amount)` (right-click-split helper). **Needs wiring:** set `pricePerRound` on ammo SOs; hook `Split`/`AddRounds` into the inventory right-click menu; TraderSystem should use `StackSellValue` for ammo instead of flat `sellValue`.
+- [x] **[W3-06]** `LadderClimbing` — `Ladder : IInteractable` + `PlayerMotor` ladder mode — *code-done; build ladder prefab (bottom/top points + trigger), firing blocked while climbing*
+- [x] **[W3-07]** NavMesh links for **mimic-only** ladder traversal — *code-done (NavAreas + guard areaMask exclusion); needs `LadderClimb` NavMesh area + NavMeshLink per ladder (see wave-3.md)*
+- [x] **[W3-08]** `FallDamage` — velocity threshold → `DamageContext` → `IDamageable` — *code-done; add FallDamage to player root, wire PlayerMotor + PlayerHealth*
 
 ---
 

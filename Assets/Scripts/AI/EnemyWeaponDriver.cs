@@ -124,14 +124,16 @@ public class EnemyWeaponDriver : MonoBehaviour, IWeaponDriver
             var damageable = hit.collider.GetComponentInParent<IDamageable>();
             if (damageable != null && damageable.IsAlive)
             {
-                float dmg = round.GetDamageAtDistance(hit.distance, _weaponData.range) * _damageMultiplier;
+                HitZone.Resolve(hit.collider, out string hitZoneId, out float zoneMultiplier);
+                float dmg = round.GetDamageAtDistance(hit.distance, _weaponData.range)
+                          * _damageMultiplier * zoneMultiplier;
                 damageable.ApplyDamage(new DamageContext
                 {
                     Source     = gameObject,
                     Instigator = _owner,
                     HitPoint   = hit.point,
                     HitNormal  = hit.normal,
-                    HitZoneId  = "",
+                    HitZoneId  = hitZoneId,
                     Type       = DamageType.Bullet,
                     BaseDamage = dmg,
                     Impulse    = dmg * 2f,

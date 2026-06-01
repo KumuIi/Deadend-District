@@ -1593,6 +1593,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1127164354}
+    - targetCorrespondingSourceObject: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1716602093}
     - targetCorrespondingSourceObject: {fileID: 4526521495657032477, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1901851498}
@@ -1621,6 +1624,34 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+--- !u!114 &1716602092 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4772443847941390725, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+  m_PrefabInstance: {fileID: 1716602091}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 319609802}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4f4ed55d0964ea48a10d5014ced8f85, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
+--- !u!114 &1716602093
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 319609802}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a2d96033797b174bba3a0ca5241ff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FallDamage
+  _motor: {fileID: 1127164332}
+  _health: {fileID: 1716602092}
+  _safeLandingSpeed: 10
+  _damagePerSpeedOverThreshold: 8
+  _regenSuppressOnLanding: 1.5
 --- !u!1 &1796430169
 GameObject:
   m_ObjectHideFlags: 0

@@ -14,8 +14,23 @@ public class AmmunitionSO : ItemSO
     [Tooltip("Must reference the same CaliberSO as the weapon and magazine.")]
     public CaliberSO caliber;
 
-    [Tooltip("How many rounds are in one inventory box of this type.")]
+    [Tooltip("How many rounds are in one inventory box of this type (max stack count).")]
     public int stackSize = 30;
+
+    [Header("=== Economy ===")]
+    [Tooltip("Sell value of a SINGLE round (W3-09). A stack sells for pricePerRound × count. " +
+             "Leave 0 to derive it from the flat ItemSO.sellValue spread over stackSize.")]
+    [Min(0)]
+    public int pricePerRound = 0;
+
+    /// <summary>
+    /// Effective per-round sell value. Falls back to <c>sellValue / stackSize</c> (rounded up,
+    /// min 0) when <see cref="pricePerRound"/> is unset, so legacy box-priced ammo still works.
+    /// </summary>
+    public int EffectivePricePerRound =>
+        pricePerRound > 0
+            ? pricePerRound
+            : (stackSize > 0 ? Mathf.CeilToInt(sellValue / (float)stackSize) : sellValue);
 
     [Header("=== Ballistics ===")]
     public float damage = 25f;

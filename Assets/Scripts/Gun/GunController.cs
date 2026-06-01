@@ -421,7 +421,8 @@ public class GunController : MonoBehaviour
 
     // ── Fire ───────────────────────────────────────────────────────────────
 
-    private bool CanFire() => _currentMagazine != null && !_currentMagazine.IsEmpty;
+    private bool CanFire() => _currentMagazine != null && !_currentMagazine.IsEmpty
+                              && (_playerMotor == null || !_playerMotor.IsOnLadder);
 
     private void FireShot()
     {
@@ -454,7 +455,12 @@ public class GunController : MonoBehaviour
                 ? ammo.GetDamageAtDistance(hit.distance, weaponData.range)
                 : weaponData.baseDamage;
 
-            Debug.Log($"Hit: {hit.collider.name} | Dmg: {damage:F1} | Mag: {BulletsRemaining}/{MagazineCapacity}");
+            // Locational damage: a hit on a tagged body-part collider scales by its zone
+            // multiplier (head 2.5x, limb 0.7x, ...). Untagged colliders resolve to 1x.
+            HitZone.Resolve(hit.collider, out string hitZoneId, out float zoneMultiplier);
+            damage *= zoneMultiplier;
+
+            Debug.Log($"Hit: {hit.collider.name} | Zone: {(hitZoneId.Length > 0 ? hitZoneId : "-")} x{zoneMultiplier:0.0#} | Dmg: {damage:F1} | Mag: {BulletsRemaining}/{MagazineCapacity}");
 
             var damageable = hit.collider.GetComponentInParent<IDamageable>();
             if (damageable != null && damageable.IsAlive)
@@ -465,7 +471,7 @@ public class GunController : MonoBehaviour
                     Instigator       = _playerMotor ? _playerMotor.gameObject : gameObject,
                     HitPoint         = hit.point,
                     HitNormal        = hit.normal,
-                    HitZoneId        = "",
+                    HitZoneId        = hitZoneId,
                     Type             = DamageType.Bullet,
                     BaseDamage       = damage,
                     Impulse          = damage * 2f,

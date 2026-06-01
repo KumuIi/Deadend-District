@@ -64,4 +64,25 @@ public class MagazineInstance
     {
         while (!IsFull && LoadRound(ammo)) { }
     }
+
+    // ── Save / Load ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Loaded rounds in fire order — index [Count-1] is the next round out.
+    /// Read-only snapshot for serialization (see W3-09 inventory save).
+    /// </summary>
+    public IReadOnlyList<AmmunitionSO> Rounds => _rounds;
+
+    /// <summary>
+    /// Replaces all loaded rounds with <paramref name="rounds"/> (same fire order as
+    /// <see cref="Rounds"/>). Used by save/load. Null entries and overflow past capacity
+    /// are dropped; caliber is NOT re-validated since the data came from a prior valid state.
+    /// </summary>
+    public void RestoreRounds(IReadOnlyList<AmmunitionSO> rounds)
+    {
+        _rounds.Clear();
+        if (rounds == null) return;
+        for (int i = 0; i < rounds.Count && _rounds.Count < data.capacity; i++)
+            if (rounds[i] != null) _rounds.Add(rounds[i]);
+    }
 }
