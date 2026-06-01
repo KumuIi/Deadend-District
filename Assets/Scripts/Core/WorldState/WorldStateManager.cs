@@ -40,6 +40,17 @@ public class WorldStateManager : MonoBehaviour
     /// </summary>
     public event Action<string, WorldStateValue, WorldStateValue> OnStateChanged;
 
+    /// <summary>
+    /// Fired AFTER <see cref="LoadState"/> bulk-replaces the entire store (save load).
+    /// Per-key <see cref="OnStateChanged"/> does NOT fire during a bulk load, so any
+    /// component that mirrors world state into the scene (doors, power panels, gates)
+    /// must re-read its keys on this event. Listeners should make their refresh idempotent.
+    ///
+    /// Why this exists: SaveSystem defers a scene-load restore by one frame (after every
+    /// Start()), so reading state only in Start() misses values loaded a frame later.
+    /// </summary>
+    public event Action OnStateReplaced;
+
     // ── Bool API ───────────────────────────────────────────────────────────
 
     public void SetBool(string key, bool value) =>
@@ -104,6 +115,8 @@ public class WorldStateManager : MonoBehaviour
         _state.Clear();
         foreach (var kv in saved)
             _state[kv.Key] = kv.Value;
+
+        OnStateReplaced?.Invoke();
     }
 
     // ── Private ────────────────────────────────────────────────────────────
