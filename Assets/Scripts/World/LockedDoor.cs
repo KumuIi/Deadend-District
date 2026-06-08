@@ -21,10 +21,9 @@ using UnityEngine;
 public abstract class LockedDoor : MonoBehaviour, IInteractable
 {
     [Header("=== Identity ===")]
-    [Tooltip("Unique per door. MUST match the paired Door leaf's doorId AND any KeySO.targetDoorId " +
-             "(case-sensitive). The full world-state flag becomes \"door.{doorId}.unlocked\". " +
-             "Register it in WsmKeyRegistrySO before wiring the scene.")]
-    [SerializeField] private string _doorId;
+    [Tooltip("The Door leaf this lock controls. The doorId is read from it — author the id ONCE on " +
+             "the Door, link it here, and lock + leaf can never drift apart.")]
+    [SerializeField] private Door _door;
 
     [Header("=== Debug ===")]
     [Tooltip("Logs the unlock flow and, on failure, dumps every inventory panel so you can see " +
@@ -40,18 +39,20 @@ public abstract class LockedDoor : MonoBehaviour, IInteractable
 
     // ── Derived state ────────────────────────────────────────────────────────
 
-    /// <summary>The per-door WSM flag. Protected so subclasses can read it if needed.</summary>
-    protected string UnlockKey => $"door.{_doorId}.unlocked";
-
     /// <summary>
-    /// The door's unique id, used by subclasses to match credentials (e.g. KeySO.targetDoorId)
-    /// and by the paired <see cref="Door"/> leaf's editor validation to detect id mismatches.
+    /// The door's id, read from the linked <see cref="Door"/> leaf — the single place it's authored.
+    /// Null/empty if no Door is linked; callers fail closed on that.
     /// </summary>
-    public string DoorId => _doorId;
+    public string DoorId => _door != null ? _door.DoorId : null;
 
-    /// <summary>True when the WSM flag is set. Defaults to locked if WSM isn't up yet.</summary>
+    /// <summary>The per-door WSM flag. Protected so subclasses can read it if needed.</summary>
+    protected string UnlockKey => $"door.{DoorId}.unlocked";
+
+    /// <summary>True when the WSM flag is set. Defaults to locked if WSM isn't up or no Door is linked.</summary>
     protected bool IsUnlocked =>
-        WorldStateManager.Instance != null && WorldStateManager.Instance.GetBool(UnlockKey);
+        WorldStateManager.Instance != null
+        && !string.IsNullOrWhiteSpace(DoorId)
+        && WorldStateManager.Instance.GetBool(UnlockKey);
 
     // ── IInteractable ────────────────────────────────────────────────────────
 
@@ -102,6 +103,14 @@ public abstract class LockedDoor : MonoBehaviour, IInteractable
     {
         if (IsUnlocked) return;
 
+        // Fail closed: a lock with no Door linked has no id, so it would write "door..unlocked" and
+        // collide with every other unconfigured lock. Refuse rather than corrupt world state.
+        if (string.IsNullOrWhiteSpace(DoorId))
+        {
+            Debug.LogWarning($"[LockedDoor] '{name}' unlock ignored — no Door linked, so it has no id.", this);
+            return;
+        }
+
         // Fail closed: never authorise an unlock whose state can't be persisted, or it would
         // re-lock on the next scene load / save (and CompleteExternalUnlock could reach here too).
         if (WorldStateManager.Instance == null)
@@ -131,16 +140,9 @@ public abstract class LockedDoor : MonoBehaviour, IInteractable
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (string.IsNullOrWhiteSpace(_doorId))
-        {
-            Debug.LogWarning($"[LockedDoor] '{name}' has an empty doorId — its WSM flag would " +
-                             $"collide with every other empty-id lock.", this);
-        }
-        else if (_doorId.IndexOf(' ') >= 0)
-        {
-            Debug.LogWarning($"[LockedDoor] doorId '{_doorId}' on '{name}' contains spaces. " +
-                             $"Use a stable token like 'Lab_2A' so the WSM key stays clean.", this);
-        }
+        if (_door == null)
+            Debug.LogWarning($"[LockedDoor] '{name}' has no Door linked — assign the Door leaf it " +
+                             $"controls so it inherits the doorId.", this);
     }
 #endif
 }

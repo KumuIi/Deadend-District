@@ -24,9 +24,13 @@ using UnityEngine;
 public class Door : MonoBehaviour, IInteractable
 {
     [Header("=== Identity ===")]
-    [Tooltip("Must match the paired lock's doorId (case-sensitive). Flags are " +
-             "\"door.{doorId}.unlocked\" and \"door.{doorId}.open\".")]
+    [Tooltip("The single source of truth for this door's id. Set it ONCE here; locks " +
+             "(KeyLockedDoor / ShortcutLock) link to this Door and read it — no double entry. " +
+             "Flags are \"door.{doorId}.unlocked\" and \"door.{doorId}.open\".")]
     [SerializeField] private string _doorId;
+
+    /// <summary>The door's id — the one place it's authored. Locks read this via their Door link.</summary>
+    public string DoorId => _doorId;
 
     [Header("=== Motion / Physics ===")]
     [Tooltip("How the leaf presents open vs closed — HingeDoorVisual (DOTween swing) or AnimatorDoorVisual.")]
@@ -137,27 +141,7 @@ public class Door : MonoBehaviour, IInteractable
     private void OnValidate()
     {
         if (string.IsNullOrWhiteSpace(_doorId))
-        {
-            Debug.LogWarning($"[Door] '{name}' has an empty doorId — it can't pair with a lock.", this);
-            return;
-        }
-
-        // Catch the silent-desync footgun: the lock and the leaf hold SEPARATE doorId strings, so a
-        // typo on either (e.g. "Lab_2A" vs "Lab2A") means this leaf never sees the unlock and just
-        // rattles forever — with no runtime error. Warn at author time if no lock under the same
-        // hierarchy root carries a matching id. (No locks at all is fine — the door may be opened by
-        // a quest/WSM write elsewhere, so we only warn when locks exist but none matches.)
-        var locks = transform.root.GetComponentsInChildren<LockedDoor>(includeInactive: true);
-        if (locks.Length == 0) return;
-
-        foreach (var lockComp in locks)
-            if (string.Equals(lockComp.DoorId, _doorId, System.StringComparison.Ordinal))
-                return; // matched — all good
-
-        Debug.LogWarning(
-            $"[Door] '{name}' doorId='{_doorId}' has NO matching lock under '{transform.root.name}'. " +
-            $"Lock ids found: [{string.Join(", ", System.Array.ConvertAll(locks, l => l.DoorId))}]. " +
-            $"The leaf will never unlock — lock and leaf doorIds must match (case-sensitive).", this);
+            Debug.LogWarning($"[Door] '{name}' has an empty doorId — locks linking to it will never unlock.", this);
     }
 #endif
 }
