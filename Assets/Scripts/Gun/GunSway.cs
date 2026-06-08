@@ -130,8 +130,11 @@ public class GunSway : MonoBehaviour
         float bobWeight = Mathf.Lerp(1f, 0.5f, adsWeight);
 
         // ── Mouse sway + tilt ───────────────────────────────────────────
-        float mouseX = Input.GetAxisRaw("Mouse X");
-        float mouseY = Input.GetAxisRaw("Mouse Y");
+        // Zero the look delta while a menu/inventory is open so the gun settles to rest
+        // instead of swaying with the now-free cursor. Bob/inertia self-zero (movement is blocked).
+        bool inputBlocked = GameInputState.GameplayBlocked;
+        float mouseX = inputBlocked ? 0f : Input.GetAxisRaw("Mouse X");
+        float mouseY = inputBlocked ? 0f : Input.GetAxisRaw("Mouse Y");
 
         Vector3 swayOffset = Vector3.ClampMagnitude(
             new Vector3(-mouseX * _feel.swayAmount, -mouseY * _feel.swayAmount, 0f),

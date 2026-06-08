@@ -88,8 +88,11 @@ public class FlashlightSway : MonoBehaviour
         // ── Rotation target from mouse + velocity ──────────────────────────
         // Think in PITCH (vertical look) and YAW (horizontal look); Compose() then lays them onto
         // the model's local Euler axes (swapped/inverted as configured) so a rolled model isn't flipped.
-        float mouseX = Input.GetAxisRaw("Mouse X");
-        float mouseY = Input.GetAxisRaw("Mouse Y");
+        // Zero the look delta while a menu/inventory is open so the beam settles to rest
+        // instead of swaying with the now-free cursor. Velocity terms self-zero (movement is blocked).
+        bool inputBlocked = GameInputState.GameplayBlocked;
+        float mouseX = inputBlocked ? 0f : Input.GetAxisRaw("Mouse X");
+        float mouseY = inputBlocked ? 0f : Input.GetAxisRaw("Mouse Y");
 
         float pitch = -mouseY * _mouseInfluence;
         float yaw   =  mouseX * _mouseInfluence;

@@ -5,18 +5,52 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Right-click context menu for inventory items.
-/// Parented directly to the root Canvas so it is never tilted.
+/// Per-invocation configuration for a context menu. Built by the requesting InventoryUI
+/// and handed to <see cref="InventoryContextMenu.Show"/>. Because a single shared menu now
+/// serves every panel (player, stash, trader), the callbacks can't live on the menu — they
+/// differ per right-click, so they travel with the request instead.
+/// </summary>
+public sealed class ContextMenuRequest
+{
+    public ItemInstance Item;
+    public Vector2      ScreenPos;
+
+    /// <summary>When false, the Equip/Unequip entry is omitted (e.g. the stash).</summary>
+    public bool AllowEquip = true;
+
+    /// <summary>When false, the standard mutation entries (Remove Magazine/Battery, Drop) are omitted.</summary>
+    public bool AllowItemActions = true;
+
+    public Action<ItemInstance>      OnEquip;
+    public Action<ItemInstance>      OnUnequip;
+    public Action<ItemInstance>      OnRemoveMagazine;
+    public Action<ItemInstance>      OnRemoveBattery;
+    public Action<ItemInstance>      OnDrop;
+    public Action<AmmoItemInstance, int> OnSplitAmmo;
+
+    /// <summary>Return true if the given item is currently the equipped weapon/flashlight.</summary>
+    public Func<ItemInstance, bool> IsItemEquipped;
+
+    /// <summary>Optional hook to append context-agnostic extra entries (e.g. a trader's Buy/Sell).</summary>
+    public Func<ItemInstance, List<(string label, Action action)>> ExtraEntriesProvider;
+}
+
+/// <summary>
+/// Right-click context menu for inventory items. Pure rendering engine — owns no per-panel
+/// state; every Show() call supplies its own <see cref="ContextMenuRequest"/>.
 ///
-/// Dismissal uses a fullscreen transparent background Button so that
-/// both the dismiss and the item-button clicks live inside the EventSystem —
-/// avoiding the timing bug where Input.GetMouseButtonDown closes the panel
-/// before Button.onClick fires.
+/// Built on a top-most Screen Space – Overlay canvas (see InventoryContextMenuService) so it
+/// always wins the GraphicRaycaster against any panel canvas and renders above the 3D item
+/// meshes. A single instance is shared by all panels.
+///
+/// Dismissal uses a fullscreen transparent background Button so that both the dismiss and the
+/// item-button clicks live inside the EventSystem — avoiding the timing bug where
+/// Input.GetMouseButtonDown closes the panel before Button.onClick fires.
 /// </summary>
 public sealed class InventoryContextMenu
 {
-    private const float ButtonH = 32f;
-    private const float ButtonW = 170f;
+    private const float ButtonH = 48f;  // 1.5× base
+    private const float ButtonW = 255f; // 1.5× base
 
     private readonly GameObject    _panel;
     private readonly RectTransform _panelRT;
@@ -24,35 +58,6 @@ public sealed class InventoryContextMenu
     private readonly Canvas        _canvas;
 
     public bool IsOpen => _panel.activeSelf;
-
-    public Action<ItemInstance> OnEquip;
-    public Action<ItemInstance> OnUnequip;
-    public Action<ItemInstance> OnRemoveMagazine;
-    public Action<ItemInstance> OnRemoveBattery;
-    public Action<ItemInstance> OnDrop;
-
-    /// <summary>Split <paramref name="amount"/> rounds off an ammo stack into a new stack. (item, amount)</summary>
-    public Action<AmmoItemInstance, int> OnSplitAmmo;
-
-    /// <summary>Return true if the given item is currently the equipped weapon. Used to toggle Equip/Unequip.</summary>
-    public Func<ItemInstance, bool> IsItemEquipped;
-
-    /// <summary>When false, the Equip/Unequip entry is omitted (e.g. the stash — items can't be equipped while stored).</summary>
-    public bool AllowEquip = true;
-
-    /// <summary>
-    /// When false, the standard mutation entries (Remove Magazine, Remove Battery, Drop) are
-    /// omitted. Used by view-only grids like the trader stock, which expose only injected
-    /// entries (Buy) via <see cref="ExtraEntriesProvider"/>.
-    /// </summary>
-    public bool AllowItemActions = true;
-
-    /// <summary>
-    /// Optional hook to append context-agnostic extra entries (e.g. a trader's "Buy"/"Sell").
-    /// Null by default so normal inventory menus are unchanged. The menu stays economy-agnostic —
-    /// it just renders whatever (label, action) pairs it is handed.
-    /// </summary>
-    public Func<ItemInstance, List<(string label, Action action)>> ExtraEntriesProvider;
 
     public InventoryContextMenu(Canvas canvas)
     {
@@ -88,8 +93,11 @@ public sealed class InventoryContextMenu
         _panel.SetActive(false);
     }
 
-    public void Show(ItemInstance item, Vector2 screenPos)
+    public void Show(ContextMenuRequest req)
     {
+        if (req == null || req.Item == null) { Hide(); return; }
+        ItemInstance item = req.Item;
+
         // Rebuild buttons for this item type
         for (int i = _panel.transform.childCount - 1; i >= 0; i--)
             UnityEngine.Object.Destroy(_panel.transform.GetChild(i).gameObject);
@@ -98,48 +106,48 @@ public sealed class InventoryContextMenu
 
         if (item is WeaponItemInstance wi)
         {
-            if (AllowEquip)
+            if (req.AllowEquip)
             {
-                bool equipped = IsItemEquipped?.Invoke(item) ?? false;
+                bool equipped = req.IsItemEquipped?.Invoke(item) ?? false;
                 if (equipped)
-                    entries.Add(("Unequip",         () => { OnUnequip?.Invoke(item);        Hide(); }));
+                    entries.Add(("Unequip",         () => { req.OnUnequip?.Invoke(item);        Hide(); }));
                 else
-                    entries.Add(("Equip",           () => { OnEquip?.Invoke(item);          Hide(); }));
+                    entries.Add(("Equip",           () => { req.OnEquip?.Invoke(item);          Hide(); }));
             }
 
-            if (AllowItemActions && wi.LoadedMagazine != null)
-                entries.Add(("Remove Magazine", () => { OnRemoveMagazine?.Invoke(item); Hide(); }));
+            if (req.AllowItemActions && wi.LoadedMagazine != null)
+                entries.Add(("Remove Magazine", () => { req.OnRemoveMagazine?.Invoke(item); Hide(); }));
         }
         else if (item is FlashlightItemInstance fi)
         {
-            if (AllowEquip)
+            if (req.AllowEquip)
             {
-                bool equipped = IsItemEquipped?.Invoke(item) ?? false;
+                bool equipped = req.IsItemEquipped?.Invoke(item) ?? false;
                 if (equipped)
-                    entries.Add(("Unequip", () => { OnUnequip?.Invoke(item); Hide(); }));
+                    entries.Add(("Unequip", () => { req.OnUnequip?.Invoke(item); Hide(); }));
                 else
-                    entries.Add(("Equip",   () => { OnEquip?.Invoke(item);   Hide(); }));
+                    entries.Add(("Equip",   () => { req.OnEquip?.Invoke(item);   Hide(); }));
             }
 
-            if (AllowItemActions && fi.InsertedBattery != null)
-                entries.Add(("Remove Battery", () => { OnRemoveBattery?.Invoke(item); Hide(); }));
+            if (req.AllowItemActions && fi.InsertedBattery != null)
+                entries.Add(("Remove Battery", () => { req.OnRemoveBattery?.Invoke(item); Hide(); }));
         }
-        else if (item is AmmoItemInstance ammo && AllowItemActions)
+        else if (item is AmmoItemInstance ammo && req.AllowItemActions)
         {
             // Split halves the stack; Take 10 peels a fixed 10 off. Both leave ≥1 round behind,
             // so they only appear when there's enough to split (Split.cs enforces the same rule).
             if (ammo.CurrentCount > 1)
-                entries.Add(("Split",   () => { OnSplitAmmo?.Invoke(ammo, ammo.CurrentCount / 2); Hide(); }));
+                entries.Add(("Split",   () => { req.OnSplitAmmo?.Invoke(ammo, ammo.CurrentCount / 2); Hide(); }));
             if (ammo.CurrentCount > 10)
-                entries.Add(("Take 10", () => { OnSplitAmmo?.Invoke(ammo, 10); Hide(); }));
+                entries.Add(("Take 10", () => { req.OnSplitAmmo?.Invoke(ammo, 10); Hide(); }));
         }
 
-        if (AllowItemActions)
-            entries.Add(("Drop", () => { OnDrop?.Invoke(item); Hide(); }));
+        if (req.AllowItemActions)
+            entries.Add(("Drop", () => { req.OnDrop?.Invoke(item); Hide(); }));
 
         // Injected, economy-agnostic entries (Buy/Sell). Hide() after each so a refresh that
         // destroys this item's view can't leave a dangling menu.
-        var extra = ExtraEntriesProvider?.Invoke(item);
+        var extra = req.ExtraEntriesProvider?.Invoke(item);
         if (extra != null)
             foreach (var (label, action) in extra)
                 entries.Add((label, () => { action?.Invoke(); Hide(); }));
@@ -152,7 +160,7 @@ public sealed class InventoryContextMenu
         for (int i = 0; i < entries.Count; i++)
             AddButton(entries[i].label, i, entries[i].action);
 
-        CanvasUtils.MoveToScreenPoint(_panelRT, _canvas, screenPos);
+        CanvasUtils.MoveToScreenPoint(_panelRT, _canvas, req.ScreenPos);
 
         // Dismiss BG first in Z, panel on top
         _bgDismiss.SetActive(true);
@@ -196,12 +204,12 @@ public sealed class InventoryContextMenu
         var trt       = textGO.GetComponent<RectTransform>();
         trt.anchorMin = Vector2.zero;
         trt.anchorMax = Vector2.one;
-        trt.offsetMin = new Vector2(12f, 0f);
+        trt.offsetMin = new Vector2(18f, 0f); // 1.5× base
         trt.offsetMax = Vector2.zero;
 
         var t           = textGO.GetComponent<TextMeshProUGUI>();
         t.text          = label;
-        t.fontSize      = 13;
+        t.fontSize      = 20; // 1.5× base (≈19.5)
         t.color         = new Color(0.90f, 0.90f, 0.90f, 1f);
         t.alignment     = TextAlignmentOptions.MidlineLeft;
         t.raycastTarget = false;

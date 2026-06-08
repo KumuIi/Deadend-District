@@ -120,7 +120,13 @@ public sealed class InventoryUI : MonoBehaviour
     private InventoryHighlighter    _highlighter;
     private InventoryItemView       _hoveredView;
     private InventoryTooltip        _tooltip;
-    private InventoryContextMenu    _contextMenu;
+
+    /// <summary>
+    /// Optional trader-injected extra context entries (Buy/Sell). Stored here rather than on the
+    /// menu because the menu is now a shared singleton — each Show() request carries this panel's
+    /// provider. Set via SetContextExtraEntries, cleared (null) when the trade ends.
+    /// </summary>
+    private System.Func<ItemInstance, List<(string label, System.Action action)>> _extraEntriesProvider;
 
     /// <summary>
     /// The specific WeaponItemInstance whose state is currently loaded into the active GunController.
@@ -216,28 +222,19 @@ public sealed class InventoryUI : MonoBehaviour
 
         _activePanels.Add(this);
 
+        // The context menu is a shared singleton (InventoryContextMenuService) created on first
+        // use — see OnItemRightClick. Only the per-panel tooltip is built here.
         if (_canvas != null)
-        {
-            _tooltip     = new InventoryTooltip(_canvas);
-            _contextMenu = new InventoryContextMenu(_canvas);
-
-            _contextMenu.AllowEquip       = _allowEquip;
-            _contextMenu.AllowItemActions = _allowStandardItemActions;
-            _contextMenu.OnEquip          = ContextMenu_Equip;
-            _contextMenu.OnUnequip        = ContextMenu_Unequip;
-            _contextMenu.OnRemoveMagazine = ContextMenu_RemoveMagazine;
-            _contextMenu.OnRemoveBattery  = ContextMenu_RemoveBattery;
-            _contextMenu.OnDrop           = ContextMenu_Drop;
-            _contextMenu.OnSplitAmmo      = ContextMenu_SplitAmmo;
-
-            // C# reference equality: each WeaponItemInstance is a unique object even
-            // if two items share the same WeaponSO. No GUID needed for runtime checks.
-            _contextMenu.IsItemEquipped = item =>
-                (item is WeaponItemInstance wi && wi == _equippedItem) ||
-                (item is FlashlightItemInstance && flashlightSlot != null && flashlightSlot.EquippedItem == item);
-
-        }
+            _tooltip = new InventoryTooltip(_canvas);
     }
+
+    /// <summary>
+    /// C# reference equality: each WeaponItemInstance is a unique object even if two items share
+    /// the same WeaponSO. No GUID needed for runtime checks.
+    /// </summary>
+    private bool IsItemEquipped(ItemInstance item) =>
+        (item is WeaponItemInstance wi && wi == _equippedItem) ||
+        (item is FlashlightItemInstance && flashlightSlot != null && flashlightSlot.EquippedItem == item);
 
     private void Start()
     {
@@ -341,7 +338,7 @@ public sealed class InventoryUI : MonoBehaviour
         if (!open)
         {
             _tooltip?.Hide();
-            _contextMenu?.Hide();
+            InventoryContextMenuService.Instance.Hide();
             _hoveredView = null;
         }
 
@@ -466,7 +463,7 @@ public sealed class InventoryUI : MonoBehaviour
     public void SetContextExtraEntries(
         System.Func<ItemInstance, List<(string label, System.Action action)>> provider)
     {
-        if (_contextMenu != null) _contextMenu.ExtraEntriesProvider = provider;
+        _extraEntriesProvider = provider;
     }
 
     /// <summary>Sets the tooltip's optional extra line (e.g. "Sell: 50 cr"). Pass null to clear.</summary>
@@ -480,7 +477,7 @@ public sealed class InventoryUI : MonoBehaviour
     /// injected Buy/Sell entry (with its captured action) can't linger on a panel that the
     /// player keeps open after the trader closes.
     /// </summary>
-    public void HideContextMenu() => _contextMenu?.Hide();
+    public void HideContextMenu() => InventoryContextMenuService.Instance.Hide();
 
     public void SetHovered(InventoryItemView view)
     {
@@ -491,10 +488,24 @@ public sealed class InventoryUI : MonoBehaviour
             _tooltip?.Hide();
     }
 
-    /// <summary>Shows the context menu for the right-clicked item.</summary>
+    /// <summary>Shows the shared context menu for the right-clicked item, configured for this panel.</summary>
     public void OnItemRightClick(InventoryItemView view, UnityEngine.EventSystems.PointerEventData e)
     {
-        _contextMenu?.Show(view.Item, e.position);
+        InventoryContextMenuService.Instance.Show(new ContextMenuRequest
+        {
+            Item                 = view.Item,
+            ScreenPos            = e.position,
+            AllowEquip           = _allowEquip,
+            AllowItemActions     = _allowStandardItemActions,
+            IsItemEquipped       = IsItemEquipped,
+            OnEquip              = ContextMenu_Equip,
+            OnUnequip            = ContextMenu_Unequip,
+            OnRemoveMagazine     = ContextMenu_RemoveMagazine,
+            OnRemoveBattery      = ContextMenu_RemoveBattery,
+            OnDrop               = ContextMenu_Drop,
+            OnSplitAmmo          = ContextMenu_SplitAmmo,
+            ExtraEntriesProvider = _extraEntriesProvider,
+        });
     }
 
     // ── Context menu actions ──────────────────────────────────────────────
