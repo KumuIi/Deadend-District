@@ -38,7 +38,8 @@
       "Bash(Remove-Item -Force 'Scripts\\\\UI\\\\TraderUI.cs','Scripts\\\\UI\\\\TraderUI.cs.meta','Scripts\\\\UI\\\\TraderListRow.cs','Scripts\\\\UI\\\\TraderListRow.cs.meta' -ErrorAction SilentlyContinue)",
       "Bash(Get-ChildItem 'Scripts\\\\UI\\\\Trader*','Scripts\\\\Economy' -ErrorAction SilentlyContinue)",
       "Bash(Select-Object Name)",
-      "Bash(codemoot doctor *)"
+      "Bash(codemoot doctor *)",
+      "Bash(gh pr *)"
     ]
   }
 }

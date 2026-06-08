@@ -95,6 +95,7 @@ MonoBehaviour:
   gridWidth: 15
   gridHeight: 7
   cellSize: 25
+  _isPlayerInventory: 0
   weaponManager: {fileID: 6033725508184216472}
   flashlightSlot: {fileID: 8165028443347435510}
   cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.2}
@@ -564,6 +565,7 @@ MonoBehaviour:
   gridWidth: 7
   gridHeight: 15
   cellSize: 25
+  _isPlayerInventory: 0
   weaponManager: {fileID: 6033725508184216472}
   flashlightSlot: {fileID: 8165028443347435510}
   cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.2}
@@ -982,6 +984,7 @@ MonoBehaviour:
   gridWidth: 7
   gridHeight: 15
   cellSize: 25
+  _isPlayerInventory: 1
   weaponManager: {fileID: 6033725508184216472}
   flashlightSlot: {fileID: 8165028443347435510}
   cellNormal: {r: 0.08, g: 0.08, b: 0.1, a: 0.2}
@@ -2865,6 +2868,7 @@ GameObject:
   - component: {fileID: 4297102381319490913}
   - component: {fileID: 1198579033372320372}
   - component: {fileID: 3965173041511730950}
+  - component: {fileID: 1802053610646102967}
   m_Layer: 0
   m_Name: CameraRig
   m_TagString: Untagged
@@ -2922,6 +2926,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MenuCameraRig
   _moveDuration: 0.8
   _moveEase: 13
+--- !u!114 &1802053610646102967
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4526521495657032477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4393d37018593d84d99e43ed8318e100, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerSightPoint
 --- !u!1 &4601303575614882545
 GameObject:
   m_ObjectHideFlags: 0
@@ -4414,6 +4430,11 @@ GameObject:
   - component: {fileID: 7343357344315091651}
   - component: {fileID: 494421223063518258}
   - component: {fileID: 6489920741919275096}
+  - component: {fileID: 19648668777337313}
+  - component: {fileID: 2321959874921768482}
+  - component: {fileID: 1870464708075729979}
+  - component: {fileID: 252452086682982577}
+  - component: {fileID: 7314808331868633099}
   m_Layer: 7
   m_Name: '[Player]'
   m_TagString: Player
@@ -4436,6 +4457,7 @@ Transform:
   m_Children:
   - {fileID: 4297102381319490913}
   - {fileID: 2355197963388634524}
+  - {fileID: 4330840561649526884}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!136 &2176749562006859693
@@ -4600,9 +4622,14 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: d6454dded8758044e917ddfb0feb092a, type: 2}
   _playerHealth: {fileID: 4772443847941390725}
   _encumbrance: {fileID: 5558102581320971767}
-  _sprintDrainRate: 8
+  _sprintDrainRate: 1
   _exhaustionRecoveryFraction: 0.2
   mouseSensitivity: 2
+  _cameraTransform: {fileID: 6052119987546144178}
+  _ladderClimbSpeed: 3
+  _ladderSnapStrength: 0.4
+  _ladderGrabFacing: 0.35
+  _ladderEnergyPerMeter: 0
 --- !u!114 &6115976582632229670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4692,6 +4719,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FootstepAudio
   _playerMotor: {fileID: 3513889191098211496}
   _weaponManager: {fileID: 6033725508184216472}
+  _noiseEmitter: {fileID: 19648668777337313}
+  _crouchNoise: {fileID: 11400000, guid: 42272b3599bf43344ba0de51fc7c7132, type: 2}
+  _walkNoise: {fileID: 11400000, guid: 78dbb8a2f85b7bd4a8dbe395ad4bc348, type: 2}
+  _sprintNoise: {fileID: 11400000, guid: 2bf2b32e18dc20348a0e67c2947eaede, type: 2}
   _surfaces:
   - tag: Concrete
     clips:
@@ -4809,6 +4840,7 @@ MonoBehaviour:
   _interactionMask:
     serializedVersion: 2
     m_Bits: 64
+  _debugLogs: 0
 --- !u!114 &1182267514845902459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4997,6 +5029,87 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerTransformSaveAdapter
   _motor: {fileID: 3513889191098211496}
   _camera: {fileID: 1198579033372320372}
+--- !u!114 &19648668777337313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20849f0d1cbc38244a91f5efbf3e34ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NoiseEmitter
+  _motor: {fileID: 3513889191098211496}
+  _instigatorOverride: {fileID: 0}
+--- !u!114 &2321959874921768482
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bff7cd5cf45be347b8c6f95217d8d21, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerVisibility
+  _updateInterval: 0.1
+--- !u!114 &1870464708075729979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9be9ce2a55410444badd0f3f03a2512a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MovementVisibilityContributor
+  _visibility: {fileID: 2321959874921768482}
+  _motor: {fileID: 3513889191098211496}
+  _sprintFactor: 1
+  _walkFactor: 0.7
+  _stillFactor: 0.2
+  _crouchMultiplier: 0.5
+  _movingSpeedThreshold: 0.5
+--- !u!114 &252452086682982577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ff2331fc0856d74c83356c6bc6a78d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LightIntensityContributor
+  _visibility: {fileID: 2321959874921768482}
+  _samplePoint: {fileID: 4330840561649526884}
+  _maxLightDistance: 25
+  _softening: 1
+  _fullVisibilityAt: 1.2
+  _baseVisibility: 0.8
+--- !u!114 &7314808331868633099
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6588030462703277740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a2d96033797b174bba3a0ca5241ff25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FallDamage
+  _motor: {fileID: 3513889191098211496}
+  _health: {fileID: 4772443847941390725}
+  _safeLandingSpeed: 17
+  _damagePerSpeedOverThreshold: 1
+  _regenSuppressOnLanding: 1.5
 --- !u!1 &6631947371988985609
 GameObject:
   m_ObjectHideFlags: 0
@@ -5923,6 +6036,8 @@ MonoBehaviour:
   muzzlePoint: {fileID: 0}
   casingEjectPoint: {fileID: 0}
   aimSocket: {fileID: 0}
+  _noiseEmitter: {fileID: 0}
+  _gunshotNoise: {fileID: 0}
   rightHandGrip: {fileID: 4995995307589929676}
   leftHandGrip: {fileID: 6327006840904144876}
   OnMagEjected:
@@ -6234,6 +6349,37 @@ Transform:
   m_Children:
   - {fileID: 3092252662156558218}
   m_Father: {fileID: 6836438868803091633}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7990426736835811263
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4330840561649526884}
+  m_Layer: 7
+  m_Name: SamplePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4330840561649526884
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7990426736835811263}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.697, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7486249704204675625}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8032130165296573383
 GameObject:
@@ -7262,6 +7408,14 @@ PrefabInstance:
       propertyPath: leftHandGrip
       value: 
       objectReference: {fileID: 1353125187489232745}
+    - target: {fileID: 7383047027659536147, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
+      propertyPath: _gunshotNoise
+      value: 
+      objectReference: {fileID: 11400000, guid: de2f7cf43c614ce4093d66bcc354e0ea, type: 2}
+    - target: {fileID: 7383047027659536147, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
+      propertyPath: _noiseEmitter
+      value: 
+      objectReference: {fileID: 19648668777337313}
     - target: {fileID: 7383047027659536147, guid: 5137000b13ae5204b9c82cdc14cf7a94, type: 3}
       propertyPath: rightHandGrip
       value: 

@@ -31,6 +31,12 @@ public sealed class InventoryUI : MonoBehaviour
     public int   gridHeight = 10;
     public float cellSize   = 64f;
 
+    [Header("=== Role ===")]
+    [Tooltip("Check this on the PLAYER's own inventory panel. InventoryUI.Player (used by world " +
+             "pickups, the key/door lookup, etc.) returns this panel. Leave OFF for stash / trader / " +
+             "loot-container panels. Exactly one panel in the scene should have this checked.")]
+    [SerializeField] private bool _isPlayerInventory;
+
     [Header("=== Weapon Integration ===")]
     [Tooltip("Assign WeaponManager so 'Equip' and 'Remove Magazine' context menu actions work.")]
     public WeaponManager weaponManager;
@@ -137,16 +143,22 @@ public sealed class InventoryUI : MonoBehaviour
     private static readonly List<InventoryUI> _activePanels = new List<InventoryUI>();
 
     /// <summary>
-    /// The player's own inventory panel — definitionally the one wired to a WeaponManager
-    /// (secondary container panels like the stash have none). World pickups route items here
+    /// The player's own inventory panel. World pickups, the key/door lookup, etc. route here
     /// instead of letting FindObjectOfType pick an arbitrary panel once a second grid exists.
-    /// Returns null (not an arbitrary panel) if no panel declares a WeaponManager — routing a
-    /// pickup into the stash would be worse than failing loudly; callers log the null.
+    ///
+    /// Resolution order:
+    ///   1. The panel with <c>_isPlayerInventory</c> checked — explicit and deterministic.
+    ///   2. Back-compat fallback: the panel wired to a WeaponManager (older scenes that predate
+    ///      the flag). This is the brittle heuristic the flag replaces — assign the flag to be safe.
+    /// Returns null (not an arbitrary panel) if neither resolves — routing a pickup into the stash
+    /// would be worse than failing loudly; callers log the null.
     /// </summary>
     public static InventoryUI Player
     {
         get
         {
+            foreach (var p in _activePanels)
+                if (p != null && p._isPlayerInventory) return p;
             foreach (var p in _activePanels)
                 if (p != null && p.weaponManager != null) return p;
             return null;

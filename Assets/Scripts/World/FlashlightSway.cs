@@ -29,6 +29,15 @@ public class FlashlightSway : MonoBehaviour
     [Tooltip("How much horizontal velocity contributes to sway.")]
     [SerializeField] private float _velocityInfluence = 1.5f;
 
+    [Header("=== Axis Orientation (fix a flipped model) ===")]
+    [Tooltip("Swap pitch/yaw onto the model's local axes. Enable if the flashlight is authored " +
+             "rolled ~90° so vertical look drives horizontal sway and vice-versa.")]
+    [SerializeField] private bool _swapAxes   = true;
+    [Tooltip("Flip the up/down sway direction if it feels inverted.")]
+    [SerializeField] private bool _invertPitch = false;
+    [Tooltip("Flip the left/right sway direction if it feels inverted.")]
+    [SerializeField] private bool _invertYaw   = false;
+
     [Header("=== Walk Bob ===")]
     [SerializeField] private float _bobAmplitude  = 0.004f;
     [SerializeField] private float _bobFrequency  = 1.8f;
@@ -77,24 +86,24 @@ public class FlashlightSway : MonoBehaviour
         }
 
         // ── Rotation target from mouse + velocity ──────────────────────────
+        // Think in PITCH (vertical look) and YAW (horizontal look); Compose() then lays them onto
+        // the model's local Euler axes (swapped/inverted as configured) so a rolled model isn't flipped.
         float mouseX = Input.GetAxisRaw("Mouse X");
         float mouseY = Input.GetAxisRaw("Mouse Y");
 
-        Vector3 mouseTarget = new Vector3(
-            -mouseY * _mouseInfluence,
-             mouseX * _mouseInfluence,
-             0f);
+        float pitch = -mouseY * _mouseInfluence;
+        float yaw   =  mouseX * _mouseInfluence;
 
-        // Velocity contribution — use camera-local space to avoid feeding sway back into itself
-        Vector3 velTarget = Vector3.zero;
+        // Velocity contribution — strafing swings the beam sideways (yaw). Camera-local space
+        // avoids feeding the sway back into itself.
         if (_playerMotor != null && _cameraTransform != null)
         {
             Vector3 localVel = _cameraTransform.InverseTransformDirection(
                 _playerMotor.HorizontalVelocity);
-            velTarget = new Vector3(-localVel.x * _velocityInfluence, 0f, 0f);
+            yaw += -localVel.x * _velocityInfluence;
         }
 
-        Vector3 rotTarget = Vector3.ClampMagnitude(mouseTarget + velTarget, _maxAngle);
+        Vector3 rotTarget = Vector3.ClampMagnitude(Compose(pitch, yaw), _maxAngle);
 
         // ── Underdamped spring (can overshoot, unlike SmoothDamp) ─────────
         _rotVelocity += (rotTarget - _currentRot) * _stiffness * dt;
@@ -131,6 +140,17 @@ public class FlashlightSway : MonoBehaviour
             : Vector3.zero;
 
         ApplyPose(bob);
+    }
+
+    /// <summary>
+    /// Lays conceptual pitch/yaw offsets onto the flashlight's local Euler axes. Handles models
+    /// authored rolled ~90° (<see cref="_swapAxes"/>) and per-axis sign inversion.
+    /// </summary>
+    private Vector3 Compose(float pitch, float yaw)
+    {
+        if (_invertPitch) pitch = -pitch;
+        if (_invertYaw)   yaw   = -yaw;
+        return _swapAxes ? new Vector3(yaw, pitch, 0f) : new Vector3(pitch, yaw, 0f);
     }
 
     private void ApplyPose(Vector3 bob)
