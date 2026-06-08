@@ -248,7 +248,12 @@ public class QuestManager : MonoBehaviour, ISaveable
         {
             var def = defs[i];
             if (def == null) continue;
-            r.objectivesComplete[i] = def.condition?.Evaluate() ?? false;
+
+            // An Objective asset (drag-and-drop) wins: it owns a single done flag the ObjectiveService
+            // flips. Otherwise fall back to the manually-authored WSM condition.
+            r.objectivesComplete[i] = def.objective != null
+                ? (WorldStateManager.Instance != null && WorldStateManager.Instance.GetBool(def.objective.DoneKey))
+                : (def.condition?.Evaluate() ?? false);
 
             // Reveal check
             if (!r.objectivesRevealed[i] && def.hidden)

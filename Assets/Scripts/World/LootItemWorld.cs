@@ -14,6 +14,9 @@ public class LootItemWorld : MonoBehaviour, IInteractable
     /// <summary>Fired just before the GameObject is destroyed on successful pickup.</summary>
     public UnityEvent OnPickup;
 
+    /// <summary>Global signal: ANY loot picked up (the ItemSO collected). Used by ObjectiveService.</summary>
+    public static event System.Action<ItemSO> AnyPickup;
+
     private ItemInstance _instance; // set when spawned from inventory drop
     private InventoryUI  _inventory;
 
@@ -64,6 +67,7 @@ public class LootItemWorld : MonoBehaviour, IInteractable
         }
 
         OnPickup?.Invoke();
+        AnyPickup?.Invoke(_itemSO);
         Destroy(gameObject);
     }
 }

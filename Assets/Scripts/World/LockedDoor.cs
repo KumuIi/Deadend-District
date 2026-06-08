@@ -30,6 +30,9 @@ public abstract class LockedDoor : MonoBehaviour, IInteractable
              "where the key actually is. Off by default; enable while wiring a door.")]
     [SerializeField] protected bool _debugLogs = false;
 
+    /// <summary>Global signal: ANY lock opened (ShortcutLock subclasses fire it too). Used by ObjectiveService.</summary>
+    public static event System.Action<LockedDoor> AnyUnlocked;
+
     [Header("=== Audio ===")]
     [SerializeField] private AudioSource _audioSource;
     [Tooltip("Played when the lock successfully opens.")]
@@ -120,6 +123,7 @@ public abstract class LockedDoor : MonoBehaviour, IInteractable
         }
 
         WorldStateManager.Instance.SetBool(UnlockKey, true);
+        AnyUnlocked?.Invoke(this);
         PlayClip(_unlockClip);
     }
 

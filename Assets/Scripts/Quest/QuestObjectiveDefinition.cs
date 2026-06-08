@@ -12,10 +12,14 @@ using UnityEngine;
 [Serializable]
 public class QuestObjectiveDefinition
 {
-    [Tooltip("Text shown in the journal/HUD. Leave empty to auto-use condition description.")]
+    [Tooltip("Text shown in the journal/HUD. Leave empty to auto-use the Objective's name or the condition description.")]
     public string description;
 
-    [Tooltip("The WSM condition that marks this objective complete.")]
+    [Tooltip("DRAG-AND-DROP: an Objective asset that marks this complete (Reach Zone, Collect N, Kill N, " +
+             "Survive, etc.). When set, you don't need a WSM Condition below — the Objective handles everything.")]
+    public ObjectiveSO objective;
+
+    [Tooltip("Manual WSM condition (only used when no Objective asset is assigned above).")]
     public QuestConditionDefinition condition;
 
     [Tooltip("Does not block quest success. Shows in journal as a bonus task.")]

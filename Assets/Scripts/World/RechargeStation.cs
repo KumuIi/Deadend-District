@@ -10,6 +10,9 @@ using UnityEngine;
 /// </summary>
 public class RechargeStation : MonoBehaviour, IInteractable
 {
+    /// <summary>Global signal: a recharge actually happened. Used by ObjectiveService.</summary>
+    public static event System.Action AnyRecharge;
+
     [Header("=== References ===")]
     [Tooltip("The player's inventory — scanned for rechargeable batteries and flashlights.")]
     [SerializeField] private InventoryUI _playerInventoryUI;
@@ -36,6 +39,7 @@ public class RechargeStation : MonoBehaviour, IInteractable
         if (recharged == 0) return;
 
         WorldStateManager.Instance?.SetBool(_usedKey, true);
+        AnyRecharge?.Invoke();
 
         if (_audioSource != null && _rechargeSound != null)
             _audioSource.PlayOneShot(_rechargeSound);

@@ -1,10 +1,9 @@
 using System;
 
 /// <summary>
-/// The shared dialogue payload — a sequence of <see cref="DialogueLine"/>s, then optional
-/// <see cref="DialogueChoice"/>s shown after the last line. Used BOTH inline on a
-/// <see cref="DialogueSpeaker"/> state and inside a <see cref="DialogueSO"/>, so the two storage
-/// containers can never structurally diverge.
+/// The dialogue payload — a sequence of <see cref="DialogueLine"/>s, then optional
+/// <see cref="DialogueChoice"/>s shown after the last line. Built at runtime by
+/// <see cref="QuestGiver"/> and played by <see cref="DialogueUI"/>.
 /// </summary>
 [Serializable]
 public class DialogueConversation

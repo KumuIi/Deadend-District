@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Plays a <see cref="DialogueConversation"/> from a <see cref="DialogueSpeaker"/>: lines in order,
+/// Plays a <see cref="DialogueConversation"/> (built by <see cref="QuestGiver"/>): lines in order,
 /// then gated choices. Self-builds its panel under the nearest Canvas (like PlayerHUD / WeaponHUD),
 /// so no prefab UI is required. Blocks gameplay input while open via GameInputState.
 ///
@@ -16,7 +16,7 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class DialogueUI : MonoBehaviour
 {
-    /// <summary>Scene-wide accessor used by DialogueSpeaker. Null if no DialogueUI exists.</summary>
+    /// <summary>Scene-wide accessor used by QuestGiver. Null if no DialogueUI exists.</summary>
     public static DialogueUI Instance { get; private set; }
 
     /// <summary>True while a conversation is on screen. Use to gate save/load menus, etc.</summary>
@@ -48,7 +48,6 @@ public sealed class DialogueUI : MonoBehaviour
     private static Sprite _whiteSprite;
 
     // ── Playback state ──────────────────────────────────────────────────────
-    private DialogueSpeaker      _speaker;
     private DialogueConversation _conversation;
     private int                  _lineIndex;
     private bool                 _showingChoices;
@@ -88,17 +87,15 @@ public sealed class DialogueUI : MonoBehaviour
 
     // ── Public entry ─────────────────────────────────────────────────────────
 
-    /// <summary>Opens the conversation at <paramref name="stateIndex"/> on <paramref name="speaker"/>.</summary>
-    public void Open(DialogueSpeaker speaker, int stateIndex)
+    /// <summary>
+    /// Opens a conversation (built by <see cref="QuestGiver"/>). After a choice it closes; the caller
+    /// recomputes what to say on the next interaction.
+    /// </summary>
+    public void Open(DialogueConversation convo)
     {
-        if (speaker == null) return;
-        var convo = speaker.ConversationAt(stateIndex);
         if (convo == null || ((convo.lines == null || convo.lines.Length == 0) &&
                               (convo.choices == null || convo.choices.Length == 0)))
-        {
-            Debug.LogWarning($"[DialogueUI] '{speaker.name}' state {stateIndex} has no lines or choices.", speaker);
             return;
-        }
 
         if (!IsOpen)
         {
@@ -107,7 +104,6 @@ public sealed class DialogueUI : MonoBehaviour
             _panel.gameObject.SetActive(true);
         }
 
-        _speaker      = speaker;
         Play(convo);
     }
 
@@ -181,8 +177,8 @@ public sealed class DialogueUI : MonoBehaviour
     }
 
     private static bool IsChoiceVisible(DialogueChoice choice) =>
-        DialogueSpeaker.ConditionPassesOrEmpty(choice.showIf) &&
-        DialogueSpeaker.PlayerHasItem(choice.takeItem); // takeItem null => true
+        DialogueUtil.ConditionPassesOrEmpty(choice.showIf) &&
+        DialogueUtil.PlayerHasItem(choice.takeItem); // takeItem null => true
 
     // ── Choice resolution (atomic item transaction) ──────────────────────────
 
@@ -213,17 +209,11 @@ public sealed class DialogueUI : MonoBehaviour
             }
         }
 
-        // 3. Commit the facts. QuestManager reacts to these on its own.
+        // 3. Commit the facts, then close. QuestManager reacts to these; the QuestGiver recomputes
+        //    what to say the next time the player talks.
         if (choice.writesOnPick != null)
             foreach (var w in choice.writesOnPick) w?.Apply();
 
-        // 4. Chain to another state on the same speaker, or close.
-        if (choice.nextStateIndex >= 0)
-        {
-            var next = _speaker.ConversationAt(choice.nextStateIndex);
-            if (next != null) { Play(next); return; }
-            Debug.LogWarning($"[DialogueUI] nextStateIndex {choice.nextStateIndex} on '{_speaker.name}' is invalid — closing.", _speaker);
-        }
         Close();
     }
 
@@ -240,7 +230,6 @@ public sealed class DialogueUI : MonoBehaviour
     {
         ClearChoiceButtons();
         _showingChoices = false;
-        _speaker        = null;
         _conversation   = null;
         if (_panel != null) _panel.gameObject.SetActive(false);
         if (IsOpen) { GameInputState.Unblock(); IsOpen = false; }

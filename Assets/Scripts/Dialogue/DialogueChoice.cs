@@ -3,8 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// A selectable option shown after a conversation's lines. Optionally gated (showIf / takeItem),
-/// optionally moves an item, writes WSM facts on pick, then either chains to another state on the
-/// same <see cref="DialogueSpeaker"/> (<see cref="nextStateIndex"/>) or closes the dialogue (-1).
+/// optionally moves an item, writes WSM facts on pick, then closes the dialogue.
 /// </summary>
 [Serializable]
 public class DialogueChoice
@@ -23,7 +22,4 @@ public class DialogueChoice
 
     [Tooltip("WSM facts written when this choice is picked (e.g. the quest 'delivered' flag).")]
     public DialogueWrite[] writesOnPick;
-
-    [Tooltip("State index on this DialogueSpeaker to continue to immediately after picking, or -1 to close.")]
-    public int nextStateIndex = -1;
 }

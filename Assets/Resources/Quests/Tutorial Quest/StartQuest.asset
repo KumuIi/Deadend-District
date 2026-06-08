@@ -13,21 +13,43 @@ MonoBehaviour:
   m_Name: StartQuest
   m_EditorClassIdentifier: Assembly-CSharp::QuestSO
   _questId: c5e5c438ab1a4e20bec0ca07099e1a11
-  title: Getting Started
-  description: Go Into a raid and pick up any item you find
-  trackerText: pick up any item in a raid
+  title: Getting started
+  description: Go Into a raid and pick up any 3 items you find
+  trackerText: pick up any 3 items in a raid
   requiredQuests: []
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.c5e5c438ab1a4e20bec0ca07099e1a11.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 
   cancelOnActivate: []
-  objectives: []
+  objectives:
+  - description: pick up any 3 items in a raid 222
+    objective: {fileID: 11400000, guid: 5e7f2139de600af45a093cc9a5f12fac, type: 2}
+    condition:
+      wsmKey: 
+      description: 
+      valueType: 0
+      comparison: 0
+      expectedBool: 0
+      expectedInt: 0
+      expectedFloat: 0
+      expectedString: 
+    optional: 0
+    hidden: 0
+    revealCondition:
+      wsmKey: 
+      description: 
+      valueType: 0
+      comparison: 0
+      expectedBool: 0
+      expectedInt: 0
+      expectedFloat: 0
+      expectedString: 
   outcomes: []
   globalFailConditions: []
   failsWithMe: []

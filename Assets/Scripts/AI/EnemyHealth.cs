@@ -17,6 +17,9 @@ public class EnemyHealth : MonoBehaviour, IDamageable, IFactionProvider
     public event Action              OnDeath;
     public event Action<DamageContext> OnDamaged;
 
+    /// <summary>Global signal: ANY enemy died (passes itself so listeners can read TeamId). Used by ObjectiveService.</summary>
+    public static event Action<EnemyHealth> AnyDeath;
+
     private void Awake() => CurrentHealth = _maxHealth;
 
     public float ApplyDamage(DamageContext ctx)
@@ -29,6 +32,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable, IFactionProvider
         {
             enabled = false;
             OnDeath?.Invoke();
+            AnyDeath?.Invoke(this);
         }
         return dealt;
     }
