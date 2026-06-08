@@ -54,7 +54,7 @@ MonoBehaviour:
   boltTravelDistance: 0.0007
   boltBackTime: 0.04
   boltForwardTime: 0.1
-  triggerRotationAngle: 15
+  triggerRotationAngle: 45
   triggerPullTime: 0.03
   triggerReleaseTime: 0.08
   casingPrefab: {fileID: 3995026478072861770, guid: 17c2546342ab0d9419a04bcf4b3c1e30, type: 3}
@@ -64,7 +64,7 @@ MonoBehaviour:
   casingLifetime: 4
   muzzleFlashPrefab: {fileID: 0}
   gunshotClip: {fileID: 8300000, guid: ba033ad3b7441314295c4205140ef0c1, type: 3}
-  defaultAmmo: {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}
+  defaultAmmo: {fileID: 11400000, guid: eeb9544d30d0f1844a66cc4eba9cf95b, type: 2}
   feel:
     hipRestRotationOffset: {x: 0, y: 0, z: 0}
     adsRestRotationOffset: {x: 0, y: 0, z: 0}
@@ -74,26 +74,26 @@ MonoBehaviour:
     adsInertiaAmount: 0.02
     adsInertiaSmooth: 0.08
     adsInertiaMaxDelta: 0.04
-    swayAmount: 0.04
+    swayAmount: 0.01
     swaySmooth: 8
     swayMaxDelta: 2
-    tiltAmount: 10
-    tiltSmooth: 8
-    adsTiltMultiplier: 1
-    leanGunTiltAmount: -10
+    tiltAmount: 7
+    tiltSmooth: 4
+    adsTiltMultiplier: 2
+    leanGunTiltAmount: -15
     breatheAmplitudeY: 0.0015
     breatheAmplitudeX: 0.0008
     breatheFrequency: 0.8
-    adsBreathScale: 0.3
+    adsBreathScale: 1
     walkBobSpeedThreshold: 0.5
     walkBobFrequency: 1.2
     walkBobAmplitudeY: 0.006
     walkBobAmplitudeX: 0.003
-    sprintBobFrequency: 1.5
+    sprintBobFrequency: 1.65
     sprintBobAmplitudeY: 0.02
     sprintBobAmplitudeX: 0.01
-    sprintTiltZ: 45
-    sprintTiltSmooth: 6
+    sprintTiltZ: 10
+    sprintTiltSmooth: 20
     airborneRiseAmount: 0.04
     airborneRiseSmooth: 0.15
     airborneReturnSmooth: 0.08

@@ -32,6 +32,11 @@ public class QuestSO : ScriptableObject
     public string title;
     [TextArea] public string description;
 
+    [Tooltip("Short one-line summary for the on-screen quest tracker (top-right HUD), e.g. " +
+             "'Find the 2A bunker door and return your findings'. The tracker prefers the current " +
+             "objective's description; this is the fallback when objectives have no description.")]
+    public string trackerText;
+
     // ── Activation ────────────────────────────────────────────────────────────
 
     [Header("Activation")]

@@ -22,6 +22,17 @@ public class QuestManager : MonoBehaviour, ISaveable
 
     [SerializeField] private List<QuestSO> _quests = new List<QuestSO>();
 
+    /// <summary>
+    /// Fires whenever any quest's status changes — activate / succeed / fail / expire / cancel /
+    /// repeatable reset / save-load. UI (e.g. QuestTrackerUI) subscribes to refresh without polling.
+    /// </summary>
+    public event Action OnQuestsChanged;
+
+    /// <summary>All quests registered on this manager (read-only). Pair with <see cref="GetStatus(QuestSO)"/>.</summary>
+    public IReadOnlyList<QuestSO> Quests => _quests;
+
+    private void NotifyChanged() => OnQuestsChanged?.Invoke();
+
     private readonly Dictionary<string, QuestRuntimeState> _runtime
         = new Dictionary<string, QuestRuntimeState>();
 
@@ -94,6 +105,7 @@ public class QuestManager : MonoBehaviour, ISaveable
                 // Reset runtime to Inactive FIRST so EvaluateAll (triggered by WSM clear) can re-activate
                 r.ResetForRepeat();
                 ClearQuestWSMFlags(quest);
+                NotifyChanged();
             }
         }
     }
@@ -139,6 +151,8 @@ public class QuestManager : MonoBehaviour, ISaveable
             r.activeTimeElapsed    = i < dto.activeTimeElapsed.Count ? dto.activeTimeElapsed[i] : 0f;
         }
         // Do NOT call EvaluateAll() — WorldStateSaveAdapter may not have run yet.
+        // But DO refresh listeners so the tracker reflects the restored statuses.
+        NotifyChanged();
     }
 
     // ── WSM event ────────────────────────────────────────────────────────────
@@ -276,6 +290,9 @@ public class QuestManager : MonoBehaviour, ISaveable
             if (flag != null) WorldStateManager.Instance.SetBool(flag, true);
         }
 
+        // Notify BEFORE the activation early-return below, so the tracker refreshes on activate too.
+        NotifyChanged();
+
         // On activation: cancel mutually exclusive quests
         if (next == QuestStatus.Active)
         {
@@ -338,6 +355,7 @@ public class QuestManager : MonoBehaviour, ISaveable
         r.resolvedOutcomeIndex = -1;
         Debug.Log($"[QuestManager] '{quest.title}' → Failed (propagated)");
         WorldStateManager.Instance?.SetBool($"quest.{quest.QuestId}.failed", true);
+        NotifyChanged();
 
         // Continue with the same visited set
         if (quest.failsWithMe != null)
