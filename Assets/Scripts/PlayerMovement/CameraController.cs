@@ -49,6 +49,27 @@ public class CameraController : MonoBehaviour
             : pitch;
     }
 
+    /// <summary>
+    /// Re-pins the camera to its authored resting pose on the body. Restores the horizontal eye
+    /// offset (local x/z) and clears any in-progress lean, so the camera sits centered on the
+    /// capsule axis. Does NOT touch pitch — that is restored separately by the save system.
+    ///
+    /// Call this after anything that may have world-moved this transform off the body axis (e.g.
+    /// the in-place menu rig). LateUpdate self-heals x/z anyway, but calling this on restore
+    /// guarantees a centered camera on the very first frame, with no transient off-center frame.
+    /// </summary>
+    public void ResetRig()
+    {
+        _leanCurrent  = 0f;
+        _leanVelocity = 0f;
+        LeanWeight    = 0f;
+
+        Vector3 lp = transform.localPosition;
+        lp.x = _baseLocalPos.x;
+        lp.z = _baseLocalPos.z;
+        transform.localPosition = lp;
+    }
+
     private PlayerMotor _motor;
     private float   _pitch;
     private float   _fovRatio;
@@ -84,17 +105,20 @@ public class CameraController : MonoBehaviour
         _leanCurrent = Mathf.SmoothDamp(_leanCurrent, leanTarget, ref _leanVelocity, 1f / leanSmooth);
         LeanWeight   = _leanCurrent;
 
-        // ── Crouch height lerp ────────────────────────────────────────────
+        // ── Position: crouch height + lateral lean, re-pinned to the body axis ──
+        // Author the FULL local position every frame (x AND z from _baseLocalPos) so any external
+        // displacement of this transform — e.g. the in-place menu rig world-moving the camera —
+        // self-heals the moment gameplay resumes, instead of leaving the eye point off-centre and
+        // making yaw arc the camera around the capsule. Only y carries state (crouch lerp).
         float targetY = (_motor != null && _motor.IsCrouching) ? crouchCamY : standCamY;
-        Vector3 lp    = transform.localPosition;
-        lp.y          = Mathf.Lerp(lp.y, targetY, crouchLerpSpeed * Time.deltaTime);
-        transform.localPosition = lp;
+        float y       = Mathf.Lerp(transform.localPosition.y, targetY, crouchLerpSpeed * Time.deltaTime);
+        transform.localPosition = new Vector3(
+            _baseLocalPos.x + _leanCurrent * leanSideOffset,
+            y,
+            _baseLocalPos.z);
 
-        // ── Apply pitch rotation + lateral lean offset ────────────────────
-        // Positive lean = lean right: roll clockwise (-Z euler), shift right (+X local)
+        // ── Apply pitch rotation + lean roll ──────────────────────────────
+        // Positive lean = lean right: roll clockwise (-Z euler), shift right (+X local, above)
         transform.localRotation = Quaternion.Euler(_pitch, 0f, -_leanCurrent * leanAngle);
-        Vector3 pos = transform.localPosition;
-        pos.x = _baseLocalPos.x + _leanCurrent * leanSideOffset;
-        transform.localPosition = pos;
     }
 }

@@ -51,8 +51,15 @@ public class PlayerTransformSaveAdapter : MonoBehaviour, ISaveable
         _motor.Teleport(new Vector3(dto.posX, dto.posY, dto.posZ),
                         Quaternion.Euler(0f, dto.yaw, 0f));
 
-        // Pitch back onto the camera so the player faces exactly where they saved.
-        if (_camera != null) _camera.SetPitch(dto.pitch);
+        // Pitch back onto the camera so the player faces exactly where they saved, and re-pin the
+        // camera to the body axis. New Game / load teleports the BODY only; if the in-place menu rig
+        // had world-moved the camera off-centre, ResetRig re-centres the eye point so yaw rotates
+        // about the capsule (no off-centre arcing) from the very first frame.
+        if (_camera != null)
+        {
+            _camera.SetPitch(dto.pitch);
+            _camera.ResetRig();
+        }
     }
 }
 
