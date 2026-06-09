@@ -1,5 +1,6 @@
 using System;
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -17,6 +18,9 @@ public class MenuButton3D : MonoBehaviour
     [SerializeField] private UnityEvent _onClick;
     [SerializeField] private Transform _cameraTarget;
     [SerializeField] private bool _invokeAfterCameraArrives = false;
+
+    [Header("Label (TMP that rides with this bullet — relabeled per menu mode)")]
+    [SerializeField] private TMP_Text _label;
 
     [Header("Hover (local X nudge)")]
     [SerializeField] private float _hoverOffset = 0.0125f;
@@ -46,6 +50,20 @@ public class MenuButton3D : MonoBehaviour
     /// PauseMenu uses this to block saving outside the hub.
     /// </summary>
     public Func<bool> ClickGuard { get; set; }
+
+    /// <summary>
+    /// Optional action set at runtime by the menu controller. When non-null it is invoked on a
+    /// successful click INSTEAD of the inspector <see cref="_onClick"/>. This is what lets a single
+    /// physical bullet serve different roles across menu modes (e.g. "Resume" in pause vs
+    /// "Start New Game" in the main menu) without re-wiring UnityEvents.
+    /// </summary>
+    public Action RuntimeAction { get; set; }
+
+    /// <summary>Sets the bullet's visible label. No-op if no TMP is assigned.</summary>
+    public void SetLabel(string text)
+    {
+        if (_label != null) _label.text = text;
+    }
 
     private Vector3 _baseLocalPos;
     // Fly direction is the button's LOCAL +X (same axis the hover nudge uses). Animating in
@@ -189,19 +207,26 @@ public class MenuButton3D : MonoBehaviour
     {
         OnClicked?.Invoke(this);
 
+        // RuntimeAction (set per menu mode) wins over the inspector UnityEvent when present.
+        void Invoke()
+        {
+            if (RuntimeAction != null) RuntimeAction();
+            else                       _onClick.Invoke();
+        }
+
         if (_cameraTarget != null && MenuCameraRig.Instance != null)
         {
             if (_invokeAfterCameraArrives)
-                MenuCameraRig.Instance.MoveTo(_cameraTarget, () => _onClick.Invoke());
+                MenuCameraRig.Instance.MoveTo(_cameraTarget, Invoke);
             else
             {
                 MenuCameraRig.Instance.MoveTo(_cameraTarget, null);
-                _onClick.Invoke();
+                Invoke();
             }
         }
         else
         {
-            _onClick.Invoke();
+            Invoke();
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -37,6 +38,9 @@ public class RunManager : MonoBehaviour
     {
         // Restore the slot the player last explicitly chose; fall back to inspector default.
         ActiveSaveSlot = PlayerPrefs.GetString(SlotPrefKey, _defaultSaveSlot);
+
+        // Snapshot the pristine boot state once so "Start New Game" has a true blank to restore.
+        StartCoroutine(CaptureBaselineNextFrame());
     }
 
     public void SetActiveSlot(string slot)
@@ -189,6 +193,34 @@ public class RunManager : MonoBehaviour
         // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);
     }
 
+    // ── Death screen hook ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Raised on death so a UI (the bullet menu's Death mode) can take over INSTEAD of the default
+    /// "fade to black + return to hub". A subscriber returns true to signal it has shown the screen
+    /// and consumed the death; if nothing returns true, DeathSequence falls back to the hub return,
+    /// so we never soft-lock when no death screen is present.
+    /// </summary>
+    public event Func<bool> DeathScreenRequested;
+
+    private bool TryShowDeathScreen()
+    {
+        if (DeathScreenRequested == null) return false;
+
+        foreach (Func<bool> handler in DeathScreenRequested.GetInvocationList())
+        {
+            try
+            {
+                if (handler()) return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+        return false;
+    }
+
     /// <summary>Called by PlayerHealth.OnDeath (via PlayerRunRegistration).</summary>
     private void OnPlayerDeath()
     {
@@ -210,16 +242,23 @@ public class RunManager : MonoBehaviour
     {
         State = RunState.Dead;
 
-        // Fade out before clearing state so the player sees the screen go dark
+        // Death clears the inventory in MEMORY only: InventorySaveAdapter implements
+        // IRunLifecycleListener and empties itself on OnRunDied. Nothing is written to disk,
+        // so reloading a save slot restores the pre-raid inventory (manual-save model).
+        // Done BEFORE the death screen so a subsequent "Load" cleanly restores from disk.
+        Broadcast(l => l.OnRunDied());
+
+        // If a death screen handles this, take its path instead of returning to the hub.
+        // We deliberately SKIP the black FadeOut here: the screen shows a 70%-opacity red wall
+        // through which the death scene must still be visible — a full black fade would defeat that.
+        if (TryShowDeathScreen())
+            yield break;
+
+        // ── Fallback: no death screen present — original fade-to-black + hub return ──
         if (SceneTransitionManager.Instance != null)
             yield return SceneTransitionManager.Instance.FadeOut();
         else
             yield return new WaitForSecondsRealtime(_deathFadeDelay);
-
-        // Death clears the inventory in MEMORY only: InventorySaveAdapter implements
-        // IRunLifecycleListener and empties itself on OnRunDied. Nothing is written to disk,
-        // so reloading a save slot restores the pre-raid inventory (manual-save model).
-        Broadcast(l => l.OnRunDied());
 
         // MANUAL-SAVE MODEL: do NOT persist the death. Re-enable to commit the loss to disk
         // for Tarkov-style permanent death (player cannot reload to recover lost loot).
@@ -303,6 +342,126 @@ public class RunManager : MonoBehaviour
             SaveSystem.Instance?.LoadAll(slot);
     }
 
+    // ── Main-menu / new-game transitions ─────────────────────────────────────
+
+    /// <summary>
+    /// Resets run state when the player opens the main menu (from pause or the death screen)
+    /// WITHOUT loading a scene — the menu just covers the current view with its background.
+    /// RunManager is long-lived, so without this the state machine stays stuck in Dead/InRun
+    /// after "Return to Menu" and the next run/load misbehaves.
+    /// </summary>
+    public void AbandonRunForMainMenu()
+    {
+        _pendingLoadSlot = null;
+
+        var stm = SceneTransitionManager.Instance;
+        if (stm != null)
+        {
+            stm.OnSceneTransitionFinished -= OnReturnedToHubAfterExtract;
+            stm.OnSceneTransitionFinished -= OnReturnedToHubAfterDeath;
+            stm.OnSceneTransitionFinished -= OnReturnedToHubAfterLoad;
+        }
+
+        // Only claim InHub when truly there. If a sector is still loaded (died/abandoned mid-run),
+        // leave the state alone — the subsequent main-menu Load (via LoadSlot) and New Game both
+        // perform a proper async hub return before restoring, and would corrupt state if we
+        // prematurely marked the run hub-safe (restoring in-place over the loaded sector).
+        if (stm == null || !stm.IsInSector)
+            State = RunState.InHub;
+    }
+
+    /// <summary>Reserved slot for fresh games — never written by the normal flashdrive Save,
+    /// so "Start New Game" can't clobber the player's real saves.</summary>
+    public const string NewGameSlot = "__newgame__";
+
+    /// <summary>Reserved slot holding a pristine snapshot captured once at first boot. New Game
+    /// restores it to get a genuinely blank state (the save system skips missing files, so an
+    /// absent file can't represent "blank" — a real baseline file is needed).</summary>
+    public const string BaselineSlot = "__baseline__";
+
+    private IEnumerator CaptureBaselineNextFrame()
+    {
+        yield return null;   // one frame so every ISaveable has registered in its Start()
+        if (SaveSystem.Instance != null && !SaveSystem.Instance.SlotExists(BaselineSlot))
+        {
+            SaveSystem.Instance.SaveAll(BaselineSlot);
+            Debug.Log("[RunManager] Captured pristine baseline snapshot for New Game.");
+        }
+    }
+
+    /// <summary>
+    /// Starts a blank game. If a pristine baseline snapshot exists it is restored (empty inventory,
+    /// default world/profile/quests, full health, and the boot spawn via PlayerMotor.Teleport) — a
+    /// true reset. Then the active slot is pointed at a reserved throwaway slot so a later manual
+    /// Save can NOT overwrite the player's real saves. Writes nothing to the player's slots.
+    /// Callers reach the main menu via AbandonRunForMainMenu, so we are already in the hub.
+    /// </summary>
+    private Action _newGameOnApplied;
+
+    /// <param name="onApplied">Invoked once the blank state has actually been applied — synchronously
+    /// when already in the hub, or after the async hub-return completes when called from a sector.
+    /// The menu uses this to resume only after the reset lands (never mid-transition).</param>
+    public void NewGame(Action onApplied = null)
+    {
+        _pendingLoadSlot = null;
+
+        // If a sector is still loaded (New Game chosen after dying mid-run), return to the hub
+        // first and apply the blank reset once we've arrived — never restore over a loaded sector.
+        var stm = SceneTransitionManager.Instance;
+        if (State != RunState.InHub && stm != null && stm.IsInSector)
+        {
+            _newGameOnApplied = onApplied;
+            stm.OnSceneTransitionFinished -= OnHubReadyForNewGame;   // avoid a double subscription
+            stm.OnSceneTransitionFinished += OnHubReadyForNewGame;
+            // LoadHub may return false if a transition is already running — we still wait for that
+            // transition to finish (and re-check below), so we never apply over a loaded sector.
+            stm.LoadHub();
+            return;
+        }
+
+        ApplyNewGame();
+        onApplied?.Invoke();
+    }
+
+    private void OnHubReadyForNewGame()
+    {
+        var stm = SceneTransitionManager.Instance;
+        if (stm != null) stm.OnSceneTransitionFinished -= OnHubReadyForNewGame;
+
+        // The finished transition might not have been a hub return (e.g. a sector was still loading
+        // when we asked). Keep returning to the hub until a sector is no longer loaded.
+        if (stm != null && stm.IsInSector)
+        {
+            stm.OnSceneTransitionFinished += OnHubReadyForNewGame;
+            stm.LoadHub();
+            return;
+        }
+
+        ApplyNewGame();
+        var cb = _newGameOnApplied;
+        _newGameOnApplied = null;
+        cb?.Invoke();
+    }
+
+    private void ApplyNewGame()
+    {
+        State = RunState.InHub;
+
+        if (SaveSystem.Instance != null && SaveSystem.Instance.SlotExists(BaselineSlot))
+        {
+            SaveSystem.Instance.LoadAll(BaselineSlot);
+        }
+        else
+        {
+            // Fallback (baseline never captured): clear run inventory + refill health in place.
+            Broadcast(l => l.OnRunDied());
+            if (_playerHealth != null)
+                _playerHealth.LoadFromSave(_playerHealth.maxHealth, _playerHealth.maxEnergy);
+        }
+
+        SetActiveSlot(NewGameSlot);
+    }
+
     private void OnDisable()
     {
         // Defensive cleanup — unsubscribe all transition callbacks if RunManager is disabled mid-transition
@@ -310,5 +469,6 @@ public class RunManager : MonoBehaviour
         SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterExtract;
         SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterDeath;
         SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterLoad;
+        SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnHubReadyForNewGame;
     }
 }

@@ -1255,6 +1255,7 @@ Transform:
   - {fileID: 2138604365}
   - {fileID: 801468120}
   - {fileID: 802392933}
+  - {fileID: 543450651606660713}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &548351846
@@ -4229,10 +4230,30 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 919642263201190467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_fontSize
+      value: 38
+      objectReference: {fileID: 0}
+    - target: {fileID: 919642263201190467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_margin.x
+      value: -14.034212
+      objectReference: {fileID: 0}
+    - target: {fileID: 919642263201190467, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_fontSizeBase
+      value: 38
+      objectReference: {fileID: 0}
     - target: {fileID: 2128611078810804527, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: _questManager
       value: 
       objectReference: {fileID: 366038832}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _titleRevealDelay
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: _titleRevealDuration
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 6588030462703277740, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_Name
       value: '[Player]'
@@ -4303,6 +4324,9 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 0}
     - targetCorrespondingSourceObject: {fileID: 8386048592189256174, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
+    - targetCorrespondingSourceObject: {fileID: 6245679924100402952, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       insertIndex: -1
       addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
@@ -4794,33 +4818,59 @@ MonoBehaviour:
   _idleLines:
   - I don't have anything for you right now.
   _stages:
-  - label: 
-    quest: {fileID: 11400000, guid: 428cee19d47ac5d489777ff84ed629a3, type: 2}
+  - label: JustExtract
+    quest: {fileID: 11400000, guid: 781c8b233bb36c246a945363c3b57953, type: 2}
     requiresQuestBefore: {fileID: 0}
     turnInItem: {fileID: 0}
     portrait: {fileID: 0}
     offerLines:
-    - Hey, So you want to explore the sewers?
-    - Well i can grant you access to it if you prove youre worthy enough.
-    - get me any 3 items from the sewers and ill put in a good word in for you
+    - '*He looks up from his papers as you get close.*'
+    - You make the face of a person who has no other choice.
+    - Then sign this. It says you work until the job is done, not until it gets uncomfortable.
+      Until it's done. Ya hear?
+    - Down those stairs is what the city registered as a maintenance sewer. I need
+      to know what's actually in there. I'm not sending you in armed, I'm not sending
+      you in prepared - I just need eyes. Go in, take a look around, and come back
+      out. That's it.
+    - The sewers are that way. Come find me when you're back.
     inProgressLines:
-    - Already giving up?
+    - Just take a look will ya?
     doneLines:
-    - Okay, not bad. I though your gonna die on your first run.
+    - So tell me, what did you find?
     requireAcceptChoice: 0
-  - label: BuyAGun
-    quest: {fileID: 11400000, guid: bc6d614716a9b0a4582dba1e9e488021, type: 2}
-    requiresQuestBefore: {fileID: 11400000, guid: 428cee19d47ac5d489777ff84ed629a3, type: 2}
+  - label: FindMeScrap
+    quest: {fileID: 11400000, guid: 428cee19d47ac5d489777ff84ed629a3, type: 2}
+    requiresQuestBefore: {fileID: 11400000, guid: 781c8b233bb36c246a945363c3b57953, type: 2}
     turnInItem: {fileID: 0}
     portrait: {fileID: 0}
     offerLines:
-    - I would advise you to buy a Gun if you want to explore deep
-    - for now stay close and sell any scrap you find
-    - get back to me when you have enough money
+    - That was fast. What did you see?
+    - '*He leans forward slightly*'
+    - ...No light at all? Not emergency strips, not maintenance lamps, nothing?
+    - He sits back. Quiet for a moment.
+    - "That's not a maintenance sewer. Maintenance sewers have lighting \u2014 it's
+      code. Someone stripped it out. Someone didn't want people to see what's down
+      there."
+    - He opens a case under the table and sets a flashlight and a small battery on
+      the surface
+    - "Take these. The flashlight runs on batteries \u2014 standard ones like this
+      are single-use. Once they're dead, they're dead. You buy more from Kedr.\"
+      He nods at the trader. \"Cheap, but you'll burn through them fast if you're
+      not careful."
+    - "There are rechargeable batteries too. Kedr carries them sometimes. They're
+      expensive \u2014 rare, because whatever's down there drains them faster than
+      it should. Normal batteries too, actually, which is why the single-use ones
+      die so quick. Rechargeables at least you can top up at the station over there."
+    - He points to the recharge station near the wall.
+    - "Manage that battery. If it dies in there, you won't see a thing \u2014 and
+      trust me, you do not want to be blind down there.\""
+    - "Now. I want to know what else is in there. Go back in, pick up anything that
+      looks sellable \u2014 garbage, scrap, whatever you find \u2014 bring me three
+      things. Let's see what this place is actually hiding."
     inProgressLines:
     - go, go, just stay safe.
     doneLines:
-    - okay, now buy yourself a makarov at the bartender, i told him who you are.
+    - Okay nicely done.
     requireAcceptChoice: 0
 --- !u!114 &1832169214
 MonoBehaviour:
@@ -6364,7 +6414,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 919132147934588115}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -3.97, y: 0.005200051, z: 5.04}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -6410,7 +6460,7 @@ Transform:
   - {fileID: 1528095440}
   - {fileID: 833107610}
   - {fileID: 151615639}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 492056714}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!23 &567952955488683350
 MeshRenderer:
@@ -15730,6 +15780,5 @@ SceneRoots:
   - {fileID: 1716602091}
   - {fileID: 662845473}
   - {fileID: 1338166816}
-  - {fileID: 492056714}
   - {fileID: 1692325779}
-  - {fileID: 543450651606660713}
+  - {fileID: 492056714}

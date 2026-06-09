@@ -37,6 +37,9 @@ public class SceneTransitionManager : MonoBehaviour
 
     public bool IsTransitioning => _isTransitioning;
 
+    /// <summary>True while a sector is loaded additively on top of the hub.</summary>
+    public bool IsInSector => !string.IsNullOrEmpty(_activeSectorName);
+
     private CanvasGroup _fadeGroup;
     private bool        _isTransitioning;
     private string      _activeSectorName;
@@ -188,6 +191,19 @@ public class SceneTransitionManager : MonoBehaviour
         bool done = false;
         _fadeGroup.DOFade(0f, _fadeDuration).SetUpdate(true).OnComplete(() => done = true);
         yield return new WaitUntil(() => done);
+    }
+
+    /// <summary>
+    /// Instantly clears the black fade overlay (kills any in-flight fade tween, alpha → 0).
+    /// The death screen calls this before fading in its own red overlay: the fade canvas sits at
+    /// sortingOrder 999 and would otherwise sit on top of the red wall / bullets if a prior
+    /// transition left it non-transparent.
+    /// </summary>
+    public void ClearFadeImmediate()
+    {
+        if (_fadeGroup == null) return;
+        _fadeGroup.DOKill();
+        _fadeGroup.alpha = 0f;
     }
 
     // ── Fade canvas ────────────────────────────────────────────────────────

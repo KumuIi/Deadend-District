@@ -1,104 +1,253 @@
+using System;
 using System.Collections;
+using DG.Tweening;
+using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 /// <summary>
-/// Orchestrates the 3D pause menu button sequence entirely in code — no Animator needed.
-/// Open:  buttons fly in one by one with stagger.
-/// Click: clicked button fires first, remaining buttons cascade out after it lands.
-/// Close: cursor locks + timeScale restores immediately (gameplay resumes), THEN buttons fly out.
+/// Mode-aware 3D bullet menu. ONE controller drives ONE pool of MenuButton3D bullets across three
+/// modes — there are no separate menu scenes or screens:
 ///
-/// Key rule: always lock cursor BEFORE restoring timeScale so gameplay never runs
-/// with an unlocked cursor (which causes a camera spike on the first frame).
+///   • Pause     — Esc during gameplay. Resume / Save / Load / Return to Menu.
+///   • Death     — raised by RunManager on death instead of returning to the hub. A 70%-red wall
+///                 fades in, "YOU DIED" shows where the top bullet would be, and only the bottom
+///                 bullets fly in: Load / Return to Menu / Quit.
+///   • MainMenu  — shown on boot (over the already-loaded hub, behind a background image) and when
+///                 "Return to Menu" is pressed. Start New Game / Load / Quit.
 ///
-/// Implementors: one instance on PauseRoot (child of player camera).
+/// Each mode picks which bullets fly in (BOTTOM-aligned, so the top stays free for the title text),
+/// relabels them (MenuButton3D.SetLabel) and repoints their click (MenuButton3D.RuntimeAction).
+/// Loading/saving is delegated to the existing FlashdriveMenuController.
+///
+/// The root GameObject stays ACTIVE the whole time (so this component can subscribe to the death
+/// event); "closed" simply means every bullet is hidden and the overlays are transparent.
+///
+/// Implementors: one instance on the menu root (child of the player camera), alongside the
+/// FlashdriveMenuRoot. Provide one more bullet than the busiest mode needs so the top slot is free.
 /// </summary>
 public class PauseMenu : MonoBehaviour
 {
-    [Header("Buttons (assign in order they should fly in)")]
-    [SerializeField] private MenuButton3D[] _buttons;
+    public enum Mode { Pause, Death, MainMenu }
+
+    // Logical menu entries. The same physical bullet can host different entries in different modes.
+    private enum Entry { Resume, Save, Load, ReturnToMenu, Quit, StartNewGame }
+
+    [Header("Bullets (ordered TOP → BOTTOM). Entries fill from the bottom up; provide one extra so the top stays free for the title.")]
+    [SerializeField] private MenuButton3D[] _bullets;
+
+    [Header("Title (3D TMP above the bullets — used for YOU DIED / the game name)")]
+    [SerializeField] private GameObject _titleObject;
+    [SerializeField] private TMP_Text   _titleLabel;
+    [SerializeField] private string     _deathTitle = "YOU DIED";
+    [SerializeField] private string     _menuTitle  = "DEADEND DISTRICT";
+
+    [Header("Title reveal (plays AFTER the bullets — slow 'aura' moment)")]
+    [Tooltip("Seconds to wait after opening before the title starts revealing — let the bullets land first.")]
+    [SerializeField] private float _titleRevealDelay    = 0.5f;
+    [Tooltip("How long the slow title fade-up takes.")]
+    [SerializeField] private float _titleRevealDuration = 3f;
+    [Tooltip("Title starts at this multiple of its normal size and settles to 1× as it fades in (the 'aura').")]
+    [SerializeField] private float _titleRevealScaleFrom = 1.12f;
+
+    private Vector3 _titleBaseScale = Vector3.one;
+
+    [Header("Overlays — built in code on the linked canvas")]
+    [Tooltip("Empty Canvas hosting the red death wall + the main-menu background. Forced to " +
+             "Screen Space - Camera at the plane distance below so it renders BEHIND the 3D bullets " +
+             "(camera children, closer) but IN FRONT of the world. Screen Space - Overlay would cover the bullets.")]
+    [SerializeField] private Canvas _overlayCanvas;
+    [Tooltip("Camera the overlay canvas renders through — the player camera this menu hangs under. " +
+             "Falls back to Camera.main if left empty.")]
+    [SerializeField] private Camera _menuCamera;
+    [Tooltip("Canvas plane distance (metres). Must be a bit LARGER than the bullets' distance from " +
+             "the camera so the bullets draw in front. If the red wall covers the bullets, increase it; " +
+             "keep it small so nearby walls don't poke through.")]
+    [SerializeField] private float _overlayPlaneDistance = 0.3f;
+    [Tooltip("Main-menu background. Drop your image here as a Sprite — code builds the full-screen Image.")]
+    [SerializeField] private Sprite _backgroundSprite;
+    [SerializeField] private Color  _redColor        = new Color(0.55f, 0f, 0f, 1f);
+    [SerializeField] private float  _redOverlayAlpha = 0.7f;
+    [SerializeField] private float  _overlayFade     = 0.4f;
+
+    // Built at runtime on _overlayCanvas (full-screen Image + CanvasGroup each).
+    private CanvasGroup _redOverlay;
+    private CanvasGroup _backgroundImage;
 
     [Header("Timing")]
     [SerializeField] private float _flyInStagger  = 0.08f;
     [SerializeField] private float _flyOutStagger = 0.06f;
 
-    [Header("Flashdrive menu")]
+    [Header("Flashdrive menu (save/load)")]
     [SerializeField] private FlashdriveMenuController _flashdriveMenu;
 
-    [Header("Save gating (hub-only)")]
-    [Tooltip("The Save button. Clicking it outside the hub shakes instead of opening the menu.")]
-    [SerializeField] private MenuButton3D _saveButton;
+    [Header("Boot")]
+    [Tooltip("Open the main menu automatically when the scene starts (the hub is already loaded behind the background image).")]
+    [SerializeField] private bool _openMainMenuOnStart = true;
 
-    [Header("Scene")]
-    [SerializeField] private string _mainMenuScene = "MainMenu";
+    // ── Labels per mode (top → bottom of the USED region) ────────────────────
+    private static readonly Entry[] PauseEntries    = { Entry.Resume, Entry.Save, Entry.Load, Entry.ReturnToMenu };
+    private static readonly Entry[] DeathEntries    = { Entry.Load, Entry.ReturnToMenu, Entry.Quit };
+    private static readonly Entry[] MainMenuEntries = { Entry.StartNewGame, Entry.Load, Entry.Quit };
 
-    private bool _isOpen;
-    private bool _isBlocking;
+    // ── State ────────────────────────────────────────────────────────────────
+    private Mode  _mode;
+    private bool  _isOpen;
+    private bool  _isBlocking;
     private float _savedTimeScale = 1f;
+    private bool  _deathSubscribed;
+
+    public bool IsOpen => _isOpen;
+    public Mode CurrentMode => _mode;
+
+    // ── Lifecycle ──────────────────────────────────────────────────────────
 
     private void Awake()
     {
-        gameObject.SetActive(false);
+        // The root stays active; "closed" = all bullets hidden + overlays transparent.
+        BuildOverlays();
+        HideAllBullets();
 
-        foreach (var btn in _buttons)
-            if (btn != null) btn.OnClicked += OnButtonClicked;
+        // Cache the title's authored scale so the reveal can animate from a larger size back to it.
+        Transform titleT = _titleObject != null ? _titleObject.transform
+                         : _titleLabel  != null ? _titleLabel.transform : null;
+        if (titleT != null) _titleBaseScale = titleT.localScale;
+        HideTitle();
 
-        // Saving is hub-only (manual-save model): the guard makes the Save button shake
-        // instead of opening the flashdrive when clicked during a run. Loading is allowed
-        // anywhere — a mid-run load routes through RunManager.LoadSlot back to the hub.
-        if (_saveButton != null) _saveButton.ClickGuard = IsInHub;
-
-        // A gated button must also be one of _buttons (the array drives fly-in/cascade). If it
-        // isn't, the inspector ref is wrong and the guard silently governs the wrong object.
-        WarnIfNotAButton(_saveButton, nameof(_saveButton));
+        foreach (var b in _bullets)
+            if (b != null) b.OnClicked += OnButtonClicked;
 
         if (_flashdriveMenu != null)
         {
-            _flashdriveMenu.OnReturnRequested += ShowBullets;
+            _flashdriveMenu.OnReturnRequested += FlyInCurrentMode;
             _flashdriveMenu.OnActionExecuted  += OnFlashdriveActionExecuted;
         }
     }
 
-    /// <summary>True only in the hub — the one safe place to save/load (see manual-save model).</summary>
-    private bool IsInHub() =>
-        RunManager.Instance == null || RunManager.Instance.State == RunManager.RunState.InHub;
-
-    private void WarnIfNotAButton(MenuButton3D btn, string fieldName)
+    private void Start()
     {
-        if (btn == null) return;
-        if (System.Array.IndexOf(_buttons, btn) < 0)
-            Debug.LogWarning($"[PauseMenu] {fieldName} is not in the _buttons array — " +
-                             "its gate won't be applied to the real menu button.", this);
+        // Subscribe after all Awakes so RunManager.Instance exists.
+        if (RunManager.Instance != null)
+        {
+            RunManager.Instance.DeathScreenRequested += HandleDeathRequested;
+            _deathSubscribed = true;
+        }
+
+        if (_openMainMenuOnStart)
+            OpenMainMenu();
     }
 
     private void OnDestroy()
     {
-        foreach (var btn in _buttons)
-            if (btn != null) btn.OnClicked -= OnButtonClicked;
+        foreach (var b in _bullets)
+            if (b != null) b.OnClicked -= OnButtonClicked;
 
         if (_flashdriveMenu != null)
         {
-            _flashdriveMenu.OnReturnRequested -= ShowBullets;
+            _flashdriveMenu.OnReturnRequested -= FlyInCurrentMode;
             _flashdriveMenu.OnActionExecuted  -= OnFlashdriveActionExecuted;
         }
+
+        if (_deathSubscribed && RunManager.Instance != null)
+            RunManager.Instance.DeathScreenRequested -= HandleDeathRequested;
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Builds the red death wall + the main-menu background as full-screen Images on the linked
+    /// canvas, and forces that canvas to Screen Space - Camera so it sits BEHIND the 3D bullets
+    /// (camera children, closer than the plane) but IN FRONT of the world. Both start transparent.
+    /// </summary>
+    private void BuildOverlays()
+    {
+        if (_overlayCanvas == null)
+        {
+            Debug.LogWarning("[PauseMenu] No _overlayCanvas assigned — the red death wall and the " +
+                             "main-menu background won't appear. Link an empty Canvas + the player camera.", this);
+            return;
+        }
 
-    public bool IsOpen => _isOpen;
+        Camera cam = _menuCamera != null ? _menuCamera : Camera.main;
+        if (cam == null)
+            Debug.LogWarning("[PauseMenu] No _menuCamera and no Camera.main — Screen Space - Camera " +
+                             "canvas has no camera and will behave like an overlay (covering the bullets).", this);
 
+        _overlayCanvas.renderMode    = RenderMode.ScreenSpaceCamera;
+        _overlayCanvas.worldCamera   = cam;
+        _overlayCanvas.planeDistance = _overlayPlaneDistance;
+
+        _redOverlay      = BuildFullScreen("RedDeathWall",   _redColor,   null);
+        _backgroundImage = BuildFullScreen("MenuBackground", Color.white, _backgroundSprite);
+    }
+
+    private CanvasGroup BuildFullScreen(string objectName, Color color, Sprite sprite)
+    {
+        var go = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer));
+        var rt = (RectTransform)go.transform;
+        rt.SetParent(_overlayCanvas.transform, false);
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        var img = go.AddComponent<Image>();
+        img.color         = color;
+        img.sprite        = sprite;
+        img.raycastTarget = false;   // the menu uses MenuInputHandler's own ray, not Unity UI events
+
+        var cg = go.AddComponent<CanvasGroup>();
+        cg.alpha          = 0f;
+        cg.blocksRaycasts = false;
+        cg.interactable   = false;
+        return cg;
+    }
+
+    /// <summary>True only in the hub — the one safe place to save (manual-save model).</summary>
+    private bool IsInHub() =>
+        RunManager.Instance == null || RunManager.Instance.State == RunManager.RunState.InHub;
+
+    // ── Public entry points (one per mode) ───────────────────────────────────
+
+    /// <summary>Pause mode — opened by MenuController on Escape during gameplay.</summary>
     public void Open()
     {
-        if (_isOpen) return;
+        if (_isOpen && _mode == Mode.Pause) return;
+        OpenMode(Mode.Pause, PauseEntries, showTitle: false, title: null, overlay: null);
+    }
+
+    public void OpenMainMenu() =>
+        OpenMode(Mode.MainMenu, MainMenuEntries, showTitle: true, title: _menuTitle, overlay: _backgroundImage);
+
+    private void OpenDeath()
+    {
+        // A prior scene transition may have left the black fade canvas (sortingOrder 999) opaque;
+        // clear it so the death scene shows through the red wall.
+        SceneTransitionManager.Instance?.ClearFadeImmediate();
+        OpenMode(Mode.Death, DeathEntries, showTitle: true, title: _deathTitle, overlay: _redOverlay);
+    }
+
+    // ── Death hook (RunManager.DeathScreenRequested) ─────────────────────────
+
+    private bool HandleDeathRequested()
+    {
+        OpenDeath();
+        return true;   // consumed — RunManager skips its fade-to-black + hub return
+    }
+
+    // ── Core open ────────────────────────────────────────────────────────────
+
+    private void OpenMode(Mode mode, Entry[] entries, bool showTitle, string title, CanvasGroup overlay)
+    {
+        _mode   = mode;
         _isOpen = true;
 
-        // Cancel any pending deactivation from a previous close
         StopAllCoroutines();
 
-        if (!gameObject.activeSelf)
-            gameObject.SetActive(true);
+        // Capture the timescale to restore to. From running gameplay this is 1; never restore to 0.
+        if (mode == Mode.Pause)
+            _savedTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
+        else
+            _savedTimeScale = 1f;
 
-        _savedTimeScale = Time.timeScale;
         Time.timeScale = 0f;
 
         if (!_isBlocking)
@@ -107,23 +256,188 @@ public class PauseMenu : MonoBehaviour
             _isBlocking = true;
         }
 
-        // ResetAndFlyIn resets _hasFledOut so clicks work even after rapid open/close
-        for (int i = 0; i < _buttons.Length; i++)
-            _buttons[i]?.ResetAndFlyIn(i * _flyInStagger);
+        if (showTitle && _titleLabel != null)
+        {
+            if (_titleObject != null) _titleObject.SetActive(true);
+
+            // Keep the title on a single line regardless of the text box width (otherwise a narrow
+            // RectTransform wraps "YOU DIED" onto stacked lines).
+            _titleLabel.enableWordWrapping = false;
+            _titleLabel.overflowMode       = TMPro.TextOverflowModes.Overflow;
+            _titleLabel.text               = title;
+
+            RevealTitle();   // slow "aura" fade-up, AFTER the bullets have flown in
+        }
+        else
+        {
+            HideTitle();
+        }
+
+        FadeOverlay(_redOverlay,      overlay == _redOverlay      ? _redOverlayAlpha : 0f);
+        FadeOverlay(_backgroundImage, overlay == _backgroundImage ? 1f               : 0f);
+
+        ApplyEntriesAndFlyIn(entries);
     }
 
-    // ── Escape close (via MenuController) ─────────────────────────────────
+    /// <summary>
+    /// Bottom-aligns the mode's entries onto the bullet pool: the last N bullets host the N entries
+    /// (so the top slot(s) stay free for the title), the rest are hidden.
+    /// </summary>
+    private void ApplyEntriesAndFlyIn(Entry[] entries)
+    {
+        int n         = _bullets.Length;
+        int k         = entries.Length;
+        int firstUsed = Mathf.Max(0, n - k);
 
+        for (int i = 0; i < n; i++)
+        {
+            var b = _bullets[i];
+            if (b == null) continue;
+
+            if (i < firstUsed)
+            {
+                b.gameObject.SetActive(false);   // OnDisable unregisters it from the hit registry
+                continue;
+            }
+
+            int entryIdx = i - firstUsed;
+            Entry e      = entries[entryIdx];
+
+            b.gameObject.SetActive(true);
+            b.SetLabel(LabelFor(e));
+            b.RuntimeAction = ActionFor(e);
+            b.ClickGuard    = (e == Entry.Save) ? (Func<bool>)IsInHub : null;   // saving is hub-only
+            b.ResetAndFlyIn(entryIdx * _flyInStagger);
+        }
+    }
+
+    /// <summary>Re-fly the current mode's bullets without disturbing timescale/title/overlay —
+    /// called when the flashdrive menu is dismissed without acting.</summary>
+    private void FlyInCurrentMode() => ApplyEntriesAndFlyIn(EntriesFor(_mode));
+
+    private static Entry[] EntriesFor(Mode m) => m switch
+    {
+        Mode.Death    => DeathEntries,
+        Mode.MainMenu => MainMenuEntries,
+        _             => PauseEntries,
+    };
+
+    private static string LabelFor(Entry e) => e switch
+    {
+        Entry.Resume       => "Resume",
+        Entry.Save         => "Save",
+        Entry.Load         => "Load",
+        Entry.ReturnToMenu => "Return to Menu",
+        Entry.Quit         => "Quit",
+        Entry.StartNewGame => "Start New Game",
+        _                  => "",
+    };
+
+    private Action ActionFor(Entry e) => e switch
+    {
+        Entry.Resume       => OnResume,
+        Entry.Save         => OnSave,
+        Entry.Load         => OnLoad,
+        Entry.ReturnToMenu => OnReturnToMainMenu,
+        Entry.Quit         => OnExitGame,
+        Entry.StartNewGame => OnStartNewGame,
+        _                  => null,
+    };
+
+    // ── Escape close (MenuController) ─────────────────────────────────────────
+
+    /// <summary>Escape only closes Pause mode — Death and MainMenu are not Escape-dismissable.</summary>
     public void Close()
+    {
+        if (!_isOpen || _mode != Mode.Pause) return;
+        OnResume();
+        CascadeAndHide(null);   // no clicked button — fly all out
+    }
+
+    public void ForceClose() => Close();
+
+    // ── Click cascade ─────────────────────────────────────────────────────────
+
+    private void OnButtonClicked(MenuButton3D clicked)
+    {
+        // Fly the OTHER active bullets out. Mode-switching / flashdrive actions re-arrange the
+        // bullets themselves afterwards; terminal actions (Resume/Quit/StartNewGame) hide them.
+        int cascade = 0;
+        foreach (var b in _bullets)
+        {
+            if (b == null || b == clicked || !b.gameObject.activeSelf) continue;
+            b.FlyOut(cascade * _flyOutStagger);
+            cascade++;
+        }
+    }
+
+    private void CascadeAndHide(MenuButton3D clicked)
+    {
+        OnButtonClicked(clicked);
+        StopAllCoroutines();
+        StartCoroutine(HideAfterFlyOut());
+    }
+
+    private IEnumerator HideAfterFlyOut()
+    {
+        float wait = _bullets.Length * _flyOutStagger + 0.3f;
+        yield return new WaitForSecondsRealtime(wait);
+        if (!_isOpen) HideAllBullets();
+    }
+
+    private void HideAllBullets()
+    {
+        foreach (var b in _bullets)
+            if (b != null) b.gameObject.SetActive(false);
+    }
+
+    private void FadeOverlay(CanvasGroup cg, float target)
+    {
+        if (cg == null) return;
+        cg.DOKill();
+        cg.DOFade(target, _overlayFade).SetUpdate(true);
+    }
+
+    /// <summary>
+    /// Slow dramatic title reveal: after the bullets have flown in, the title fades from invisible
+    /// to full and eases down from a slightly larger size to its authored size over a few seconds —
+    /// the "aura" moment. Uses unscaled time so it plays while the game is paused (timeScale 0).
+    /// </summary>
+    private void RevealTitle()
+    {
+        Transform t = _titleObject != null ? _titleObject.transform : _titleLabel.transform;
+        t.DOKill();
+
+        _titleLabel.alpha = 0f;
+        t.localScale      = _titleBaseScale * _titleRevealScaleFrom;
+
+        // Fade alpha 0 → 1 (SetTarget(t) so t.DOKill() also cancels this on the next open).
+        DOTween.To(() => _titleLabel.alpha, a => _titleLabel.alpha = a, 1f, _titleRevealDuration)
+               .SetDelay(_titleRevealDelay).SetEase(Ease.InOutSine).SetUpdate(true).SetTarget(t);
+
+        // Settle scale back to authored size.
+        t.DOScale(_titleBaseScale, _titleRevealDuration)
+         .SetDelay(_titleRevealDelay).SetEase(Ease.OutQuad).SetUpdate(true);
+    }
+
+    private void HideTitle()
+    {
+        Transform t = _titleObject != null ? _titleObject.transform
+                    : _titleLabel  != null ? _titleLabel.transform : null;
+        if (t != null) t.DOKill();
+        if (_titleLabel  != null) _titleLabel.alpha = 0f;
+        if (_titleObject != null) _titleObject.SetActive(false);
+        if (t != null) t.localScale = _titleBaseScale;
+    }
+
+    // ── Entry actions (assigned to bullets via RuntimeAction) ─────────────────
+
+    /// <summary>Resume gameplay. Lock cursor BEFORE restoring timescale (camera-spike rule).</summary>
+    public void OnResume()
     {
         if (!_isOpen) return;
         _isOpen = false;
 
-        // Resume gameplay IMMEDIATELY — exactly like the Resume button (OnResume) — instead of
-        // waiting for the fly-out animation. Otherwise Escape leaves the player frozen (e.g.
-        // hanging mid-air) for the ~0.5s the buttons take to leave, and if anything deactivates
-        // this GameObject during that wait the old coroutine died and timeScale stayed at 0
-        // forever. Lock cursor BEFORE restoring timeScale (camera-spike rule).
         if (_isBlocking)
         {
             GameInputState.Unblock();
@@ -131,101 +445,39 @@ public class PauseMenu : MonoBehaviour
         }
         Time.timeScale = _savedTimeScale;
 
-        StartCoroutine(CloseSequence());
-    }
+        HideTitle();
+        FadeOverlay(_redOverlay, 0f);
+        FadeOverlay(_backgroundImage, 0f);
 
-    private IEnumerator CloseSequence()
-    {
-        // Gameplay has already resumed; just animate the buttons out (SetUpdate(true) keeps them
-        // tweening in real time) and deactivate once they're gone.
-        for (int i = 0; i < _buttons.Length; i++)
-            _buttons[i]?.FlyOut(i * _flyOutStagger);
-
-        float totalDelay = _buttons.Length * _flyOutStagger + 0.25f;
-        yield return new WaitForSecondsRealtime(totalDelay);
-
-        if (!_isOpen)
-            gameObject.SetActive(false);
-    }
-
-    // ── Cascade after a button click ───────────────────────────────────────
-
-    private void OnButtonClicked(MenuButton3D clicked)
-    {
-        int cascade = 0;
-        foreach (var btn in _buttons)
-        {
-            if (btn == clicked) continue;
-            btn?.FlyOut(cascade * _flyOutStagger);
-            cascade++;
-        }
-
-        float totalDelay = (_buttons.Length - 1) * _flyOutStagger + 0.25f;
-        StartCoroutine(DeactivateAfter(totalDelay));
-    }
-
-    private IEnumerator DeactivateAfter(float realSeconds)
-    {
-        yield return new WaitForSecondsRealtime(realSeconds);
-        if (!_isOpen)
-            gameObject.SetActive(false);
-    }
-
-    // ── Button callbacks — wire MenuButton3D.OnClick to these ─────────────
-
-    public void OnResume()
-    {
-        if (!_isBlocking) return;
-        _isOpen = false;
-
-        // Lock cursor FIRST, then restore timeScale (same rule as CloseSequence)
-        GameInputState.Unblock();
-        _isBlocking = false;
-        Time.timeScale = _savedTimeScale;
-        // Deactivation handled by OnButtonClicked cascade
+        StartCoroutine(HideAfterFlyOut());   // bullets already cascading out from the click
     }
 
     public void OnSave()
     {
-        // Defensive: the Save button's ClickGuard normally blocks this outside the hub,
-        // but guard here too in case OnSave is invoked from another path.
-        if (!IsInHub()) return;
+        if (!IsInHub()) return;   // defensive; the Save bullet's ClickGuard already shakes outside the hub
         _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Save);
     }
 
-    // Loading is allowed anywhere; a mid-run load returns to the hub via RunManager.LoadSlot.
     public void OnLoad() => _flashdriveMenu?.Open(SaveSlotButton3D.SlotMode.Load);
 
-    /// <summary>Re-fly bullets in — called when flashdrive menu returns without action.</summary>
-    public void ShowBullets()
-    {
-        for (int i = 0; i < _buttons.Length; i++)
-            _buttons[i]?.ResetAndFlyIn(i * _flyInStagger);
-    }
-
-    private void OnFlashdriveActionExecuted()
-    {
-        // Save/load completed — close pause menu fully
-        if (_isBlocking)
-        {
-            GameInputState.Unblock();
-            _isBlocking = false;
-        }
-        Time.timeScale = _savedTimeScale;
-        _isOpen = false;
-        gameObject.SetActive(false);
-    }
-
+    /// <summary>Switch to the main menu IN PLACE (no scene load) — the background image covers the
+    /// live scene. Resets RunManager state so the next run/load behaves correctly.</summary>
     public void OnReturnToMainMenu()
     {
-        if (_isBlocking)
-        {
-            GameInputState.Unblock();
-            _isBlocking = false;
-        }
-        Time.timeScale = 1f;
-        _isOpen = false;
-        SceneManager.LoadScene(_mainMenuScene);
+        RunManager.Instance?.AbandonRunForMainMenu();
+        OpenMainMenu();   // StopAllCoroutines + re-fly handles the transition; stays blocked/paused
+    }
+
+    public void OnStartNewGame()
+    {
+        // Resume (unblock, restore timescale, fade background out, hide bullets) only AFTER the
+        // blank state has actually been applied. When New Game is chosen from a sector this is
+        // deferred until the async hub-return + baseline restore finish, so the player never
+        // regains control mid-transition.
+        if (RunManager.Instance != null)
+            RunManager.Instance.NewGame(OnResume);
+        else
+            OnResume();
     }
 
     public void OnExitGame()
@@ -237,4 +489,20 @@ public class PauseMenu : MonoBehaviour
 #endif
     }
 
+    private void OnFlashdriveActionExecuted()
+    {
+        // Save/Load finished — close the menu fully and resume.
+        _isOpen = false;
+        if (_isBlocking)
+        {
+            GameInputState.Unblock();
+            _isBlocking = false;
+        }
+        Time.timeScale = 1f;
+
+        HideTitle();
+        FadeOverlay(_redOverlay, 0f);
+        FadeOverlay(_backgroundImage, 0f);
+        HideAllBullets();
+    }
 }

@@ -10,16 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fcf982e9eef07a04ca5360de6a0b53e6, type: 3}
-  m_Name: FollowUpOnStarterQuest
+  m_Name: pickupquest
   m_EditorClassIdentifier: Assembly-CSharp::QuestSO
-  _questId: 71c43e44079341dcb039ebbd188ae8a3
-  title: Buy a gun
-  description: Collect enough money and buy yourself enough money to buy a gun
-  trackerText: Collect Scrap to buy a gun from the Shopkeeper
-  requiredQuests:
-  - {fileID: 11400000, guid: 428cee19d47ac5d489777ff84ed629a3, type: 2}
+  _questId: c5e5c438ab1a4e20bec0ca07099e1a11
+  title: Finding scrap
+  description: Go Into a raid and pick up any 3 items you find
+  trackerText: pick up any 3 items in a raid
+  requiredQuests: []
   activeCondition:
-    wsmKey: dialogue.quest.71c43e44079341dcb039ebbd188ae8a3.accepted
+    wsmKey: dialogue.quest.c5e5c438ab1a4e20bec0ca07099e1a11.accepted
     description: 
     valueType: 0
     comparison: 0
@@ -29,8 +28,8 @@ MonoBehaviour:
     expectedString: 
   cancelOnActivate: []
   objectives:
-  - description: 
-    objective: {fileID: 11400000, guid: 78e0abeb229061947a59e3cc8ce275e8, type: 2}
+  - description: pick up any 3 items in a raid
+    objective: {fileID: 11400000, guid: 5e7f2139de600af45a093cc9a5f12fac, type: 2}
     condition:
       wsmKey: 
       description: 
