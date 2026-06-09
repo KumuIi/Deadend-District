@@ -92,7 +92,7 @@ MonoBehaviour:
     sprintBobFrequency: 1.65
     sprintBobAmplitudeY: 0.02
     sprintBobAmplitudeX: 0.01
-    sprintTiltZ: 10
+    sprintTiltZ: 20
     sprintTiltSmooth: 20
     airborneRiseAmount: 0.04
     airborneRiseSmooth: 0.15
