@@ -136,7 +136,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bced7286d7605e545b07101686a1a2ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Door
-  _doorId: Lab_2A
+  _doorId: Storage1
   _visual: {fileID: 1565597317719628955}
   _blockingCollider: {fileID: 2082011486477686291}
   _debugLogs: 0
@@ -174,9 +174,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2840086002335272852}
-  - component: {fileID: 7035241222605486820}
   - component: {fileID: 7570992178879487903}
-  - component: {fileID: 3104013561979605089}
+  - component: {fileID: 5296270779730759753}
   m_Layer: 6
   m_Name: keylockHitbox
   m_TagString: Untagged
@@ -199,23 +198,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 895894547547260658}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7035241222605486820
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2906972433282550802}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5284f5a5f69a54e4f8d8e38011cc4cdb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::KeyLockedDoor
-  _door: {fileID: 6050390561214414997}
-  _debugLogs: 0
-  _audioSource: {fileID: 6010959590572342213}
-  _unlockClip: {fileID: 8300000, guid: a345e0a486e99d4458f7d50047ab35fc, type: 3}
-  _lockedClip: {fileID: 8300000, guid: 3c1fe6170789409489f82f124e27c725, type: 3}
 --- !u!65 &7570992178879487903
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -237,7 +219,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.02, y: 0.025, z: 0.04}
   m_Center: {x: 0, y: 0, z: -0.01}
---- !u!114 &3104013561979605089
+--- !u!114 &5296270779730759753
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
