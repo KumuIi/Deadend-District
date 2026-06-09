@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e77ce84819fbdf34194ea0c36366a15e, type: 3}
+  m_Name: FindStorageRoom
+  m_EditorClassIdentifier: Assembly-CSharp::ObjectiveSO
+  _objectiveId: f4dc3b49e3b143f7a2973647c38d831a
+  displayName: Find the storage room
+  type: 0
+  amount: 1
+  accrual: 1
+  resetEachRun: 0
+  itemFilter: {fileID: 0}
+  useTeamFilter: 0
+  killTeam: 1
+  customKey: 

@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fcf982e9eef07a04ca5360de6a0b53e6, type: 3}
+  m_Name: KillAnyMob
+  m_EditorClassIdentifier: Assembly-CSharp::QuestSO
+  _questId: 0d9a1b1c04044b0f96d151ddc2b39808
+  title: 
+  description: 
+  trackerText: 
+  requiredQuests: []
+  activeCondition:
+    wsmKey: 
+    description: 
+    valueType: 0
+    comparison: 0
+    expectedBool: 0
+    expectedInt: 0
+    expectedFloat: 0
+    expectedString: 
+  cancelOnActivate: []
+  objectives:
+  - description: Kill any mob you find
+    objective: {fileID: 11400000, guid: 293f18d1fedf47547a7b31d78a8dbfbc, type: 2}
+    condition:
+      wsmKey: 
+      description: 
+      valueType: 0
+      comparison: 0
+      expectedBool: 0
+      expectedInt: 0
+      expectedFloat: 0
+      expectedString: 
+    optional: 0
+    hidden: 0
+    revealCondition:
+      wsmKey: 
+      description: 
+      valueType: 0
+      comparison: 0
+      expectedBool: 0
+      expectedInt: 0
+      expectedFloat: 0
+      expectedString: 
+  outcomes: []
+  globalFailConditions: []
+  failsWithMe: []
+  canExpire: 0
+  expirationSeconds: 0
+  isRepeatable: 0
+  resetCondition:
+    wsmKey: 
+    description: 
+    valueType: 0
+    comparison: 0
+    expectedBool: 0
+    expectedInt: 0
+    expectedFloat: 0
+    expectedString: 

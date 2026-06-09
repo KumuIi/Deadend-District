@@ -16,7 +16,7 @@ MonoBehaviour:
   gridSize: {x: 3, y: 1}
   cellOffsets: []
   weightKg: 2
-  sellValue: 5
+  sellValue: 3
   modelPrefab: {fileID: 5588296941221126684, guid: 6226502884aad0b4888861a2b54cc4b8, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
   modelOrientationOffset: {x: 0, y: 0, z: 90}

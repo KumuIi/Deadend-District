@@ -12,21 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17e54716923745d4eac0afcca74ec93c, type: 3}
   m_Name: HubTrader
   m_EditorClassIdentifier: Assembly-CSharp::TraderSO
-  TraderName: Grimsy
+  TraderName: Kedr
   TraderPortrait: {fileID: 21300000, guid: aedc5f781353b6a48af649e8844495ea, type: 3}
   Stock:
   - Item: {fileID: 11400000, guid: b2c8bb3b765373743850e7c47205f83b, type: 2}
-    BuyPrice: 250
+    BuyPrice: 100
     StockCount: 1
   - Item: {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
-    BuyPrice: 15
+    BuyPrice: 30
     StockCount: 67
   - Item: {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
-    BuyPrice: 1000
-    StockCount: 3
+    BuyPrice: 250
+    StockCount: 1
   - Item: {fileID: 11400000, guid: eeb9544d30d0f1844a66cc4eba9cf95b, type: 2}
-    BuyPrice: 15
+    BuyPrice: 5
     StockCount: 3
+  - Item: {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
+    BuyPrice: 30
+    StockCount: 5
   SellFraction: 1
   BuysAnything: 1
   RestockIntervalRuns: 3

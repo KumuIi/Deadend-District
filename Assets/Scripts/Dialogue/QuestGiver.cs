@@ -36,6 +36,11 @@ public class QuestGiver : MonoBehaviour, IInteractable
                  "do-it-in-the-world quest (its Objective asset completes it).")]
         public ItemSO turnInItem;
 
+        [Tooltip("Optional: items handed to the player when this stage is completed — given automatically " +
+                 "the next time they talk to this NPC after finishing. Add as many as you like. If the " +
+                 "inventory can't fit them all they're held back (nothing is lost) until there's room.")]
+        public ItemSO[] rewardItems;
+
         public Sprite portrait;
 
         [TextArea(1, 4)] public string[] offerLines      = { "I've got a job for you." };
@@ -130,6 +135,11 @@ public class QuestGiver : MonoBehaviour, IInteractable
 
     private DialogueConversation BuildConversation()
     {
+        // Pay out the reward for any stage that's finished but not yet rewarded. This just drops the
+        // items into the player's bag (no extra screen) the moment they talk after completing — the
+        // normal done/offer lines below still play as usual.
+        GrantPendingRewards();
+
         // Front stage = first whose quest isn't finished yet.
         int front = -1;
         for (int i = 0; i < _stages.Count; i++)
@@ -207,6 +217,48 @@ public class QuestGiver : MonoBehaviour, IInteractable
         return convo;
     }
 
+    // ── Rewards ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Hands out the reward items of every finished-but-unrewarded stage. Each stage's batch is
+    /// all-or-nothing: if the inventory can't fit the whole batch it's rolled back and the stage stays
+    /// unrewarded, so the player gets it (intact) the next time they talk with room to spare. The
+    /// 'rewarded' WSM flag is the once-only guard that stops a stage paying out twice.
+    /// </summary>
+    private void GrantPendingRewards()
+    {
+        for (int i = 0; i < _stages.Count; i++)
+        {
+            var s = _stages[i];
+            if (s?.quest == null || s.rewardItems == null || s.rewardItems.Length == 0) continue;
+            if (!IsSucceeded(s.quest) || IsRewarded(s.quest)) continue;
+
+            if (TryGrantBatch(s.rewardItems))
+                WorldStateManager.Instance?.SetBool(RewardedKey(s.quest), true);
+        }
+    }
+
+    /// <summary>Picks up every item in the batch, or none (rolling back) if any won't fit.</summary>
+    private static bool TryGrantBatch(ItemSO[] items)
+    {
+        var player = InventoryUI.Player;
+        if (player == null) return false;
+
+        var granted = new List<ItemInstance>();
+        foreach (var so in items)
+        {
+            if (so == null) continue; // empty slot in the list — skip, not a failure
+            var inst = ItemInstanceFactory.Create(so);
+            if (inst == null || player.TryPickup(inst) == PickupResult.NoSpace)
+            {
+                foreach (var g in granted) player.RemoveItemAndDetach(g); // all-or-nothing rollback
+                return false;
+            }
+            granted.Add(inst);
+        }
+        return true;
+    }
+
     private DialogueConversation Simple(string[] texts, Sprite portrait) =>
         new DialogueConversation { lines = ToLines(texts, portrait) };
 
@@ -232,8 +284,13 @@ public class QuestGiver : MonoBehaviour, IInteractable
     private static QuestStatus StatusOf(QuestSO q) =>
         QuestManager.Instance != null ? QuestManager.Instance.GetStatus(q) : QuestStatus.Inactive;
 
+    /// <summary>True once this stage's reward has been paid out (so it's never given twice).</summary>
+    private static bool IsRewarded(QuestSO q) =>
+        WorldStateManager.Instance != null && WorldStateManager.Instance.GetBool(RewardedKey(q));
+
     public static string AcceptedKey(QuestSO q)  => $"dialogue.quest.{q.QuestId}.accepted";
     public static string DeliveredKey(QuestSO q) => $"dialogue.quest.{q.QuestId}.delivered";
+    public static string RewardedKey(QuestSO q)  => $"dialogue.quest.{q.QuestId}.rewarded";
 
     private static DialogueWrite WriteBool(string key) =>
         new DialogueWrite { key = key, type = QuestValueType.Bool, boolValue = true };
