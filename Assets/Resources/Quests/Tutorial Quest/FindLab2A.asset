@@ -16,13 +16,14 @@ MonoBehaviour:
   title: looking for clues
   description: 
   trackerText: 
-  requiredQuests: []
+  requiredQuests:
+  - {fileID: 11400000, guid: 0dd4bdc5aff68b94eb7126c77fdbb4eb, type: 2}
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.6b6f7bfddc284446ac10abb84753fda9.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 

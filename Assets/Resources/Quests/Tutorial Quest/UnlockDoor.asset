@@ -16,13 +16,14 @@ MonoBehaviour:
   title: Your secrets are mine
   description: 
   trackerText: 
-  requiredQuests: []
+  requiredQuests:
+  - {fileID: 11400000, guid: 4a36cfbcc57e82f4e95fe46bd23ea9fb, type: 2}
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.49db2ef8abcd418b8f009eaa84e4cf4d.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 
