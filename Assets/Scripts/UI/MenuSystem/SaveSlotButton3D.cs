@@ -38,7 +38,14 @@ public class SaveSlotButton3D : MonoBehaviour
     private bool    _slotExists;
 
     private void Awake()  => _baseScale = transform.localScale;
-    private void OnEnable() => Refresh();
+
+    private void OnEnable()
+    {
+        MenuHitRegistry<SaveSlotButton3D>.Register(this);
+        Refresh();
+    }
+
+    private void OnDisable() => MenuHitRegistry<SaveSlotButton3D>.Unregister(this);
 
     public void Refresh()
     {

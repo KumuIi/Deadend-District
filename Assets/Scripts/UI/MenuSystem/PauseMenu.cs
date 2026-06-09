@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 /// Orchestrates the 3D pause menu button sequence entirely in code — no Animator needed.
 /// Open:  buttons fly in one by one with stagger.
 /// Click: clicked button fires first, remaining buttons cascade out after it lands.
-/// Close: all buttons fly out, then cursor locks, then timeScale restores, then deactivates.
+/// Close: cursor locks + timeScale restores immediately (gameplay resumes), THEN buttons fly out.
 ///
 /// Key rule: always lock cursor BEFORE restoring timeScale so gameplay never runs
 /// with an unlocked cursor (which causes a camera spike on the first frame).
@@ -118,28 +118,34 @@ public class PauseMenu : MonoBehaviour
     {
         if (!_isOpen) return;
         _isOpen = false;
+
+        // Resume gameplay IMMEDIATELY — exactly like the Resume button (OnResume) — instead of
+        // waiting for the fly-out animation. Otherwise Escape leaves the player frozen (e.g.
+        // hanging mid-air) for the ~0.5s the buttons take to leave, and if anything deactivates
+        // this GameObject during that wait the old coroutine died and timeScale stayed at 0
+        // forever. Lock cursor BEFORE restoring timeScale (camera-spike rule).
+        if (_isBlocking)
+        {
+            GameInputState.Unblock();
+            _isBlocking = false;
+        }
+        Time.timeScale = _savedTimeScale;
+
         StartCoroutine(CloseSequence());
     }
 
     private IEnumerator CloseSequence()
     {
-        // Fly everything out at timeScale=0 (SetUpdate(true) handles this)
+        // Gameplay has already resumed; just animate the buttons out (SetUpdate(true) keeps them
+        // tweening in real time) and deactivate once they're gone.
         for (int i = 0; i < _buttons.Length; i++)
             _buttons[i]?.FlyOut(i * _flyOutStagger);
 
         float totalDelay = _buttons.Length * _flyOutStagger + 0.25f;
         yield return new WaitForSecondsRealtime(totalDelay);
 
-        // Lock cursor FIRST, then restore timeScale — prevents the one-frame
-        // camera spike that happens when gameplay resumes with cursor still unlocked
-        if (_isBlocking)
-        {
-            GameInputState.Unblock();
-            _isBlocking = false;
-        }
-
-        Time.timeScale = _savedTimeScale;
-        gameObject.SetActive(false);
+        if (!_isOpen)
+            gameObject.SetActive(false);
     }
 
     // ── Cascade after a button click ───────────────────────────────────────

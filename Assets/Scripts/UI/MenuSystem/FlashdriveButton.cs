@@ -55,7 +55,13 @@ public class FlashdriveButton : MonoBehaviour
 
     // ── Init ───────────────────────────────────────────────────────────────
 
-    private void OnEnable() => ResetToBase();
+    private void OnEnable()
+    {
+        MenuHitRegistry<FlashdriveButton>.Register(this);
+        ResetToBase();
+    }
+
+    private void OnDisable() => MenuHitRegistry<FlashdriveButton>.Unregister(this);
 
     public void ResetToBase()
     {

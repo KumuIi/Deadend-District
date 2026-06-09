@@ -48,14 +48,21 @@ public class MenuButton3D : MonoBehaviour
     public Func<bool> ClickGuard { get; set; }
 
     private Vector3 _baseLocalPos;
-    private Vector3 _baseWorldPos;
-    private Vector3 _flyDir;
+    // Fly direction is the button's LOCAL +X (same axis the hover nudge uses). Animating in
+    // local space keeps the button rigidly parented to the camera, so the rendered mesh and the
+    // Physics.Raycast hitbox always project to the same screen point regardless of how the
+    // camera moves or interpolates. World-space DOMove used to pin the button to a world point
+    // captured at open, decoupling it from the camera — that produced a velocity-proportional
+    // gap between the drawn mesh (render pose) and the ray (raw pose) when opening while moving.
+    private static readonly Vector3 FlyAxis = Vector3.right;
     private bool _baseInitialized;
     private bool _isHovered;
     private bool _hasFledOut;
 
     private void OnEnable()
     {
+        MenuHitRegistry<MenuButton3D>.Register(this);
+
         // Lazy-init: capture base local position the first time we're enabled,
         // before any offsets are applied. Avoids Awake execution-order issues
         // with PauseMenu.Awake deactivating the GO before Awake fires here.
@@ -67,6 +74,8 @@ public class MenuButton3D : MonoBehaviour
 
         ResetToBase();
     }
+
+    private void OnDisable() => MenuHitRegistry<MenuButton3D>.Unregister(this);
 
     // ── Called by PauseMenu.Open() ─────────────────────────────────────────
 
@@ -83,7 +92,7 @@ public class MenuButton3D : MonoBehaviour
     public void FlyIn(float delay = 0f)
     {
         transform.DOKill();
-        transform.DOMove(_baseWorldPos, _flyInDuration)
+        transform.DOLocalMove(_baseLocalPos, _flyInDuration)
                  .SetDelay(delay)
                  .SetEase(_flyInEase)
                  .SetUpdate(true);
@@ -98,7 +107,7 @@ public class MenuButton3D : MonoBehaviour
         _isHovered = false;
 
         transform.DOKill();
-        transform.DOMove(_baseWorldPos - _flyDir * _flyOutDistance, _flyOutDuration)
+        transform.DOLocalMove(_baseLocalPos - FlyAxis * _flyOutDistance, _flyOutDuration)
                  .SetDelay(delay)
                  .SetEase(_flyOutEase)
                  .SetUpdate(true);
@@ -141,7 +150,7 @@ public class MenuButton3D : MonoBehaviour
         _isHovered = false;
 
         transform.DOKill();
-        transform.DOMove(_baseWorldPos - _flyDir * _flyOutDistance, _flyOutDuration)
+        transform.DOLocalMove(_baseLocalPos - FlyAxis * _flyOutDistance, _flyOutDuration)
                  .SetEase(_flyOutEase)
                  .SetUpdate(true)
                  .OnComplete(FireAction);
@@ -154,10 +163,10 @@ public class MenuButton3D : MonoBehaviour
     public void Shake()
     {
         transform.DOKill();
-        transform.position = _baseWorldPos;   // shake around the resting pose
+        transform.localPosition = _baseLocalPos;   // shake around the resting pose
         _isHovered = false;
 
-        transform.DOShakePosition(_shakeDuration, _flyDir * _shakeStrength,
+        transform.DOShakePosition(_shakeDuration, transform.right * _shakeStrength,
                                   _shakeVibrato, randomness: 0f, snapping: false, fadeOut: true)
                  .SetUpdate(true);
     }
@@ -167,13 +176,10 @@ public class MenuButton3D : MonoBehaviour
     private void ResetToBase()
     {
         transform.DOKill();
-        transform.localPosition = _baseLocalPos;
 
-        _baseWorldPos = transform.position;
-        _flyDir = transform.right;
-
-        // Start offset on +flyDir side so bullet enters from that side
-        transform.position = _baseWorldPos + _flyDir * _flyInDistance;
+        // Start offset on the +X side (local) so the bullet enters from the right; FlyIn animates
+        // it back to _baseLocalPos. Local space keeps the button rigid with the camera.
+        transform.localPosition = _baseLocalPos + FlyAxis * _flyInDistance;
 
         _isHovered = false;
         _hasFledOut = false;
