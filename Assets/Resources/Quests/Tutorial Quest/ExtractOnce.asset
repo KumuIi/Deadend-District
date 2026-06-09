@@ -18,11 +18,11 @@ MonoBehaviour:
   trackerText: 
   requiredQuests: []
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.75c7d9958e2144aa8438966bb9063ba5.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 

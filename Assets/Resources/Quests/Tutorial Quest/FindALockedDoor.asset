@@ -16,13 +16,14 @@ MonoBehaviour:
   title: 
   description: 
   trackerText: 
-  requiredQuests: []
+  requiredQuests:
+  - {fileID: 11400000, guid: 8b1ef5b631ffbeb4a838facc350e2886, type: 2}
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.836bdee7226b499b938f704f234c2cf7.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 
@@ -31,11 +32,11 @@ MonoBehaviour:
   - description: Find the locked door near entry
     objective: {fileID: 11400000, guid: 0344470c7b0a1cd4aae9f511dae2dbb1, type: 2}
     condition:
-      wsmKey: 
+      wsmKey: dialogue.quest.836bdee7226b499b938f704f234c2cf7.delivered
       description: 
       valueType: 0
       comparison: 0
-      expectedBool: 0
+      expectedBool: 1
       expectedInt: 0
       expectedFloat: 0
       expectedString: 

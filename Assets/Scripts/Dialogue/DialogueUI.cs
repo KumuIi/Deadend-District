@@ -248,15 +248,15 @@ public sealed class DialogueUI : MonoBehaviour
     {
         EnsureWhiteSprite();
 
-        // Bottom-center dialogue box.
+        // Middle-center dialogue box (Unity's alt+shift+middle preset: anchor, pivot and position all centered).
         var panelGO = new GameObject("DialoguePanel", typeof(RectTransform), typeof(Image));
         panelGO.transform.SetParent(canvas, false);
         _panel               = panelGO.GetComponent<RectTransform>();
-        _panel.anchorMin     = new Vector2(0.5f, 0f);
-        _panel.anchorMax     = new Vector2(0.5f, 0f);
-        _panel.pivot         = new Vector2(0.5f, 0f);
+        _panel.anchorMin     = new Vector2(0.5f, 0.5f);
+        _panel.anchorMax     = new Vector2(0.5f, 0.5f);
+        _panel.pivot         = new Vector2(0.5f, 0.5f);
         _panel.sizeDelta     = new Vector2(820f, 220f);
-        _panel.anchoredPosition = new Vector2(0f, 40f);
+        _panel.anchoredPosition = Vector2.zero;
         var panelImg         = panelGO.GetComponent<Image>();
         panelImg.color       = _panelColor;
         panelImg.sprite      = _whiteSprite;

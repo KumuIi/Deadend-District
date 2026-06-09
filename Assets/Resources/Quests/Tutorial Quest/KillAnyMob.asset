@@ -16,13 +16,15 @@ MonoBehaviour:
   title: 
   description: 
   trackerText: 
-  requiredQuests: []
+  requiredQuests:
+  - {fileID: 11400000, guid: 2fcee74aaa6dd604397845f1dfbb968a, type: 2}
+  - {fileID: 11400000, guid: bc6d614716a9b0a4582dba1e9e488021, type: 2}
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.0d9a1b1c04044b0f96d151ddc2b39808.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 

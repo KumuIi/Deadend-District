@@ -16,13 +16,14 @@ MonoBehaviour:
   title: Survive the dark
   description: 
   trackerText: 
-  requiredQuests: []
+  requiredQuests:
+  - {fileID: 11400000, guid: bc6d614716a9b0a4582dba1e9e488021, type: 2}
   activeCondition:
-    wsmKey: 
+    wsmKey: dialogue.quest.3b7469ecbdf543d1813f36cf030f851a.accepted
     description: 
     valueType: 0
     comparison: 0
-    expectedBool: 0
+    expectedBool: 1
     expectedInt: 0
     expectedFloat: 0
     expectedString: 

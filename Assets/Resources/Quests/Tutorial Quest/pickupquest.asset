@@ -16,7 +16,8 @@ MonoBehaviour:
   title: Finding scrap
   description: Go Into a raid and pick up any 3 items you find
   trackerText: pick up any 3 items in a raid
-  requiredQuests: []
+  requiredQuests:
+  - {fileID: 11400000, guid: 781c8b233bb36c246a945363c3b57953, type: 2}
   activeCondition:
     wsmKey: dialogue.quest.c5e5c438ab1a4e20bec0ca07099e1a11.accepted
     description: 
