@@ -188,6 +188,13 @@ public class RunManager : MonoBehaviour
         if (SceneTransitionManager.Instance != null)
             SceneTransitionManager.Instance.OnSceneTransitionFinished -= OnReturnedToHubAfterExtract;
         State = RunState.InHub;
+
+        // Surviving a run heals you up: reward for extracting instead of dying. Only on a
+        // SUCCESSFUL extraction return — not on death or load, which have their own returns.
+        // Heal(maxHealth) clamps to full and fires OnHealthChanged so the HUD refreshes.
+        if (_playerHealth != null)
+            _playerHealth.Heal(_playerHealth.maxHealth);
+
         Broadcast(l => l.OnReturnedToHub());
         // MANUAL-SAVE MODEL: no autosave/clear on return. Re-enable for Tarkov-style permadeath.
         // SaveSystem.Instance?.ClearRun(ActiveSaveSlot);

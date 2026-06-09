@@ -39,12 +39,6 @@ public class AmmunitionSO : ItemSO
     [Tooltip("Damage multiplier over normalised distance (0 = muzzle, 1 = max range).")]
     public AnimationCurve damageFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0.6f);
 
-    [Header("=== Explosive ===")]
-    public bool isExplosive = false;
-    public float explosionRadius = 2f;
-    [Tooltip("Force applied to Rigidbodies inside the blast radius.")]
-    public float explosionForce = 500f;
-
     [Header("=== Penetration ===")]
     [Tooltip("Armor penetration value — reserved for the future armor/damage system.")]
     public float armorPenetration = 20f;

@@ -478,9 +478,6 @@ public class GunController : MonoBehaviour
                     StimulusLoudness = 0f,
                 });
             }
-
-            if (ammo != null && ammo.isExplosive)
-                ApplyExplosion(hit.point, ammo);
         }
 
         if (_muzzleFlash) _muzzleFlash.Play();
@@ -520,14 +517,6 @@ public class GunController : MonoBehaviour
 
         _triggerTarget   = weaponData.triggerRotationAngle;
         _triggerVelocity = weaponData.triggerRotationAngle / weaponData.triggerPullTime;
-    }
-
-    private void ApplyExplosion(Vector3 centre, AmmunitionSO ammo)
-    {
-        Collider[] cols = Physics.OverlapSphere(centre, ammo.explosionRadius, weaponData.hitLayers);
-        foreach (Collider col in cols)
-            col.attachedRigidbody?.AddExplosionForce(
-                ammo.explosionForce, centre, ammo.explosionRadius, 0.5f);
     }
 
     private void EjectCasing()

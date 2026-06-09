@@ -4534,11 +4534,15 @@ PrefabInstance:
       objectReference: {fileID: 366038832}
     - target: {fileID: 3607918368384244247, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 3607918368384244247, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3607918368384244247, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.41666657
       objectReference: {fileID: 0}
     - target: {fileID: 3607918368384244247, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -4546,7 +4550,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3607918368384244247, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 50
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6136434277415416958, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: _titleRevealDelay
@@ -4992,7 +4996,7 @@ Transform:
   m_GameObject: {fileID: 1832169209}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.737, y: 1.056, z: -10.901}
+  m_LocalPosition: {x: 2.737, y: 1.649, z: -10.901}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -5034,7 +5038,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::QuestGiver
   _prompt: Talk
   _speakerName: Marcus
-  _defaultPortrait: {fileID: 0}
+  _defaultPortrait: {fileID: 21300000, guid: 430454738e079154685c22d8735cb403, type: 3}
   _idleLines:
   - I don't have anything for you right now.
   _stages:
@@ -5157,20 +5161,104 @@ MonoBehaviour:
     - bring me proof of your kill, or else i won't believe you.
     doneLines: []
     requireAcceptChoice: 0
-  - label: FindStorage
+  - label: FindLockedDoor
     quest: {fileID: 11400000, guid: 4a36cfbcc57e82f4e95fe46bd23ea9fb, type: 2}
     requiresQuestBefore: {fileID: 11400000, guid: 8b1ef5b631ffbeb4a838facc350e2886, type: 2}
-    turnInItem: {fileID: 11400000, guid: 5a8ca49cd692f41439eb081b13c42005, type: 2}
+    turnInItem: {fileID: 0}
     rewardItems: []
     portrait: {fileID: 0}
     offerLines:
-    - "You've seen enough of the outer section. Next time you go deeper \u2014 and
-      deeper means you will run into something."
-    - Shoot it.
+    - You shot something.
+    - Good. That's what the gun is for.
+    - "Now I need you going further in. Not the outer section \u2014 deeper. There's
+      more in there and I need to know what. Keep exploring until you hit something
+      you can't get past."
     inProgressLines:
-    - nope that does not cut it. i need 5 minutes.
-    doneLines:
-    - Still alive. Good.
+    - So, still no blockers?
+    doneLines: []
+    requireAcceptChoice: 0
+  - label: OpenTheDoor
+    quest: {fileID: 11400000, guid: 0dd4bdc5aff68b94eb7126c77fdbb4eb, type: 2}
+    requiresQuestBefore: {fileID: 11400000, guid: 4a36cfbcc57e82f4e95fe46bd23ea9fb, type: 2}
+    turnInItem: {fileID: 0}
+    rewardItems:
+    - {fileID: 11400000, guid: 5a8ca49cd692f41439eb081b13c42005, type: 2}
+    portrait: {fileID: 0}
+    offerLines:
+    - A locked door.
+    - '*He nods slowly.*'
+    - Of course there is.
+    - '*He reaches into his coat and sets a key on the table.*'
+    - Take it. See if it fits anything down there.
+    inProgressLines:
+    - Report to me when you find anything.
+    doneLines: []
+    requireAcceptChoice: 0
+  - label: FindTheLab
+    quest: {fileID: 11400000, guid: fa4564685abbcab4e9b09a103cadc672, type: 2}
+    requiresQuestBefore: {fileID: 11400000, guid: 0dd4bdc5aff68b94eb7126c77fdbb4eb, type: 2}
+    turnInItem: {fileID: 0}
+    rewardItems: []
+    portrait: {fileID: 0}
+    offerLines:
+    - So it fit.
+    - He leans back.
+    - Good. Then this should keep you busy for a while.
+    - Go back in and keep looking. Every room, every corridor. I was told that key
+      was needed to access a lab somewhere in that section. Find it and come back.
+    inProgressLines:
+    - Report to me when you find anything.
+    doneLines: []
+    requireAcceptChoice: 0
+  - label: Lab2A
+    quest: {fileID: 0}
+    requiresQuestBefore: {fileID: 11400000, guid: fa4564685abbcab4e9b09a103cadc672, type: 2}
+    turnInItem: {fileID: 0}
+    rewardItems: []
+    portrait: {fileID: 0}
+    offerLines:
+    - Lab 2A
+    - '*A pause. Something behind his eyes.*'
+    - Is it locked?
+    - Then I can't help you right now. I don't have a key for that door.
+    - Keep working. If something comes up I'll let you know.
+    inProgressLines:
+    - Report to me when you find anything.
+    doneLines: []
+    requireAcceptChoice: 0
+  - label: FindDocument
+    quest: {fileID: 11400000, guid: 0c079a8369ab76243a681303584c349b, type: 2}
+    requiresQuestBefore: {fileID: 11400000, guid: cf459ffa5e5fcf0418def9cab4303346, type: 2}
+    turnInItem: {fileID: 11400000, guid: bafc33bf6be91134aaef5f3c39edf404, type: 2}
+    rewardItems: []
+    portrait: {fileID: 0}
+    offerLines:
+    - You found a way in?
+    - '*He looks at the key. Doesn''t ask where it came from.*'
+    - "Then go. Whatever is in that lab \u2014 documents, files, anything written
+      down \u2014 bring it all to me. Every single thing you can carry out of there."
+    - Don't try to understand it. Just bring it.
+    inProgressLines:
+    - Report to me when you find anything.
+    doneLines: []
+    requireAcceptChoice: 0
+  - label: FinishContract
+    quest: {fileID: 0}
+    requiresQuestBefore: {fileID: 11400000, guid: 0c079a8369ab76243a681303584c349b, type: 2}
+    turnInItem: {fileID: 11400000, guid: bafc33bf6be91134aaef5f3c39edf404, type: 2}
+    rewardItems: []
+    portrait: {fileID: 0}
+    offerLines:
+    - '*He takes the documents. Reads in silence for a long moment.*'
+    - ...Yes.
+    - That's it. That's what I've been looking for.
+    - '*He sets them down carefully. Like they''re fragile.*'
+    - "With this \u2014 our contract is fulfilled."
+    - '*He looks at you. For the first time, something in his expression is unguarded.*'
+    - You're free.
+    inProgressLines:
+    - Report to me when you find anything.
+    doneLines: []
     requireAcceptChoice: 0
 --- !u!114 &1832169214
 MonoBehaviour:
@@ -5712,7 +5800,7 @@ Transform:
   m_GameObject: {fileID: 2074312297}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.737, y: 1.056, z: -21.561}
+  m_LocalPosition: {x: -4.128, y: 1.221, z: -21.128}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -5763,22 +5851,23 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2074312297}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 673caeaf093b68d4aa06d0eab062bd3c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuestGiver
   _prompt: Talk
   _speakerName: Vera
-  _defaultPortrait: {fileID: 0}
+  _defaultPortrait: {fileID: 21300000, guid: 71030eb1c5d46fa44a947dd39120c14c, type: 3}
   _idleLines:
   - I don't have anything for you right now.
   _stages:
-  - label: KillAnyMob
+  - label: kill3mob
     quest: {fileID: 11400000, guid: 111a96b1aa5979f409eca1aab2c62617, type: 2}
     requiresQuestBefore: {fileID: 11400000, guid: 8b1ef5b631ffbeb4a838facc350e2886, type: 2}
     turnInItem: {fileID: 0}
-    rewardItems: []
+    rewardItems:
+    - {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
     portrait: {fileID: 0}
     offerLines:
     - So you found one of them.
@@ -5796,27 +5885,70 @@ MonoBehaviour:
     doneLines:
     - Great, now i can live with a slighly clearer mind.
     requireAcceptChoice: 0
-  - label: Kill3Mob
-    quest: {fileID: 11400000, guid: 111a96b1aa5979f409eca1aab2c62617, type: 2}
-    requiresQuestBefore: {fileID: 11400000, guid: 8b1ef5b631ffbeb4a838facc350e2886, type: 2}
+  - label: FindIncubator
+    quest: {fileID: 11400000, guid: cf459ffa5e5fcf0418def9cab4303346, type: 2}
+    requiresQuestBefore: {fileID: 11400000, guid: 111a96b1aa5979f409eca1aab2c62617, type: 2}
     turnInItem: {fileID: 0}
     rewardItems: []
     portrait: {fileID: 0}
     offerLines:
-    - So you found one of them.
-    - "Those black things. Mimics, I call them \u2014 nobody else has bothered naming
-      them, far as I know."
-    - I've been watching people go down those stairs for a long time. Never got to
-      hear back from anyone, they just never return.
-    - "I've got work for you, if you want it. Real work \u2014 not whatever Marcus
-      has you chasing. I need those things dead. As many as possible, as often as
-      possible."
-    - I'll pay in batteries. Good ones.
-    - All you have to do is kill 3 of the pesky mimics.
+    - She slides a rechargeable battery across the bar.
+    - "*A pause. She doesn't look satisfied \u2014 she looks like she's doing math
+      in her head.*"
+    - Here's what bothers me. I've had people kill these things before. And the numbers
+      never go down. Kill three, next run there are five more waiting.
+    - They're not coming in from outside. They're being made somewhere in there.
+    - '*She looks at you.*'
+    - Please tell me if you find any connection to where they migh come from.
     inProgressLines:
-    - Return when you have proof you killed them.
+    - Please report to me when you find something
     doneLines:
-    - Great, now i can live with a slighly clearer mind.
+    - Great, now i can live with a slighly clearer mind. Here's your promised Rechargable
+      battery
+    requireAcceptChoice: 0
+  - label: AfterIncubatorFind
+    quest: {fileID: 0}
+    requiresQuestBefore: {fileID: 11400000, guid: cf459ffa5e5fcf0418def9cab4303346, type: 2}
+    turnInItem: {fileID: 0}
+    rewardItems:
+    - {fileID: 11400000, guid: ab72499d68db283448c0d952029cbadd, type: 2}
+    portrait: {fileID: 0}
+    offerLines:
+    - An incubator.
+    - '*Long pause.*'
+    - "Someone built them. Those things aren't accidents \u2014 someone made them
+      and left the machine running."
+    - '*She looks genuinely unsettled for the first time.*'
+    - ...I think I can trust you with this.
+    - '*She reaches into her jacket and sets a key on the bar. Old, worn. The label
+      reads: Lab 2A.*'
+    - I've had this for a while. Never knew what to do with it. Whoever left it with
+      me didn't come back to explain.
+    - "But an incubator down there, built by someone \u2014 can this be linked to
+      all of it? I need you to find Lab 2A and tell me what you find."
+    inProgressLines:
+    - i hope you will be able to find something there.
+    doneLines:
+    - 
+    requireAcceptChoice: 0
+  - label: FindIncubator
+    quest: {fileID: 0}
+    requiresQuestBefore: {fileID: 11400000, guid: 0c079a8369ab76243a681303584c349b, type: 2}
+    turnInItem: {fileID: 0}
+    rewardItems: []
+    portrait: {fileID: 0}
+    offerLines:
+    - You found it. What was in there?
+    - '*You tell her.*'
+    - Long silence.
+    - ...So someone built all of it. The lab, the incubator, the mimics. All of it
+      on purpose.
+    - Does Marcus know about this?
+    - Okay, youre free, im gonna settle this with Marcus
+    inProgressLines:
+    - i hope you will be able to find something there.
+    doneLines:
+    - 
     requireAcceptChoice: 0
 --- !u!4 &2086076343 stripped
 Transform:
@@ -11388,13 +11520,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7749646087812524100}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.6644631, y: 0.24184477, z: -0.66446304, w: 0.24184479}
-  m_LocalPosition: {x: -1.4156291, y: 1, z: -25.268986}
+  m_LocalRotation: {x: -0.5, y: 0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: -1.4156296, y: 0.9999999, z: -25.26899}
   m_LocalScale: {x: 100, y: 100, z: 100}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1049973859}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -90, y: 90, z: 0}
 --- !u!4 &5020078845604394957
 Transform:
   m_ObjectHideFlags: 0
