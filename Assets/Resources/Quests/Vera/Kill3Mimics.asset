@@ -18,7 +18,6 @@ MonoBehaviour:
   trackerText: 
   requiredQuests:
   - {fileID: 11400000, guid: 8b1ef5b631ffbeb4a838facc350e2886, type: 2}
-  - {fileID: 11400000}
   activeCondition:
     wsmKey: dialogue.quest.7ae37c9c2d1b4a8ebff6a9f5ee67cfa5.accepted
     description: 

@@ -4933,6 +4933,7 @@ MonoBehaviour:
   _prompt: Talk
   _speakerName: Marcus
   _defaultPortrait: {fileID: 21300000, guid: 430454738e079154685c22d8735cb403, type: 3}
+  _giverId: 0e054e259eba46b5a5e109f4ba03c4d9
   _idleLines:
   - I don't have anything for you right now.
   _stages:
@@ -5478,63 +5479,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0ad073c77941dd944aeecc4dd6dbe362, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PauseMenu
---- !u!1001 &1945368514
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1385629203895236993, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_Name
-      value: Bird
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -8.75401
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 10.84157
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2010681281748703252, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: dc489f817ce7de94c8eff6837c02eab1, type: 3}
 --- !u!1001 &1972020228
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5903,6 +5847,7 @@ MonoBehaviour:
   _prompt: Talk
   _speakerName: Vera
   _defaultPortrait: {fileID: 21300000, guid: 71030eb1c5d46fa44a947dd39120c14c, type: 3}
+  _giverId: c9a5615982714de8bc8e43537be21cda
   _idleLines:
   - I don't have anything for you right now.
   _stages:
@@ -5975,7 +5920,7 @@ MonoBehaviour:
     doneLines:
     - 
     requireAcceptChoice: 0
-  - label: FindIncubator
+  - label: LastTalk
     quest: {fileID: 0}
     requiresQuestBefore: {fileID: 11400000, guid: 0c079a8369ab76243a681303584c349b, type: 2}
     turnInItem: {fileID: 0}
@@ -16397,4 +16342,3 @@ SceneRoots:
   - {fileID: 1338166816}
   - {fileID: 1692325779}
   - {fileID: 492056714}
-  - {fileID: 1945368514}

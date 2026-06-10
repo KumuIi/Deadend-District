@@ -19,7 +19,7 @@ MonoBehaviour:
   sellValue: 0
   modelPrefab: {fileID: 4632571037967668523, guid: 6cc4ae6b2f304c14388f593440b58c34, type: 3}
   itemColor: {r: 0.21568629, g: 0.21568629, b: 0.21568629, a: 1}
-  modelOrientationOffset: {x: 0, y: 0, z: 0}
+  modelOrientationOffset: {x: 90, y: 0, z: 90}
   gridRotationAxis: {x: 0, y: 0, z: 1}
   targetDoorId: Storage1
   singleUse: 1

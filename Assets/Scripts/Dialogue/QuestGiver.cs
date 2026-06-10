@@ -56,6 +56,10 @@ public class QuestGiver : MonoBehaviour, IInteractable
     [SerializeField] private string _speakerName = "NPC";
     [SerializeField] private Sprite _defaultPortrait;
 
+    // Stable per-giver id so dialogue-only stages can own a persistent "seen" WSM fact (keyed by
+    // giver + stage index). Auto-assigned in the editor; falls back to the object name at runtime.
+    [SerializeField, HideInInspector] private string _giverId;
+
     [Tooltip("Said when no stage is available yet (waiting on a prerequisite) or the whole line is finished.")]
     [TextArea(1, 4)] [SerializeField] private string[] _idleLines = { "I don't have anything for you right now." };
 
@@ -114,15 +118,15 @@ public class QuestGiver : MonoBehaviour, IInteractable
     /// </summary>
     public bool HasSomethingForPlayer()
     {
-        int front = -1;
-        for (int i = 0; i < _stages.Count; i++)
-            if (_stages[i]?.quest != null && !IsSucceeded(_stages[i].quest)) { front = i; break; }
+        int front = FrontStage();
         if (front == -1) return false;
 
         var stage = _stages[front];
-        bool prevDone   = front == 0 || _stages[front - 1].quest == null || IsSucceeded(_stages[front - 1].quest);
+        bool prevDone   = front == 0 || StageFinished(front - 1);
         bool prereqDone = stage.requiresQuestBefore == null || IsSucceeded(stage.requiresQuestBefore);
         if (!prevDone || !prereqDone) return false;
+
+        if (stage.quest == null) return true; // an unseen dialogue beat (and/or a pending reward)
 
         var status = StatusOf(stage.quest);
         if (status == QuestStatus.Inactive) return true; // a new offer is waiting
@@ -140,10 +144,9 @@ public class QuestGiver : MonoBehaviour, IInteractable
         // normal done/offer lines below still play as usual.
         GrantPendingRewards();
 
-        // Front stage = first whose quest isn't finished yet.
-        int front = -1;
-        for (int i = 0; i < _stages.Count; i++)
-            if (_stages[i]?.quest != null && !IsSucceeded(_stages[i].quest)) { front = i; break; }
+        // Front stage = first stage that isn't finished yet (quest not Succeeded, or — for a
+        // dialogue-only stage — not yet seen).
+        int front = FrontStage();
 
         // Whole questline done → final stage's done lines (or idle).
         if (front == -1)
@@ -154,10 +157,14 @@ public class QuestGiver : MonoBehaviour, IInteractable
 
         var stage = _stages[front];
 
-        bool prevDone   = front == 0 || _stages[front - 1].quest == null || IsSucceeded(_stages[front - 1].quest);
+        bool prevDone   = front == 0 || StageFinished(front - 1);
         bool prereqDone = stage.requiresQuestBefore == null || IsSucceeded(stage.requiresQuestBefore);
         if (!prevDone || !prereqDone)
             return Simple(_idleLines, stage.portrait); // not this NPC's turn yet
+
+        // Dialogue-only stage (no quest): play its lines once, then it's "seen" and the line advances.
+        if (stage.quest == null)
+            return DialogueOnly(front, stage);
 
         switch (StatusOf(stage.quest))
         {
@@ -196,6 +203,36 @@ public class QuestGiver : MonoBehaviour, IInteractable
         return convo;
     }
 
+    /// <summary>
+    /// A stage with no quest attached: a pure dialogue beat (lore, a key handout, a wrap-up). It plays
+    /// its offer lines once, writes a persistent "seen" fact so the line advances next talk, and — like
+    /// a quest stage — its reward is paid out by <see cref="GrantPendingRewards"/> (retried until it fits).
+    /// </summary>
+    private DialogueConversation DialogueOnly(int index, QuestStage stage)
+    {
+        var lines = new List<string>();
+        // If the stage above JUST finished, lead with its done lines (acknowledge → this beat).
+        if (index > 0 && _stages[index - 1].quest != null && IsSucceeded(_stages[index - 1].quest))
+            lines.AddRange(_stages[index - 1].doneLines);
+        lines.AddRange(stage.offerLines);
+
+        var convo = new DialogueConversation { lines = ToLines(lines.ToArray(), stage.portrait) };
+        string seenKey = StageSeenKey(index);
+
+        if (stage.requireAcceptChoice)
+        {
+            convo.choices = new[]
+            {
+                new DialogueChoice { label = "Continue", writesOnPick = new[] { WriteBool(seenKey) } }
+            };
+        }
+        else if (convo.lines.Length > 0)
+        {
+            convo.lines[convo.lines.Length - 1].writesOnShow = new[] { WriteBool(seenKey) };
+        }
+        return convo;
+    }
+
     private DialogueConversation Active(QuestStage stage)
     {
         var convo = new DialogueConversation { lines = ToLines(stage.inProgressLines, stage.portrait) };
@@ -230,11 +267,15 @@ public class QuestGiver : MonoBehaviour, IInteractable
         for (int i = 0; i < _stages.Count; i++)
         {
             var s = _stages[i];
-            if (s?.quest == null || s.rewardItems == null || s.rewardItems.Length == 0) continue;
-            if (!IsSucceeded(s.quest) || IsRewarded(s.quest)) continue;
+            if (s == null || s.rewardItems == null || s.rewardItems.Length == 0) continue;
+            if (!StageFinished(i)) continue;
+
+            // Quest stages key the once-only guard off the quest; dialogue-only stages off giver+index.
+            string rewardedKey = s.quest != null ? RewardedKey(s.quest) : StageRewardedKey(i);
+            if (WorldStateManager.Instance != null && WorldStateManager.Instance.GetBool(rewardedKey)) continue;
 
             if (TryGrantBatch(s.rewardItems))
-                WorldStateManager.Instance?.SetBool(RewardedKey(s.quest), true);
+                WorldStateManager.Instance?.SetBool(rewardedKey, true);
         }
     }
 
@@ -284,14 +325,48 @@ public class QuestGiver : MonoBehaviour, IInteractable
     private static QuestStatus StatusOf(QuestSO q) =>
         QuestManager.Instance != null ? QuestManager.Instance.GetStatus(q) : QuestStatus.Inactive;
 
-    /// <summary>True once this stage's reward has been paid out (so it's never given twice).</summary>
-    private static bool IsRewarded(QuestSO q) =>
-        WorldStateManager.Instance != null && WorldStateManager.Instance.GetBool(RewardedKey(q));
-
     public static string AcceptedKey(QuestSO q)  => $"dialogue.quest.{q.QuestId}.accepted";
     public static string DeliveredKey(QuestSO q) => $"dialogue.quest.{q.QuestId}.delivered";
     public static string RewardedKey(QuestSO q)  => $"dialogue.quest.{q.QuestId}.rewarded";
 
     private static DialogueWrite WriteBool(string key) =>
         new DialogueWrite { key = key, type = QuestValueType.Bool, boolValue = true };
+
+    // ── Stage progress (quests + dialogue-only beats) ──────────────────────────
+
+    /// <summary>First stage that still has something to do: a quest not yet Succeeded, or a
+    /// dialogue-only stage not yet seen. -1 when the whole line is finished.</summary>
+    private int FrontStage()
+    {
+        for (int i = 0; i < _stages.Count; i++)
+            if (_stages[i] != null && !StageFinished(i)) return i;
+        return -1;
+    }
+
+    /// <summary>A stage is "finished" when its quest is Succeeded, or — with no quest — once it's been seen.
+    /// Empty slots are transparent (treated as finished) so they never stall the line.</summary>
+    private bool StageFinished(int i)
+    {
+        var s = _stages[i];
+        if (s == null) return true;
+        return s.quest != null ? IsSucceeded(s.quest) : StageSeen(i);
+    }
+
+    private bool StageSeen(int i) =>
+        WorldStateManager.Instance != null && WorldStateManager.Instance.GetBool(StageSeenKey(i));
+
+    private string GiverId => string.IsNullOrEmpty(_giverId) ? name : _giverId;
+    private string StageSeenKey(int i)     => $"dialogue.giver.{GiverId}.stage{i}.seen";
+    private string StageRewardedKey(int i) => $"dialogue.giver.{GiverId}.stage{i}.rewarded";
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (string.IsNullOrEmpty(_giverId))
+        {
+            _giverId = System.Guid.NewGuid().ToString("N");
+            UnityEditor.EditorUtility.SetDirty(this);
+        }
+    }
+#endif
 }
