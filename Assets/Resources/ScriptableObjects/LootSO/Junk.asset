@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8226e29d46e8b81459284832b376f094, type: 3}
+  m_Name: Junk
+  m_EditorClassIdentifier: Assembly-CSharp::LootPoolSO
+  Entries:
+  - Item: {fileID: 11400000, guid: f99dbf72a95485b44a2144f1d93c4319, type: 2}
+    Weight: 1.0
+  - Item: {fileID: 11400000, guid: e3ab18f34ac9ce84aadf8f014631a6ed, type: 2}
+    Weight: 1.0
+  - Item: {fileID: 11400000, guid: b6c00ee62904ab04c9881e95e786570f, type: 2}
+    Weight: 1.0
+  - Item: {fileID: 11400000, guid: f977bb3907b1ea540a6a5b3f8bccd7c4, type: 2}
+    Weight: 1.0
+  - Item: {fileID: 11400000, guid: 05dac4557a8379b4ab419b559cafd205, type: 2}
+    Weight: 1.0
+  - Item: {fileID: 11400000, guid: 57920ea5699336f418bb5599aa30033a, type: 2}
+    Weight: 1.0
+  - Item: {fileID: 11400000, guid: b05ded46df0ae8b45a45e8e4a153cffc, type: 2}
+    Weight: 0.9
+  - Item: {fileID: 11400000, guid: 838f3af1f6972344482d19a3ed422f25, type: 2}
+    Weight: 0.9
+  - Item: {fileID: 11400000, guid: c9d867dd40dd2934eb0a532044eec8d1, type: 2}
+    Weight: 0.8
+  - Item: {fileID: 11400000, guid: 40283d4ae35de0743b59c80d478dfdbd, type: 2}
+    Weight: 0.8
+  - Item: {fileID: 11400000, guid: bea1b65579f93a04f8cdac4ebfbaec32, type: 2}
+    Weight: 0.7
+  - Item: {fileID: 11400000, guid: d3dd4e20bbd4d72408d59acc2cebc4ac, type: 2}
+    Weight: 0.7
+  - Item: {fileID: 11400000, guid: 8ab30eef4bc2f5c4fa3e531c9d4ed2fd, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 35e4a437f629ff449b41f7fc78f315e5, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 51331e4bb5f937448b27a6bbe84ba528, type: 2}
+    Weight: 0.5

@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8226e29d46e8b81459284832b376f094, type: 3}
+  m_Name: ShelfLoot
+  m_EditorClassIdentifier: Assembly-CSharp::LootPoolSO
+  Entries:
+  - Item: {fileID: 11400000, guid: 57920ea5699336f418bb5599aa30033a, type: 2}
+    Weight: 0.8
+  - Item: {fileID: 11400000, guid: b05ded46df0ae8b45a45e8e4a153cffc, type: 2}
+    Weight: 0.8
+  - Item: {fileID: 11400000, guid: c4afe5800fb663e4389d217377223397, type: 2}
+    Weight: 0.7
+  - Item: {fileID: 11400000, guid: c9ee077490f74704b83928318288e271, type: 2}
+    Weight: 0.7
+  - Item: {fileID: 11400000, guid: 6dd8e53bc4bf37d41825f16711b464de, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 568f0dd81e0399a4890a7087165a2a5e, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 03eebe6b0760cb549905516c3a5629bb, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: c541de6889e27614a93ef6289089f389, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 4f906c2bd8a84fb4f88df4c9c43a8b4c, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 51331e4bb5f937448b27a6bbe84ba528, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 90fd22d47be36ce42bff262dea339d4f, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 6cf0ff8f83f1d72499d74b2e35fd5709, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 35e4a437f629ff449b41f7fc78f315e5, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 769d7bf2345d28e4697bb0bacc1e248e, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: cf72fec0d4303b24ebba405ece15dbe1, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 38efb1880a86a7e409cb271d02e0416d, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: a55a5466fd2dd5a45a8cf1573fc073d0, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: c1783cefdeb68bb43808e9a2d1462b21, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 25a752b71a26f7648b8cf0e2702c5c98, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 54b148b6f5b535b47b0d865d3ef8c4c2, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: c9d867dd40dd2934eb0a532044eec8d1, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 8ab30eef4bc2f5c4fa3e531c9d4ed2fd, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 3deeebd50da5f2141941e6714b64740c, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 7c3905f9439742442a40bf973bfd116c, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 96adf2f92be795e4ca8ef48b5122a77c, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 8fc7feee45c0138418e9af43dfe027b9, type: 2}
+    Weight: 0.12
+  - Item: {fileID: 11400000, guid: c3690aa5877ad344dbe7c288a0273342, type: 2}
+    Weight: 0.12
+  - Item: {fileID: 11400000, guid: 6caa0d39cc15f20419677adf030870b0, type: 2}
+    Weight: 0.03

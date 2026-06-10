@@ -38,4 +38,4 @@ MonoBehaviour:
     m_Value: 0.05
   downsampling:
     m_OverrideState: 1
-    m_Value: 2.5
+    m_Value: 2

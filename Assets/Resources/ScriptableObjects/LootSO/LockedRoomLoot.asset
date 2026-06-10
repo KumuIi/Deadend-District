@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8226e29d46e8b81459284832b376f094, type: 3}
+  m_Name: LockedRoomLoot
+  m_EditorClassIdentifier: Assembly-CSharp::LootPoolSO
+  Entries:
+  - Item: {fileID: 11400000, guid: e9ebf207a08a17e4eb82e978714e8b36, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 9406f0439c80ac54eb00cfefcd8f8d31, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 15a138c81ca6ecd48b66de431b0bdf89, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 750aa93052e0e4a4c9daecb0c7fb293c, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 8854d10367932584d8bfd05a4a520ec5, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 3deeebd50da5f2141941e6714b64740c, type: 2}
+    Weight: 0.6
+  - Item: {fileID: 11400000, guid: 116e51cf95c29de498fd975167503de3, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 611a4eeec59fe0d4f98c978c573b756b, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 005da9d610c4d5440a0a097fa91866a1, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 08372d14c2bd1d042a3b9d49592389cd, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: e6fb62bd94215154a828e41d3e43a97f, type: 2}
+    Weight: 0.35
+  - Item: {fileID: 11400000, guid: 8c0a0f6302ce8874ab63a1d2974c3afa, type: 2}
+    Weight: 0.25
+  - Item: {fileID: 11400000, guid: d56a0c7d8a4982948aff8a29f5b8cfc4, type: 2}
+    Weight: 0.2
+  - Item: {fileID: 11400000, guid: 8fc7feee45c0138418e9af43dfe027b9, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: c3690aa5877ad344dbe7c288a0273342, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 96adf2f92be795e4ca8ef48b5122a77c, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: c9ee077490f74704b83928318288e271, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: c4afe5800fb663e4389d217377223397, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 6dd8e53bc4bf37d41825f16711b464de, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 8c84d0e4c88c6224b8381f1fcab6ad79, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 7aa9f81fc6aa0d5488bdeee7647d3c1b, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 6685e6b76efd35f40ba0e88510a04f9d, type: 2}
+    Weight: 0.5
+  - Item: {fileID: 11400000, guid: 8508334d473ca48499176a920e54cd5d, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 9ef153d9262437443a4933e62ad69436, type: 2}
+    Weight: 0.25
+  - Item: {fileID: 11400000, guid: 6caa0d39cc15f20419677adf030870b0, type: 2}
+    Weight: 0.1
+  - Item: {fileID: 11400000, guid: c541de6889e27614a93ef6289089f389, type: 2}
+    Weight: 0.4
+  - Item: {fileID: 11400000, guid: 03eebe6b0760cb549905516c3a5629bb, type: 2}
+    Weight: 0.3
