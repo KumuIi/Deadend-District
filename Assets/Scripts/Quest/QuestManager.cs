@@ -28,6 +28,13 @@ public class QuestManager : MonoBehaviour, ISaveable
     /// </summary>
     public event Action OnQuestsChanged;
 
+    /// <summary>
+    /// Fires once per quest status TRANSITION with the quest and its new status — a typed companion to
+    /// <see cref="OnQuestsChanged"/> for listeners that care about the specific change (e.g. AudioDirector
+    /// playing a chime only on Succeeded). Static so cross-scene singletons can subscribe without a ref.
+    /// </summary>
+    public static event Action<QuestSO, QuestStatus> OnAnyQuestTransition;
+
     /// <summary>All quests registered on this manager (read-only). Pair with <see cref="GetStatus(QuestSO)"/>.</summary>
     public IReadOnlyList<QuestSO> Quests => _quests;
 
@@ -297,6 +304,7 @@ public class QuestManager : MonoBehaviour, ISaveable
 
         // Notify BEFORE the activation early-return below, so the tracker refreshes on activate too.
         NotifyChanged();
+        OnAnyQuestTransition?.Invoke(quest, next);
 
         // On activation: cancel mutually exclusive quests
         if (next == QuestStatus.Active)

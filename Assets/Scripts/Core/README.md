@@ -131,9 +131,11 @@ bool hasSave = SaveSystem.Instance.SlotExists("slot0");
 **Already-registered adapters:**
 | SaveId | Covers |
 |---|---|
-| `player.inventory` | `InventoryGrid` contents via `InventoryUI` |
+| `player.inventory` | `InventoryGrid` contents via `InventoryUI`, including per-instance state (ammo stack counts, magazine rounds, weapon-loaded magazines, **flashlight charge + inserted battery**, loose battery charge) and the **equipped loadout** (which grid item is in hand as weapon / flashlight) |
 | `player.health` | `PlayerHealth` current/max values |
 | `world.state` | All `WorldStateManager` keys |
+
+> **Per-instance state lives in `InventoryGrid.GridSaveEntry`** — every typed `ItemInstance` that holds mutable state (ammo, magazine, weapon, flashlight, battery) must add a capture case in `GetSaveData` *and* a matching restore case in `RestoreInstanceState`. Missing one means that item silently loads in its default-constructed state (e.g. a flashlight always loading empty). The equipped loadout is stored separately by `InventorySaveAdapter` as grid anchors — a grid position uniquely identifies a placed item, so restore re-equips the exact loaded instance (preserving its ammo/battery), never a fresh full one.
 
 Save files are written to `Application.persistentDataPath/save_<slot>.json`. Version field is `1` — increment on breaking format changes.
 

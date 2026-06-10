@@ -49,12 +49,14 @@ public class AIPerception : MonoBehaviour, IStimulusListener
     {
         if (StimulusSystem.Instance != null)
             StimulusSystem.Instance.Register(this);
+        EnemyThreatRegistry.Register(this); // feeds adaptive combat music
     }
 
     private void OnDisable()
     {
         if (StimulusSystem.Instance != null)
             StimulusSystem.Instance.Unregister(this);
+        EnemyThreatRegistry.Unregister(this);
     }
 
     public void OnStimulus(in Stimulus s)

@@ -40,6 +40,11 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
     public TraderSO Definition => _trader;
     public bool     IsOpen { get; private set; }
 
+    /// <summary>Raised on a successful purchase / sale (any trader). Static so the AudioDirector can
+    /// play the cash-register cue without a per-trader reference.</summary>
+    public static event System.Action OnItemBought;
+    public static event System.Action OnItemSold;
+
     private int[] _stockRemaining;                                       // mirrors _trader.Stock; -1 = unlimited
     private int   _runsUntilRestock;
     private bool  _openedPlayerPanel;                                    // did WE open the player grid?
@@ -280,6 +285,7 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
 
         CurrencyService.Spend(entry.BuyPrice);
         if (remaining > 0) _stockRemaining[stockIndex] = remaining - 1; // unlimited (-1) stays put
+        OnItemBought?.Invoke();
         return true;
     }
 
@@ -308,6 +314,7 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
         if (delivered <= 0) return;
 
         CurrencyService.Spend(delivered * perRound);
+        OnItemBought?.Invoke();
         if (remaining > 0) _stockRemaining[stockIndex] = remaining - delivered;
 
         if (_stockRemaining[stockIndex] == 0)
@@ -391,6 +398,7 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
         // unequips the live gun/light — otherwise it stays usable after the item is gone.
         _playerInventoryUI.RemoveItemAndDetach(item);
         CurrencyService.Add(price);
+        OnItemSold?.Invoke();
         return true;
     }
 

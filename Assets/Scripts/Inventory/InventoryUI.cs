@@ -320,12 +320,21 @@ public sealed class InventoryUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Fires when the PLAYER's inventory panel opens (true) or closes (false). Static so the
+    /// AudioDirector can play the open/close sound without holding a ref; only the panel with
+    /// <see cref="_isPlayerInventory"/> raises it, so stash/trader/loot panels stay silent.
+    /// </summary>
+    public static event System.Action<bool> OnPlayerInventoryToggled;
+
     /// <summary>Opens or closes the inventory panel.</summary>
     public void SetOpen(bool open)
     {
         // Idempotent: each open Blocks GameInputState and each close Unblocks it. Re-issuing the
         // current state would corrupt the shared (reference-counted) block count, so no-op here.
         if (open == IsOpen) return;
+
+        if (_isPlayerInventory) OnPlayerInventoryToggled?.Invoke(open);
 
         _panel.gameObject.SetActive(open);
 
@@ -413,6 +422,42 @@ public sealed class InventoryUI : MonoBehaviour
         Grid.LoadFromSaveData(entries, resolver);
         foreach (var item in Grid.PlacedItems)
             SpawnView(item);
+    }
+
+    // ── Equipped-loadout save/restore ──────────────────────────────────────
+
+    /// <summary>The weapon whose state is currently loaded into the live gun, or null.</summary>
+    public WeaponItemInstance EquippedWeapon => _equippedItem;
+
+    /// <summary>The flashlight currently in hand, or null. Always a grid item when non-null.</summary>
+    public FlashlightItemInstance EquippedFlashlight =>
+        flashlightSlot != null ? flashlightSlot.EquippedFlashlight : null;
+
+    /// <summary>
+    /// Re-applies equipped state after a load. Equips the placed items at <paramref name="weaponPos"/>
+    /// and <paramref name="flashlightPos"/> — or clears that slot when the position is the (-1,-1)
+    /// "nothing equipped" sentinel. Equipping the restored instance (not a fresh SO match) preserves
+    /// its loaded magazine / battery, so loading never grants a free full mag.
+    /// Call after <see cref="LoadFromSaveData"/> so the target items exist in the grid.
+    /// </summary>
+    public void RestoreEquipped(Vector2Int weaponPos, Vector2Int flashlightPos)
+    {
+        if (FindPlacedAt(weaponPos) is WeaponItemInstance wi)
+            ContextMenu_Equip(wi);
+        else { _equippedItem = null; weaponManager?.EquipNothing(); }
+
+        if (FindPlacedAt(flashlightPos) is FlashlightItemInstance fi)
+            ContextMenu_Equip(fi);
+        else flashlightSlot?.Unequip();
+    }
+
+    /// <summary>Returns the placed item anchored at <paramref name="pos"/>, or null. (-1,-1) = none.</summary>
+    private ItemInstance FindPlacedAt(Vector2Int pos)
+    {
+        if (pos.x < 0 || pos.y < 0) return null;
+        foreach (var item in Grid.PlacedItems)
+            if (item.gridPosition == pos) return item;
+        return null;
     }
 
     // ── Internal callbacks (called by InventoryItemView) ──────────────────

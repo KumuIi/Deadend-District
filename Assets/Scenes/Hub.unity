@@ -1070,6 +1070,64 @@ MonoBehaviour:
   _recordColor: {r: 1, g: 0.82, b: 0.25, a: 1}
   _bestColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
   _backdropColor: {r: 0, g: 0, b: 0, a: 0.55}
+--- !u!114 &366038859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366038825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 454717024dd18e04b93a02c2377aa67c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioDirector
+  _soundBank: {fileID: 0}
+--- !u!114 &366038860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366038825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d55fbba87b5d5e43b24762e292b8d3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MusicDirector
+  _hubTheme: {fileID: 8300000, guid: ab9cea75027e9844db38a3cd6ef76863, type: 3}
+  _exploreTheme: {fileID: 8300000, guid: 54a152c15fb572f468567ccdac2d24c7, type: 3}
+  _tensionLayer: {fileID: 8300000, guid: 000907cfa4a95b74bafe7924761cc835, type: 3}
+  _combatLayer: {fileID: 8300000, guid: 6fb5ec5d16a4e4a4580f5342b2b82b06, type: 3}
+  _musicGroup: {fileID: 0}
+  _hubVolume: 0.7
+  _exploreVolume: 0.6
+  _tensionVolume: 0.7
+  _combatVolume: 0.85
+  _exploreDuckVolume: 0.25
+  _fadeSpeed: 0.6
+  _evalInterval: 0.25
+  _audioDirector: {fileID: 0}
+--- !u!114 &366038861
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366038825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6249d29d0c9f57244ac2fde2a85ad4f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpatialAudioManager
+  _mixer: {fileID: 24100000, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _sfxGroup: {fileID: -8557296944909524871, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _uiGroup: {fileID: -8527206021514999954, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _musicGroup: {fileID: 6432676362622343394, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _ambientGroup: {fileID: -7003576344918131460, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _initialPoolSize: 12
+  _minDistance: 1.5
+  _maxDistance: 35
 --- !u!1001 &397976783
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2028,6 +2086,15 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
       insertIndex: -1
       addedObject: {fileID: 366038848}
+    - targetCorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 366038861}
+    - targetCorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 366038860}
+    - targetCorrespondingSourceObject: {fileID: 6244124482328720071, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 366038859}
   m_SourcePrefab: {fileID: 100100000, guid: 0109389b0b30a9e4ba44fd89297ada04, type: 3}
 --- !u!1001 &668583259
 PrefabInstance:

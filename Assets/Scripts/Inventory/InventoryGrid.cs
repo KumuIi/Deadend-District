@@ -172,6 +172,20 @@ public class InventoryGrid
                     // so this snapshot is the equipped weapon's real ammo state too.
                     entry.loadedMag = CaptureMag(wi.LoadedMagazine.RuntimeMag);
                     break;
+
+                case FlashlightItemInstance fl:
+                    // The equipped FlashlightSlot shares this same instance (FlashlightSlot.TryEquip),
+                    // so CurrentCharge here is the live drained charge. InsertedBattery lives only
+                    // inside the flashlight (removed from the grid), so it must be captured here too.
+                    entry.flashlight = CaptureFlashlight(fl);
+                    break;
+
+                case BatteryItemInstance bat:
+                    // 0 is a valid (depleted) charge, so flag presence explicitly to tell a saved
+                    // value apart from a pre-this-change save that never wrote the field.
+                    entry.hasBatteryCharge = true;
+                    entry.batteryCharge    = bat.CurrentCharge;
+                    break;
             }
 
             entries.Add(entry);
@@ -187,6 +201,18 @@ public class InventoryGrid
         var loaded = m.Rounds;
         for (int i = 0; i < loaded.Count; i++)
             if (loaded[i] != null) state.rounds.Add(loaded[i].name);
+        return state;
+    }
+
+    /// <summary>Serializes a flashlight's live charge plus the battery loaded inside it (if any).</summary>
+    private static FlashlightState CaptureFlashlight(FlashlightItemInstance fl)
+    {
+        var state = new FlashlightState { currentCharge = fl.CurrentCharge };
+        if (fl.InsertedBattery != null)
+        {
+            state.batterySoName = fl.InsertedBattery.data.name;
+            state.batteryCharge = fl.InsertedBattery.CurrentCharge;
+        }
         return state;
     }
 
@@ -246,7 +272,35 @@ public class InventoryGrid
                     wi.LoadMagazine(magItem);
                 }
                 break;
+
+            case FlashlightItemInstance fl:
+                RestoreFlashlight(fl, entry.flashlight, resolver);
+                break;
+
+            // Always restore when the save recorded a charge — the factory defaults a battery to a
+            // FULL charge, so skipping restore would refill a depleted one. Pre-this-change saves
+            // (hasBatteryCharge == false) keep the full default.
+            case BatteryItemInstance bat when entry.hasBatteryCharge:
+                bat.CurrentCharge = entry.batteryCharge;
+                break;
         }
+    }
+
+    /// <summary>Restores a flashlight's loaded battery (if any), then its live drained charge.</summary>
+    private static void RestoreFlashlight(FlashlightItemInstance fl, FlashlightState state, IItemSOResolver resolver)
+    {
+        if (state == null) return;
+
+        if (!string.IsNullOrEmpty(state.batterySoName) &&
+            resolver.Resolve(state.batterySoName) is BatteryItemSO batSO)
+        {
+            var battery = new BatteryItemInstance(batSO) { CurrentCharge = state.batteryCharge };
+            fl.LoadBattery(battery); // sets CurrentCharge to min(max, batteryCharge) — overwritten below
+        }
+
+        // Apply the saved live charge last: LoadBattery resets it, but the real remaining charge
+        // lives on the flashlight (FlashlightSlot drains fl.CurrentCharge, not the battery).
+        fl.CurrentCharge = state.currentCharge;
     }
 
     /// <summary>Fills <paramref name="target"/> with the rounds described by <paramref name="state"/>.</summary>
@@ -279,6 +333,24 @@ public class InventoryGrid
         public MagState mag;
         /// <summary>WeaponItemInstance's loaded magazine + its rounds. Empty magSoName = none.</summary>
         public MagState loadedMag;
+
+        /// <summary>FlashlightItemInstance live charge + inserted battery. null = not a flashlight.</summary>
+        public FlashlightState flashlight;
+        /// <summary>True when batteryCharge was written (distinguishes a saved 0 from an absent field).</summary>
+        public bool  hasBatteryCharge;
+        /// <summary>Standalone BatteryItemInstance remaining charge. Valid only when hasBatteryCharge.</summary>
+        public float batteryCharge;
+    }
+
+    /// <summary>Serialisable flashlight state: live charge plus the battery loaded inside it.</summary>
+    [System.Serializable]
+    public class FlashlightState
+    {
+        public float  currentCharge;
+        /// <summary>Inserted battery's SO name. Empty = no battery loaded.</summary>
+        public string batterySoName;
+        /// <summary>Inserted battery's remaining charge.</summary>
+        public float  batteryCharge;
     }
 
     /// <summary>Serialisable magazine contents: the mag SO name + each loaded round's ammo SO name (fire order).</summary>

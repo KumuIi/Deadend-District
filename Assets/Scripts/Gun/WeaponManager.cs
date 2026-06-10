@@ -61,6 +61,14 @@ public class WeaponManager : MonoBehaviour, IRunLifecycleListener
     /// </summary>
     public event Action<GunController> OnWeaponEquipped;
 
+    /// <summary>
+    /// Fires when the equipped weapon changes: true = a real weapon was equipped, false = went to
+    /// empty hands. Distinct from <see cref="OnWeaponEquipped"/> (which always passes a non-null gun,
+    /// since empty-hands is itself a GunController). Static so the AudioDirector can play the
+    /// equip/unequip cue without tracking the per-run player rig.
+    /// </summary>
+    public static event Action<bool> OnAnyWeaponEquipChanged;
+
     // ── Private ────────────────────────────────────────────────────────────
 
     private readonly List<GunController> _weapons = new List<GunController>();
@@ -177,6 +185,7 @@ public class WeaponManager : MonoBehaviour, IRunLifecycleListener
 
         ApplyIKTargets(CurrentWeapon);
         OnWeaponEquipped?.Invoke(CurrentWeapon); // FlashlightSlot may override left IK before Build
+        OnAnyWeaponEquipChanged?.Invoke(true);   // a real weapon is now in hand
         rigBuilder?.Build();
     }
 
@@ -203,6 +212,7 @@ public class WeaponManager : MonoBehaviour, IRunLifecycleListener
         CurrentWeapon.gameObject.SetActive(true);
         ApplyIKTargets(CurrentWeapon);
         OnWeaponEquipped?.Invoke(CurrentWeapon);
+        OnAnyWeaponEquipChanged?.Invoke(false);  // empty hands = unequip
         rigBuilder?.Build();
     }
 

@@ -51,6 +51,10 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     /// grades its reaction off this (faint = grow suspicious, loud = investigate now).</summary>
     public float     LastHeardIntensity { get; private set; }
 
+    /// <summary>Time.time of the most recent heard sound. The audio threat registry uses it to
+    /// keep music at "tension" for a few seconds after a noise, then let it settle.</summary>
+    public float     LastHeardTime      { get; private set; }
+
     public event Action<PerceptionEvent, Vector3> OnPerceptionEvent;
 
     // ── Private ───────────────────────────────────────────────────────────────
@@ -72,12 +76,14 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
     {
         if (StimulusSystem.Instance != null)
             StimulusSystem.Instance.Register(this);
+        EnemyThreatRegistry.Register(this); // feeds adaptive combat music
     }
 
     private void OnDisable()
     {
         if (StimulusSystem.Instance != null)
             StimulusSystem.Instance.Unregister(this);
+        EnemyThreatRegistry.Unregister(this);
     }
 
     private void Update()
@@ -98,6 +104,7 @@ public class EnemyPerception : MonoBehaviour, IStimulusListener
         {
             LastKnownPosition  = s.Position;
             LastHeardIntensity = s.Type == StimulusType.Damage ? 1f : s.Intensity;
+            LastHeardTime      = Time.time;
             OnPerceptionEvent?.Invoke(PerceptionEvent.SoundHeard, s.Position);
         }
     }
