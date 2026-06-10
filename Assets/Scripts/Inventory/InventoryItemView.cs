@@ -61,7 +61,12 @@ public sealed class InventoryItemView : MonoBehaviour,
 
         if (item.data.modelPrefab == null) return;
 
-        _model = Instantiate(item.data.modelPrefab);
+        // InstantiateCentered wraps the model so its render-bounds center sits on the wrapper
+        // origin — cancelling pivot offsets some Blender/FBX exports bake into the mesh. Without
+        // this an off-pivot model renders off-frame and scaled to nothing (invisible icon), since
+        // PlaceModel positions/scales by the transform origin and the radius below inflates by the
+        // offset distance.
+        _model = ModelPrefabUtil.InstantiateCentered(item.data.modelPrefab);
 
         // Bind the model's lifetime to the persistent inventory rig, NOT the active scene.
         // Instantiate with no parent adopts SceneManager.GetActiveScene() — which is the SECTOR

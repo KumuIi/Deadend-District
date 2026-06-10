@@ -38,12 +38,7 @@ public sealed class ObjectiveService : MonoBehaviour, IRunLifecycleListener
         LockedDoor.AnyUnlocked      += OnDoorUnlocked;
         RechargeStation.AnyRecharge += OnRecharge;
 
-        if (WorldStateManager.Instance != null)
-        {
-            WorldStateManager.Instance.OnStateChanged  += OnWsmChanged;
-            WorldStateManager.Instance.OnStateReplaced += OnWsmReplaced;
-        }
-        if (QuestManager.Instance != null) QuestManager.Instance.OnQuestsChanged += OnQuestsChanged;
+        SubscribeToManagers();
         RunManager.Instance?.RegisterListener(this);
     }
 
@@ -63,13 +58,39 @@ public sealed class ObjectiveService : MonoBehaviour, IRunLifecycleListener
         RunManager.Instance?.UnregisterListener(this);
     }
 
+    /// <summary>
+    /// (Re)subscribe to the WorldStateManager / QuestManager singletons. Idempotent (— then +) so it's
+    /// safe to call from both OnEnable and Start: during init OnEnable can run before these singletons
+    /// exist, leaving the subscription a silent no-op — which froze ReachCurrency / threshold
+    /// objectives (their only wake-up is OnStateChanged). The matching -= lives in OnDisable.
+    /// </summary>
+    private void SubscribeToManagers()
+    {
+        if (WorldStateManager.Instance != null)
+        {
+            WorldStateManager.Instance.OnStateChanged  -= OnWsmChanged;
+            WorldStateManager.Instance.OnStateChanged  += OnWsmChanged;
+            WorldStateManager.Instance.OnStateReplaced -= OnWsmReplaced;
+            WorldStateManager.Instance.OnStateReplaced += OnWsmReplaced;
+        }
+        if (QuestManager.Instance != null)
+        {
+            QuestManager.Instance.OnQuestsChanged -= OnQuestsChanged;
+            QuestManager.Instance.OnQuestsChanged += OnQuestsChanged;
+        }
+    }
+
     private void Start()
     {
-        // Safety net for Awake ordering: if RunManager's singleton wasn't set yet when our OnEnable
-        // ran, our listener registration there was a silent no-op — and OnRunExtracted (which
-        // completes ExtractRaid objectives) would never fire. Re-register here; RegisterListener is
-        // Contains-guarded, so a double call is harmless. Mirrors AudioDirector / RunScoreUI.
+        // Safety net for Awake ordering: if the RunManager / WorldStateManager / QuestManager
+        // singletons weren't set yet when our OnEnable ran, those subscriptions were silent no-ops.
+        // For RunManager that meant OnRunExtracted (ExtractRaid) never fired; for WSM/QuestManager it
+        // meant threshold objectives (ReachCurrency) never re-evaluated on a credit change — they'd
+        // only ever be checked once, here in Start. Re-do them all; every call is idempotent
+        // (RegisterListener is Contains-guarded, SubscribeToManagers does -= then +=). Mirrors
+        // AudioDirector / RunScoreUI.
         RunManager.Instance?.RegisterListener(this);
+        SubscribeToManagers();
 
         BuildTrackedFromQuests();
         EvaluateThresholds(); // currency / custom-flag may already be satisfied

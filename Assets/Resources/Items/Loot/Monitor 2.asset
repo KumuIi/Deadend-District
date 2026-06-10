@@ -19,5 +19,5 @@ MonoBehaviour:
   sellValue: 33
   modelPrefab: {fileID: 7719408417040841538, guid: 5961abd4a6253e34b9b6e1d7f0dec6a1, type: 3}
   itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
-  modelOrientationOffset: {x: 0, y: 0, z: 0}
+  modelOrientationOffset: {x: 90, y: 0, z: 0}
   gridRotationAxis: {x: 0, y: 0, z: 1}

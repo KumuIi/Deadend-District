@@ -93,6 +93,11 @@ public static class ItemDropSpawner
             var model = Object.Instantiate(item.data.modelPrefab, go.transform);
             model.transform.localPosition = Vector3.zero;
             model.transform.localRotation = Quaternion.identity;
+
+            // Re-center the model on the root origin so a baked-in mesh pivot offset doesn't hang
+            // the item off the spawn point (and through the floor). go is at identity rotation/scale
+            // here. Shared with the inventory preview — see ModelPrefabUtil. No-op when centered.
+            ModelPrefabUtil.CenterOn(go.transform, model.transform);
         }
 
         // Build collider while root is still at identity rotation — bounds are root-local here
@@ -119,14 +124,8 @@ public static class ItemDropSpawner
 
     private static void AddBoundsCollider(GameObject root, int layer)
     {
-        var renderers = root.GetComponentsInChildren<Renderer>();
-        if (renderers.Length > 0)
+        if (ModelPrefabUtil.TryGetCombinedRendererBounds(root, out var b))
         {
-            // Collect bounds in root local space (root is identity rotation here)
-            var b = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-                b.Encapsulate(renderers[i].bounds);
-
             // root has identity rotation and default scale (1,1,1) so world == local
             var box    = root.AddComponent<BoxCollider>();
             box.center = root.transform.InverseTransformPoint(b.center);

@@ -437,7 +437,7 @@ GameObject:
   - component: {fileID: 2681459251118831757}
   - component: {fileID: 4667218687289298336}
   - component: {fileID: 2195137485821508026}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: keylockHitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
