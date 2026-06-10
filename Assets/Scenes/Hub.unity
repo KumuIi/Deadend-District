@@ -1082,7 +1082,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 454717024dd18e04b93a02c2377aa67c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioDirector
-  _soundBank: {fileID: 0}
+  _soundBank: {fileID: 11400000, guid: 8f9bd5e2af13bcf459ab1907d8cf3a27, type: 2}
 --- !u!114 &366038860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1095,11 +1095,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9d55fbba87b5d5e43b24762e292b8d3e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MusicDirector
-  _hubTheme: {fileID: 8300000, guid: ab9cea75027e9844db38a3cd6ef76863, type: 3}
+  _hubTheme: {fileID: 8300000, guid: 9fbd2e7e7faed4743b225bef1a1932a2, type: 3}
   _exploreTheme: {fileID: 8300000, guid: 54a152c15fb572f468567ccdac2d24c7, type: 3}
   _tensionLayer: {fileID: 8300000, guid: 000907cfa4a95b74bafe7924761cc835, type: 3}
   _combatLayer: {fileID: 8300000, guid: 6fb5ec5d16a4e4a4580f5342b2b82b06, type: 3}
-  _musicGroup: {fileID: 0}
+  _musicGroup: {fileID: 24300002, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
   _hubVolume: 0.7
   _exploreVolume: 0.6
   _tensionVolume: 0.7
@@ -1107,7 +1107,7 @@ MonoBehaviour:
   _exploreDuckVolume: 0.25
   _fadeSpeed: 0.6
   _evalInterval: 0.25
-  _audioDirector: {fileID: 0}
+  _audioDirector: {fileID: 366038859}
 --- !u!114 &366038861
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4888,6 +4888,10 @@ PrefabInstance:
     - target: {fileID: 1353125187489232745, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_LocalPosition.z
       value: -0.012
+      objectReference: {fileID: 0}
+    - target: {fileID: 1660674017878401248, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2076618833046402887, guid: 374d00d7b5e21d54ebad957b9f50f217, type: 3}
       propertyPath: m_LocalPosition.x

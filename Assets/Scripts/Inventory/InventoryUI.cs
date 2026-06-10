@@ -68,6 +68,9 @@ public sealed class InventoryUI : MonoBehaviour
     [Header("=== Flashlight Aim ===")]
     [Tooltip("Empty Transform positioned where inventory items sit in world space. The flashlight beam aims here when the inventory is open.")]
     [SerializeField] private Transform _inventoryLightTarget;
+    [Tooltip("Shifts the cursor-follow aim point sideways (world metres along the panel's right axis). " +
+             "Positive = angle the beam further right. 0 = aim straight at the cursor.")]
+    [SerializeField] private float _cursorAimRightOffset = 0.05f;
 
     [Header("=== Drop Settings ===")]
     [Tooltip("Origin transform for item drops (assign player camera). Falls back to Camera.main.")]
@@ -261,6 +264,36 @@ public sealed class InventoryUI : MonoBehaviour
         // Keep tooltip position glued to the cursor while hovering
         if (_hoveredView != null && IsOpen)
             _tooltip?.UpdatePosition(Input.mousePosition);
+
+        UpdateFlashlightCursorAim();
+    }
+
+    /// <summary>
+    /// While the inventory is open, makes the flashlight beam follow the cursor over the panel:
+    /// the mouse position is projected onto the panel's world plane and fed to FlashlightSlot.
+    /// When the cursor leaves the panel, the beam falls back to the fixed inventory target.
+    /// </summary>
+    private void UpdateFlashlightCursorAim()
+    {
+        if (flashlightSlot == null || _panel == null) return;
+        if (!IsOpen) return;
+
+        // Screen Space – Camera canvases need the render camera for screen↔world; overlay passes null.
+        Camera cam = (_canvas != null && _canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            ? _canvas.worldCamera
+            : null;
+
+        Vector2 mouse = Input.mousePosition;
+
+        if (RectTransformUtility.RectangleContainsScreenPoint(_panel, mouse, cam) &&
+            RectTransformUtility.ScreenPointToWorldPointInRectangle(_panel, mouse, cam, out Vector3 world))
+        {
+            // Nudge the aim point along the panel's right axis so the beam angles further right.
+            world += _panel.right * _cursorAimRightOffset;
+            flashlightSlot.SetInventoryAimPoint(world);
+        }
+        else
+            flashlightSlot.ClearInventoryAimPoint();
     }
 
     private void LateUpdate()

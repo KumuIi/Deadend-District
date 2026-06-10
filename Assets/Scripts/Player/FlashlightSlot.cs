@@ -56,6 +56,11 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot, IRunLifecycleListen
     private bool       _inventoryAimReturning;
     private Quaternion _savedPivotLocalRot;
 
+    // Optional per-frame world point the beam follows (the cursor over the inventory).
+    // When set, it overrides the fixed _inventoryAimTarget; cleared → falls back to the target.
+    private bool       _hasAimPointOverride;
+    private Vector3    _aimPointOverride;
+
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     private void OnEnable()
@@ -139,9 +144,9 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot, IRunLifecycleListen
 
         Quaternion targetRot;
 
-        if (_inventoryAimActive && _inventoryAimTarget != null)
+        if (_inventoryAimActive && TryGetAimPosition(out Vector3 aimPos))
         {
-            Vector3 dir = (_inventoryAimTarget.position - _beamPivot.position).normalized;
+            Vector3 dir = (aimPos - _beamPivot.position).normalized;
             if (dir == Vector3.zero) return;
             Quaternion aimWorld = Quaternion.LookRotation(dir) * Quaternion.Euler(_inventoryAimExtra);
             targetRot = Quaternion.Slerp(naturalWorld, aimWorld, _inventoryAimStrength);
@@ -186,6 +191,33 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot, IRunLifecycleListen
     }
 
     /// <summary>
+    /// Sets the world point the beam follows while the inventory is open — call each frame with
+    /// the cursor's world position over the inventory panel. Overrides the fixed aim target until
+    /// <see cref="ClearInventoryAimPoint"/> is called. No-op if inventory aim isn't active.
+    /// </summary>
+    public void SetInventoryAimPoint(Vector3 worldPoint)
+    {
+        if (!_inventoryAimActive) return;
+        _hasAimPointOverride = true;
+        _aimPointOverride    = worldPoint;
+    }
+
+    /// <summary>
+    /// Stops following the cursor and falls the beam back to the fixed inventory target.
+    /// Call when the cursor leaves the inventory panel.
+    /// </summary>
+    public void ClearInventoryAimPoint() => _hasAimPointOverride = false;
+
+    /// <summary>Resolves the current aim world position — cursor override if set, else the fixed target.</summary>
+    private bool TryGetAimPosition(out Vector3 position)
+    {
+        if (_hasAimPointOverride)        { position = _aimPointOverride;          return true; }
+        if (_inventoryAimTarget != null) { position = _inventoryAimTarget.position; return true; }
+        position = default;
+        return false;
+    }
+
+    /// <summary>
     /// Called by InventoryUI when the inventory closes. Eases the pivot back to its
     /// natural orientation over time. Safe to call when already inactive.
     /// </summary>
@@ -196,6 +228,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot, IRunLifecycleListen
         _inventoryAimActive    = false;
         _inventoryAimTarget    = null;
         _inventoryAimReturning = _beamPivot != null;
+        _hasAimPointOverride   = false;
     }
 
     /// <summary>Immediate pivot restore — used by Unequip and OnDisable.</summary>
@@ -204,6 +237,7 @@ public class FlashlightSlot : MonoBehaviour, IEquipmentSlot, IRunLifecycleListen
         _inventoryAimActive    = false;
         _inventoryAimReturning = false;
         _inventoryAimTarget    = null;
+        _hasAimPointOverride   = false;
 
         if (_beamPivot != null)
             _beamPivot.localRotation = _savedPivotLocalRot;
