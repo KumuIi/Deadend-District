@@ -67,7 +67,7 @@ MonoBehaviour:
   minGrowCoef: 4.5
   maxGrowCoef: 6.5
   newLegCooldown: 0.3
-  velocity: {x: -0.17920528, y: 0, z: 0.07865481}
+  velocity: {x: -0.32755208, y: 0, z: 0.80862063}
 --- !u!114 &2996985233733152484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -250,6 +250,7 @@ MonoBehaviour:
   _attackCooldown: 2
   _knockback: 1.5
   _stunDuration: 1
+  _stunCooldown: 3
   _enragedSpeedMult: 2
   _enragedDuration: 1
   _noticeClips:

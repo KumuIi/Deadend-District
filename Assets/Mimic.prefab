@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 8213464909816254519}
   - component: {fileID: 443458982068173796}
   - component: {fileID: 3169101471359352799}
+  - component: {fileID: 935466760152537109}
   m_Layer: 0
   m_Name: Mimic
   m_TagString: Untagged
@@ -67,7 +68,7 @@ MonoBehaviour:
   minGrowCoef: 4.5
   maxGrowCoef: 6.5
   newLegCooldown: 0.3
-  velocity: {x: -0.5465818, y: 0, z: 0.7705935}
+  velocity: {x: -0.64619124, y: 0, z: 0.43513864}
 --- !u!114 &1815642809482600995
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -288,6 +289,27 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
+--- !u!135 &935466760152537109
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2879511009197851135}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.25
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &6650958813375602107
 GameObject:
   m_ObjectHideFlags: 0

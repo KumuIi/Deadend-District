@@ -748,6 +748,31 @@ MonoBehaviour:
   m_SampleCount:
     m_OverrideState: 1
     m_Value: 10
+--- !u!114 &-893995669039790409
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21002ff16de5e9449bfdf2406c8c2ade, type: 3}
+  m_Name: DitherDown
+  m_EditorClassIdentifier: DitherDown::DitherDown
+  active: 1
+  colorLevels:
+    m_OverrideState: 1
+    m_Value: 16
+  ditherType:
+    m_OverrideState: 1
+    m_Value: 0
+  dithering:
+    m_OverrideState: 1
+    m_Value: 0
+  downsampling:
+    m_OverrideState: 1
+    m_Value: 1
 --- !u!114 &-739733392931734929
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -876,6 +901,7 @@ MonoBehaviour:
   - {fileID: 4625372424095570594}
   - {fileID: -2056089692723973999}
   - {fileID: 4296985663656709905}
+  - {fileID: -893995669039790409}
 --- !u!114 &448115243408767295
 MonoBehaviour:
   m_ObjectHideFlags: 3
