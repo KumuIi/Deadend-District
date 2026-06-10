@@ -43,9 +43,11 @@ public class QuestGiverEditor : Editor
             // Only starts after the player accepts in dialogue.
             st.quest.activeCondition = BoolCond(QuestGiver.AcceptedKey(st.quest));
 
-            // Chain order: previous stage's quest + any external prerequisite.
-            var reqs = new List<QuestSO>(st.quest.requiredQuests ?? new QuestSO[0]);
-            if (i > 0 && stages[i - 1].quest != null && !reqs.Contains(stages[i - 1].quest))
+            // Chain order: previous stage's quest + any external prerequisite. REBUILD from scratch
+            // (don't append to the existing list) so re-running after a reorder prunes stale prereqs.
+            // Appending left "stage 2 requires stage 6" ghosts behind when stages were moved.
+            var reqs = new List<QuestSO>();
+            if (i > 0 && stages[i - 1].quest != null)
                 reqs.Add(stages[i - 1].quest);
             if (st.requiresQuestBefore != null && !reqs.Contains(st.requiresQuestBefore))
                 reqs.Add(st.requiresQuestBefore);

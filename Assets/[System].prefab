@@ -205,6 +205,11 @@ GameObject:
   - component: {fileID: 3400108809343721835}
   - component: {fileID: 8946118727985353534}
   - component: {fileID: 8580064556277015665}
+  - component: {fileID: 6967706520421203801}
+  - component: {fileID: 6020219194610730975}
+  - component: {fileID: 8548773695631289304}
+  - component: {fileID: 3646404052762522777}
+  - component: {fileID: 5546262918743128657}
   m_Layer: 0
   m_Name: '[GameSystems]'
   m_TagString: Untagged
@@ -287,7 +292,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 70e7a09af2690f94d8f4ad31a253817a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::QuestManager
-  _quests: []
+  _quests:
+  - {fileID: 11400000, guid: c3deb4849075c154f890ecaec2487731, type: 2}
+  - {fileID: 11400000, guid: 781c8b233bb36c246a945363c3b57953, type: 2}
+  - {fileID: 11400000, guid: 4a36cfbcc57e82f4e95fe46bd23ea9fb, type: 2}
+  - {fileID: 11400000, guid: fa4564685abbcab4e9b09a103cadc672, type: 2}
+  - {fileID: 11400000, guid: 0c079a8369ab76243a681303584c349b, type: 2}
+  - {fileID: 11400000, guid: 8b1ef5b631ffbeb4a838facc350e2886, type: 2}
+  - {fileID: 11400000, guid: 428cee19d47ac5d489777ff84ed629a3, type: 2}
+  - {fileID: 11400000, guid: bc6d614716a9b0a4582dba1e9e488021, type: 2}
+  - {fileID: 11400000, guid: 2fcee74aaa6dd604397845f1dfbb968a, type: 2}
+  - {fileID: 11400000, guid: 0dd4bdc5aff68b94eb7126c77fdbb4eb, type: 2}
+  - {fileID: 11400000, guid: cf459ffa5e5fcf0418def9cab4303346, type: 2}
+  - {fileID: 11400000, guid: 111a96b1aa5979f409eca1aab2c62617, type: 2}
 --- !u!114 &1478869977835866825
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -355,6 +372,148 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlaytimeTracker
   _mainMenuScene: MainMenu
+--- !u!114 &6967706520421203801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9febdd6bc1ecf99409393c266b85bb58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ObjectiveService
+--- !u!114 &6020219194610730975
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35e191f1b336c474e99eb575dcb132f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RunScoreUI
+  _holdSeconds: 3.5
+  _fadeInSeconds: 0.4
+  _fadeOutSeconds: 0.6
+  _headerFontSize: 30
+  _valueFontSize: 22
+  _bestFontSize: 16
+  _headerColor: {r: 0.86, g: 0.86, b: 0.86, a: 1}
+  _valueColor: {r: 1, g: 0.95, b: 0.8, a: 1}
+  _recordColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+  _bestColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
+  _backdropColor: {r: 0, g: 0, b: 0, a: 0.55}
+--- !u!114 &8548773695631289304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6249d29d0c9f57244ac2fde2a85ad4f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpatialAudioManager
+  _mixer: {fileID: 24100000, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _sfxGroup: {fileID: -8557296944909524871, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _uiGroup: {fileID: -8527206021514999954, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _musicGroup: {fileID: 6432676362622343394, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _ambientGroup: {fileID: -7003576344918131460, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _initialPoolSize: 12
+  _minDistance: 1.5
+  _maxDistance: 35
+--- !u!114 &3646404052762522777
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d55fbba87b5d5e43b24762e292b8d3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MusicDirector
+  _hubTheme: {fileID: 8300000, guid: 9fbd2e7e7faed4743b225bef1a1932a2, type: 3}
+  _exploreTheme: {fileID: 8300000, guid: 54a152c15fb572f468567ccdac2d24c7, type: 3}
+  _tensionLayer: {fileID: 8300000, guid: 000907cfa4a95b74bafe7924761cc835, type: 3}
+  _combatLayer: {fileID: 8300000, guid: 6fb5ec5d16a4e4a4580f5342b2b82b06, type: 3}
+  _musicGroup: {fileID: 24300002, guid: cf922025d0d83d04caae46857ede9d79, type: 2}
+  _hubVolume: 0.7
+  _exploreVolume: 0.6
+  _tensionVolume: 0.7
+  _combatVolume: 0.85
+  _exploreDuckVolume: 0.25
+  _fadeSpeed: 0.6
+  _evalInterval: 0.25
+  _audioDirector: {fileID: 5546262918743128657}
+--- !u!114 &5546262918743128657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6244124482328720071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 454717024dd18e04b93a02c2377aa67c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AudioDirector
+  _soundBank: {fileID: 11400000, guid: 8f9bd5e2af13bcf459ab1907d8cf3a27, type: 2}
+--- !u!1 &6444263322937063505
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6093069146636930729}
+  - component: {fileID: 1195153757593929521}
+  m_Layer: 0
+  m_Name: Global Volume
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6093069146636930729
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6444263322937063505}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 186339823272514278}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1195153757593929521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6444263322937063505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 0
+  blendDistance: 0
+  weight: 1
+  sharedProfile: {fileID: 11400000, guid: 59beee7e938966040ab108e4454c8f4a, type: 2}
 --- !u!1 &6615256840996726013
 GameObject:
   m_ObjectHideFlags: 0
@@ -392,6 +551,7 @@ Transform:
   - {fileID: 3985351408139413396}
   - {fileID: 4742210615933842571}
   - {fileID: 7385024568082296654}
+  - {fileID: 6093069146636930729}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7565993041065695047
@@ -441,14 +601,15 @@ MonoBehaviour:
   inventory: {fileID: 0}
   weaponManager: {fileID: 0}
   testItems:
+  - {fileID: 11400000, guid: ab72499d68db283448c0d952029cbadd, type: 2}
   - {fileID: 11400000, guid: b2c8bb3b765373743850e7c47205f83b, type: 2}
   - {fileID: 11400000, guid: e1ba895538d4c0d449e5c40a5a3da928, type: 2}
-  - {fileID: 11400000, guid: 4895c4f4ae695ad4cbde7e0fcb7d3700, type: 2}
+  - {fileID: 11400000, guid: eeb9544d30d0f1844a66cc4eba9cf95b, type: 2}
   - {fileID: 11400000, guid: de20da7781018d249be47a49efe908b9, type: 2}
   - {fileID: 11400000, guid: be5e3b92a2a612d438abed965bb1af6c, type: 2}
   - {fileID: 11400000, guid: 8a627e3eae018c14a8f5213081b99024, type: 2}
-  addKey: 102
-  removeKey: 103
+  addKey: 273
+  removeKey: 272
 --- !u!1 &8133098496086926864
 GameObject:
   m_ObjectHideFlags: 0

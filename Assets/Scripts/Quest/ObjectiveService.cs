@@ -65,6 +65,12 @@ public sealed class ObjectiveService : MonoBehaviour, IRunLifecycleListener
 
     private void Start()
     {
+        // Safety net for Awake ordering: if RunManager's singleton wasn't set yet when our OnEnable
+        // ran, our listener registration there was a silent no-op — and OnRunExtracted (which
+        // completes ExtractRaid objectives) would never fire. Re-register here; RegisterListener is
+        // Contains-guarded, so a double call is harmless. Mirrors AudioDirector / RunScoreUI.
+        RunManager.Instance?.RegisterListener(this);
+
         BuildTrackedFromQuests();
         EvaluateThresholds(); // currency / custom-flag may already be satisfied
     }

@@ -93,7 +93,14 @@ public class RunManager : MonoBehaviour
     {
         // Snapshot so callbacks can safely register/unregister
         var snapshot = new List<IRunLifecycleListener>(_listeners);
-        foreach (var l in snapshot) action(l);
+        // Isolate each listener: a throw in one (e.g. an audio cue) must not abort the rest of the
+        // broadcast — otherwise gameplay-critical listeners like ObjectiveService.OnRunExtracted
+        // (which completes the extract quest) get silently skipped. Mirrors TryShowDeathScreen.
+        foreach (var l in snapshot)
+        {
+            try { action(l); }
+            catch (Exception e) { Debug.LogException(e); }
+        }
     }
 
     // ── Unity lifecycle ────────────────────────────────────────────────────

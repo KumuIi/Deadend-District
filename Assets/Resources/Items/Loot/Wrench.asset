@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32eefdd189b649f48aa3e9da66380ffa, type: 3}
+  m_Name: Wrench
+  m_EditorClassIdentifier: Assembly-CSharp::LootItemSO
+  itemName: Wrench
+  gridSize: {x: 1, y: 1}
+  cellOffsets: []
+  weightKg: 0.5
+  sellValue: 10
+  modelPrefab: {fileID: 6604517783988603998, guid: d98eeacd7b1639640a4b721f2d9274ce, type: 3}
+  itemColor: {r: 0.35, g: 0.45, b: 0.6, a: 1}
+  modelOrientationOffset: {x: 0, y: 0, z: 0}
+  gridRotationAxis: {x: 0, y: 0, z: 1}

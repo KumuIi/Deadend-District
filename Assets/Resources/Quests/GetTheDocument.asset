@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: GetTheDocument
   m_EditorClassIdentifier: Assembly-CSharp::ObjectiveSO
   _objectiveId: 0a2435c941a144a293c35bb94ca4cac8
-  displayName: 
+  displayName: GetTheDocument
   type: 1
   amount: 1
   accrual: 0
   resetEachRun: 0
-  itemFilter: {fileID: 0}
+  itemFilter: {fileID: 11400000, guid: bafc33bf6be91134aaef5f3c39edf404, type: 2}
   useTeamFilter: 0
   killTeam: 1
   customKey: 
