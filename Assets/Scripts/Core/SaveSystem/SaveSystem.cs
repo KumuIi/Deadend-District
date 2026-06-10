@@ -112,9 +112,12 @@ public class SaveSystem : MonoBehaviour
 
     public void LoadAll(string slotName = "slot0")
     {
+        // World FIRST: it's the fact substrate that quests/doors/etc. derive from. If Profile (quest
+        // statuses) restored before World, any evaluation during the load window would read stale
+        // in-memory facts — leaving a just-completed quest showing "done" until a second load.
+        LoadScope(RunScopeTag.World,   slotName);
         LoadScope(RunScopeTag.Profile, slotName);
         LoadScope(RunScopeTag.Run,     slotName);
-        LoadScope(RunScopeTag.World,   slotName);
     }
 
     /// <summary>Legacy entry point — loads all scopes. Prefer LoadAll/LoadRun/etc.</summary>

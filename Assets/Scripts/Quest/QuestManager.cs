@@ -61,25 +61,35 @@ public class QuestManager : MonoBehaviour, ISaveable
             Debug.LogWarning("[QuestManager] WorldStateManager missing — quest tracking disabled.");
             return;
         }
-        WorldStateManager.Instance.OnStateChanged += OnWSMChanged;
+        HookWorldState();
         EvaluateAll();
     }
 
     private void OnEnable()
     {
         SaveSystem.Instance?.Register(this);
-        if (WorldStateManager.Instance != null)
-        {
-            WorldStateManager.Instance.OnStateChanged -= OnWSMChanged;
-            WorldStateManager.Instance.OnStateChanged += OnWSMChanged;
-        }
+        HookWorldState();
     }
 
     private void OnDisable()
     {
         SaveSystem.Instance?.Unregister(this);
-        if (WorldStateManager.Instance != null)
-            WorldStateManager.Instance.OnStateChanged -= OnWSMChanged;
+        var wsm = WorldStateManager.Instance;
+        if (wsm != null)
+        {
+            wsm.OnStateChanged  -= OnWSMChanged;
+            wsm.OnStateReplaced -= OnWSMReplaced;
+        }
+    }
+
+    /// <summary>Idempotently (un/re)subscribe to the world-state singleton. Safe from both OnEnable
+    /// and Start (either can run before WorldStateManager.Instance exists during init).</summary>
+    private void HookWorldState()
+    {
+        var wsm = WorldStateManager.Instance;
+        if (wsm == null) return;
+        wsm.OnStateChanged  -= OnWSMChanged;  wsm.OnStateChanged  += OnWSMChanged;
+        wsm.OnStateReplaced -= OnWSMReplaced; wsm.OnStateReplaced += OnWSMReplaced;
     }
 
     private void Update()
@@ -168,6 +178,15 @@ public class QuestManager : MonoBehaviour, ISaveable
     {
         EvaluateAll();
     }
+
+    /// <summary>
+    /// A bulk world-state load (save restore) fires ONLY OnStateReplaced — never per-key
+    /// OnStateChanged — so without this the quest statuses would keep showing their pre-load values
+    /// (the "quest still showed done until I reloaded" bug). Re-evaluate so they reconcile against the
+    /// freshly loaded facts. EvaluateAll only advances quests, so it can't introduce a state the
+    /// restored statuses + loaded facts don't already imply.
+    /// </summary>
+    private void OnWSMReplaced() => EvaluateAll();
 
     // ── Evaluation ───────────────────────────────────────────────────────────
 

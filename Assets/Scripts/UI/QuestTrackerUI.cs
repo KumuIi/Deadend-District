@@ -39,9 +39,7 @@ public sealed class QuestTrackerUI : MonoBehaviour
 
     // Completed-quest notifications: questId → Time.time when it should clear.
     private readonly Dictionary<string, float> _completedUntil = new Dictionary<string, float>();
-    private readonly HashSet<string> _seenCompleted = new HashSet<string>();
     private readonly List<string> _expiredScratch = new List<string>();
-    private bool _initialized;
 
     private void Awake()
     {
@@ -56,6 +54,7 @@ public sealed class QuestTrackerUI : MonoBehaviour
     private void OnDisable()
     {
         if (_questManager != null) _questManager.OnQuestsChanged -= Refresh;
+        QuestManager.OnAnyQuestTransition -= OnQuestTransition;
         if (WorldStateManager.Instance != null) WorldStateManager.Instance.OnStateChanged -= OnWsmChanged;
     }
 
@@ -67,11 +66,25 @@ public sealed class QuestTrackerUI : MonoBehaviour
             _questManager.OnQuestsChanged -= Refresh;
             _questManager.OnQuestsChanged += Refresh;
         }
+        // Drive the green "✓ Completed" toast off real status TRANSITIONS only — never off a Refresh
+        // diff. A save load restores Succeeded statuses by direct assignment (no transition), so loading
+        // never re-pops quests you already finished; only in-play completions toast.
+        QuestManager.OnAnyQuestTransition -= OnQuestTransition;
+        QuestManager.OnAnyQuestTransition += OnQuestTransition;
         if (WorldStateManager.Instance != null)
         {
             WorldStateManager.Instance.OnStateChanged -= OnWsmChanged;
             WorldStateManager.Instance.OnStateChanged += OnWsmChanged;
         }
+    }
+
+    // A quest just changed status in live play. Schedule the brief completed toast on success.
+    private void OnQuestTransition(QuestSO quest, QuestStatus status)
+    {
+        if (quest == null) return;
+        if (status == QuestStatus.Succeeded)
+            _completedUntil[quest.QuestId] = Time.time + _completedDisplaySeconds;
+        Refresh();
     }
 
     // Live progress: refresh when an objective counter (objective.*) or the credits total (economy.*)
@@ -106,16 +119,9 @@ public sealed class QuestTrackerUI : MonoBehaviour
 
         float now = Time.time;
 
-        // Detect newly-completed quests and schedule their "Completed" notification. On the very first
-        // refresh we only SEED the seen-set (so already-finished quests from a load don't all pop up).
-        foreach (var quest in _questManager.Quests)
-        {
-            if (quest == null) continue;
-            if (_questManager.GetStatus(quest) != QuestStatus.Succeeded) continue;
-            if (_seenCompleted.Add(quest.QuestId) && _initialized)
-                _completedUntil[quest.QuestId] = now + _completedDisplaySeconds;
-        }
-        _initialized = true;
+        // NOTE: newly-completed toasts are scheduled in OnQuestTransition (event-driven), NOT diffed
+        // here — so a save load (which restores Succeeded statuses without firing a transition) never
+        // re-pops finished quests.
 
         // Active quests with their current step / live progress.
         foreach (var quest in _questManager.Quests)

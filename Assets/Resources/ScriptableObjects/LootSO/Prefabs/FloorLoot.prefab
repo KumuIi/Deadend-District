@@ -45,10 +45,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LootSpawnPoint
   _poolSO: {fileID: 11400000, guid: 4ae78207bfbb87f530c0a91a3470c52b, type: 2}
-  _spawnChance: 0.3
+  _spawnChance: 0.1
   _isHardSpawn: 0
   _fixedItem: {fileID: 0}
-  _limitedSpawn: 0
-  _runsUntilRespawn: 0
-  _persistUntilLooted: 1
+  _limitedSpawn: 1
+  _runsUntilRespawn: 4
+  _persistUntilLooted: 0
   _spawnId: 63e9646dbed54fa79bbf1fada8342578

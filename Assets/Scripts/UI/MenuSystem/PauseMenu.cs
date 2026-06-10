@@ -350,6 +350,17 @@ public class PauseMenu : MonoBehaviour
     public void Close()
     {
         if (!_isOpen || _mode != Mode.Pause) return;
+
+        // If the save/load submenu is up, Escape dismisses the drives AND closes the whole pause
+        // menu (back to gameplay) — it does not bounce back to the bullets. The pause menu's
+        // _isOpen flag doesn't distinguish the submenu layer, so close it explicitly here.
+        if (_flashdriveMenu != null && _flashdriveMenu.IsOpen)
+        {
+            _flashdriveMenu.CloseForExit();
+            OnResume();             // unblock input, restore timescale, hide overlays/title
+            return;                 // bullets are already hidden (they flew out on Save/Load click)
+        }
+
         OnResume();
         CascadeAndHide(null);   // no clicked button — fly all out
     }

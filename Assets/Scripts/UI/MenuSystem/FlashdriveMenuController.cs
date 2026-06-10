@@ -36,6 +36,9 @@ public class FlashdriveMenuController : MonoBehaviour
     public event System.Action OnReturnRequested;
     public event System.Action OnActionExecuted;
 
+    /// <summary>True while the save/load drives are showing (root object active).</summary>
+    public bool IsOpen => gameObject.activeSelf;
+
     // ── Tooltip ────────────────────────────────────────────────────────────
 
     private Canvas        _tooltipCanvas;
@@ -180,6 +183,29 @@ public class FlashdriveMenuController : MonoBehaviour
         _returnDrive?.FlyIn(0f);
         for (int i = 0; i < _slotDrives.Length; i++)
             _slotDrives[i]?.FlyIn((i + 1) * _flyInStagger);
+    }
+
+    /// <summary>
+    /// Escape pressed while this menu is up — dismiss the drives and let the caller close the whole
+    /// pause menu (back to gameplay). Unlike the Return drive, this does NOT fire OnReturnRequested,
+    /// so the pause bullets are not re-armed. Routed here by PauseMenu.Close.
+    /// </summary>
+    public void CloseForExit()
+    {
+        StopAllCoroutines();
+        _selectedDrive = null;
+        StartCoroutine(ExitCloseSequence());
+    }
+
+    private IEnumerator ExitCloseSequence()
+    {
+        _returnDrive?.ShrinkOut();
+        for (int i = 0; i < _slotDrives.Length; i++)
+            _slotDrives[i]?.ShrinkOut(i * 0.05f);
+
+        yield return new WaitForSecondsRealtime(_closeWait);
+        OnDriveUnhovered();
+        gameObject.SetActive(false);   // no OnReturnRequested — the pause menu is closing entirely
     }
 
     // ── Input dispatch (called by MenuInputHandler) ────────────────────────
