@@ -49,26 +49,42 @@ public class StimulusSystem : MonoBehaviour
     /// Uses a local snapshot so reentrant Broadcast() calls from inside OnStimulus()
     /// do not corrupt the outer iteration.
     /// </summary>
+    // Pooled snapshot lists — zero steady-state allocation. Each Broadcast() pops (or
+    // creates) its own list, so reentrant Broadcast() calls from inside OnStimulus()
+    // still get isolated copies and cannot corrupt the outer iteration.
+    private readonly Stack<List<IStimulusListener>> _snapshotPool = new Stack<List<IStimulusListener>>();
+
     public void Broadcast(in Stimulus stimulus)
     {
         float sqrRadius = stimulus.Radius * stimulus.Radius;
 
-        // Local snapshot — reentrant Broadcast() calls each get their own copy.
-        var snapshot = new List<IStimulusListener>(_listeners);
+        // Snapshot from the pool — reentrant Broadcast() calls each get their own copy.
+        var snapshot = _snapshotPool.Count > 0 ? _snapshotPool.Pop()
+                                               : new List<IStimulusListener>();
+        snapshot.AddRange(_listeners);
 
-        foreach (var listener in snapshot)
+        try
         {
-            if (listener == null) continue;
+            foreach (var listener in snapshot)
+            {
+                if (listener == null) continue;
 
-            var mb = listener as MonoBehaviour;
-            if (mb == null || !mb || !mb.enabled) continue;
+                var mb = listener as MonoBehaviour;
+                if (mb == null || !mb || !mb.enabled) continue;
 
-            var listenTo = listener.ListensTo;
-            if (listenTo == null || !TypeMatches(listenTo, stimulus.Type)) continue;
+                var listenTo = listener.ListensTo;
+                if (listenTo == null || !TypeMatches(listenTo, stimulus.Type)) continue;
 
-            float sqrDist = (mb.transform.position - stimulus.Position).sqrMagnitude;
-            if (sqrDist <= sqrRadius)
-                listener.OnStimulus(in stimulus);
+                float sqrDist = (mb.transform.position - stimulus.Position).sqrMagnitude;
+                if (sqrDist <= sqrRadius)
+                    listener.OnStimulus(in stimulus);
+            }
+        }
+        finally
+        {
+            // Always return the list, even if a listener throws.
+            snapshot.Clear();
+            _snapshotPool.Push(snapshot);
         }
     }
 

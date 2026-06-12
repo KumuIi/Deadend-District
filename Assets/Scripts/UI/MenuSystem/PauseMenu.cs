@@ -78,6 +78,10 @@ public class PauseMenu : MonoBehaviour
     [SerializeField] private float _flyInStagger  = 0.08f;
     [SerializeField] private float _flyOutStagger = 0.06f;
 
+    [Header("HUD Canvas")]
+    [Tooltip("The Overlay canvas named 'HUD' under the player rig. Auto-found at runtime if left empty.")]
+    [SerializeField] private Canvas _hudCanvas; // auto-found: the Overlay canvas named "HUD" under the player rig
+
     [Header("Flashdrive menu (save/load)")]
     [SerializeField] private FlashdriveMenuController _flashdriveMenu;
 
@@ -107,6 +111,16 @@ public class PauseMenu : MonoBehaviour
         // The root stays active; "closed" = all bullets hidden + overlays transparent.
         BuildOverlays();
         HideAllBullets();
+
+        // Auto-resolve the HUD Overlay canvas if not assigned in the Inspector.
+        // PauseMenu lives under the [Player] prefab, so transform.root is the player root.
+        // The HUD canvas is at [Player]/[UI]/HUD.
+        if (_hudCanvas == null)
+        {
+            var root = transform.root;
+            foreach (var c in root.GetComponentsInChildren<Canvas>(true))
+                if (c.gameObject.name == "HUD") { _hudCanvas = c; break; }
+        }
 
         // Cache the title's authored scale so the reveal can animate from a larger size back to it.
         Transform titleT = _titleObject != null ? _titleObject.transform
@@ -214,8 +228,13 @@ public class PauseMenu : MonoBehaviour
         OpenMode(Mode.Pause, PauseEntries, showTitle: false, title: null, overlay: null);
     }
 
-    public void OpenMainMenu() =>
+    public void OpenMainMenu()
+    {
+        // Hide the Overlay HUD canvas — it renders above the camera-space background overlay
+        // and must not be visible while the main menu is shown.
+        if (_hudCanvas != null) _hudCanvas.enabled = false;
         OpenMode(Mode.MainMenu, MainMenuEntries, showTitle: true, title: _menuTitle, overlay: _backgroundImage);
+    }
 
     private void OpenDeath()
     {
@@ -456,6 +475,9 @@ public class PauseMenu : MonoBehaviour
         }
         Time.timeScale = _savedTimeScale;
 
+        // Re-enable the HUD canvas when gameplay resumes.
+        if (_hudCanvas != null) _hudCanvas.enabled = true;
+
         HideTitle();
         FadeOverlay(_redOverlay, 0f);
         FadeOverlay(_backgroundImage, 0f);
@@ -510,6 +532,9 @@ public class PauseMenu : MonoBehaviour
             _isBlocking = false;
         }
         Time.timeScale = 1f;
+
+        // Re-enable the HUD canvas when gameplay resumes after a save/load action.
+        if (_hudCanvas != null) _hudCanvas.enabled = true;
 
         HideTitle();
         FadeOverlay(_redOverlay, 0f);

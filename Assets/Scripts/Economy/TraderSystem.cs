@@ -218,12 +218,12 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
         {
             int    perRound = PerRoundPrice(idx, ammoDef);
             string stock    = rem < 0 ? "" : $"  (Stock: {rem} rounds)";
-            return $"<b>Buy: {perRound} cr/round</b>{stock}\nCredits: {CurrencyService.GetCredits()}";
+            return $"<b>Buy: {perRound} cr/round</b>{stock}\nYour Credits: {CurrencyService.GetCredits()}";
         }
 
         int    price = _trader.Stock[idx].BuyPrice;
         string box   = rem < 0 ? "" : $"  (Stock: x{rem})";
-        return $"<b>Buy: {price} cr</b>{box}\nCredits: {CurrencyService.GetCredits()}";
+        return $"<b>Buy: {price} cr</b>{box}\nYour Credits: {CurrencyService.GetCredits()}";
     }
 
     /// <summary>The quantity tiers offered for an ammo box of the given size (deduped, ascending).</summary>
@@ -369,8 +369,8 @@ public class TraderSystem : MonoBehaviour, IInteractable, IRunLifecycleListener
     private string SellTooltipFor(ItemInstance item)
     {
         int price = GetSellPrice(item);
-        if (price <= 0) return $"<color=#999>Not sellable here</color>\nCredits: {CurrencyService.GetCredits()}";
-        return $"<b>Sell: {price} cr</b>\nCredits: {CurrencyService.GetCredits()}";
+        if (price <= 0) return $"<color=#999>Not sellable here</color>\nYour Credits: {CurrencyService.GetCredits()}";
+        return $"<b>Sell: {price} cr</b>\nYour Credits: {CurrencyService.GetCredits()}";
     }
 
     /// <summary>What the trader pays for <paramref name="item"/>. 0 = won't buy it.</summary>

@@ -743,10 +743,18 @@ public class PlayerMotor : MonoBehaviour
     }
 
     // ─── LateUpdate ───────────────────────────────────────────────────────
+
+    // Cached visual child — avoids a per-frame GetChild(0) hierarchy walk.
+    private Transform _cachedVisual;
+
     void LateUpdate()
     {
-        if (transform.childCount == 0) return;
-        Transform vis = transform.GetChild(0);
+        if (_cachedVisual == null)
+        {
+            if (transform.childCount == 0) return;
+            _cachedVisual = transform.GetChild(0);
+        }
+        Transform vis = _cachedVisual;
 
         float targetY = _visualBaseY + _crouchVisualOffset;
 
